@@ -1,0 +1,47 @@
+import { useState, useEffect } from 'react';
+import SpotifyWebApi from 'spotify-web-api-js';
+import { loginUrl, getTokenFromUrl } from '../lib/spotify';
+
+const spotifyApi = new SpotifyWebApi();
+
+export const useSpotify = () => {
+    const [token, setToken] = useState(null);
+    const [loggedIn, setLoggedIn] = useState(false);
+    const [user, setUser] = useState(null);
+
+    useEffect(() => {
+        const hash = getTokenFromUrl();
+        window.location.hash = "";
+        const _token = hash.access_token;
+
+        if (_token) {
+            setToken(_token);
+            spotifyApi.setAccessToken(_token);
+
+            // Obtener información del usuario actual
+            spotifyApi.getMe()
+                .then((data) => {
+                    setUser(data.body);
+
+                    setUser(data.body);
+                    setLoggedIn(true);
+
+                }, (error) => {
+                    console.error('Error obtaining user information:', error);
+                    setLoggedIn(false);
+                });
+        }
+    }, []);
+
+    const login = () => {
+        window.location.href = loginUrl;
+    };
+
+    return {
+        spotify: spotifyApi,
+        token,
+        loggedIn,
+        user,
+        login
+    };
+};
