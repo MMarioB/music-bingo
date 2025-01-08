@@ -1,5 +1,5 @@
 const SPOTIFY_CLIENT_ID = '277eea2816be4656a4612eae1b3ca65e';
-const REDIRECT_URI = 'https://auth.vercel.com/callback';
+const REDIRECT_URI = 'http://localhost:5173';
 const SCOPES = [
   'streaming',
   'user-read-email',
@@ -8,7 +8,7 @@ const SCOPES = [
   'user-read-playback-state'
 ].join(' ');
 
-export const loginUrl = `https://accounts.spotify.com/authorize?client_id=${SPOTIFY_CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&scope=${encodeURIComponent(SCOPES)}&response_type=token&show_dialog=true`;
+export const loginUrl = `https://accounts.spotify.com/authorize?client_id=${SPOTIFY_CLIENT_ID}&redirect_uri=${REDIRECT_URI}&scope=${encodeURIComponent(SCOPES)}&response_type=token&show_dialog=true`;
 
 export const getTokenFromUrl = () => {
   return window.location.hash
