@@ -1,5 +1,5 @@
 const SPOTIFY_CLIENT_ID = '277eea2816be4656a4612eae1b3ca65e';
-const REDIRECT_URI = 'http://localhost:5173';
+const REDIRECT_URI = 'https://music-bingo-swart.vercel.app/';
 const SCOPES = [
   'streaming',
   'user-read-email',
