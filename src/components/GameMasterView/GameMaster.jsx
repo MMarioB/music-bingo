@@ -1,8 +1,8 @@
 import { useState, useCallback } from 'react';
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useSpotify } from '@/hooks/useSpotify';
+import { Button } from '../ui/button';
+import { Card } from '../ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
+import { useSpotify } from '../../hooks/useSpotify';
 import { ExternalLinkIcon, MusicIcon, CalendarIcon, MicIcon, RefreshCwIcon } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import CategoryWheel from './CategoryWheel';
