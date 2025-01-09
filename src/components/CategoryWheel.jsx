@@ -61,15 +61,7 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
 
   return (
     <div className="flex flex-col items-center justify-center p-4 md:p-6">
-      <div className="relative w-96 h-96 md:w-[500px] md:h-[500px]">
-        {/* Marcador */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-4 z-20">
-          <div
-            className="w-0 h-0 border-l-8 border-r-8 border-b-12 border-solid border-transparent border-b-purple-600"
-            style={{ transform: 'rotate(180deg)' }}
-          ></div>
-        </div>
-
+      <div className="relative w-full max-w-[500px] h-[500px]">
         {/* Contenedor de la ruleta */}
         <div className="absolute inset-0 rounded-full overflow-hidden border-4 border-purple-600 shadow-xl bg-white">
           {/* Ruleta giratoria */}
@@ -103,9 +95,14 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
           </motion.div>
         </div>
 
+        {/* Marcador */}
+        <div className="absolute inset-x-0 top-0 flex justify-center -translate-y-4 z-20">
+          <div className="w-0 h-0 border-l-8 border-r-8 border-b-12 border-solid border-transparent border-b-purple-600"></div>
+        </div>
+
         {/* Centro de la ruleta */}
         <div className="absolute inset-0 flex items-center justify-center">
-          <div className="w-12 h-12 md:w-16 md:h-16 bg-purple-600 rounded-full z-10 shadow-lg"></div>
+          <div className="w-10 h-10 md:w-12 md:h-12 bg-white rounded-full z-10 shadow-lg"></div>
         </div>
       </div>
 
