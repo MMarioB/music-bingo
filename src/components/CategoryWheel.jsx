@@ -19,7 +19,6 @@ const CATEGORIES_B = [
     { name: '3 años arriba o abajo', color: 'bg-blue-200', icon: '3' }
 ];
 
-// Función para convertir las clases de Tailwind a colores CSS
 const getColorFromClass = (colorClass) => {
     const colorMap = {
         'bg-green-200': '#BBF7D0',
@@ -61,8 +60,8 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
     };
 
     return (
-        <div className="flex flex-col items-center justify-center p-4 md:p-6">
-            <div className="relative w-64 h-64 md:w-96 md:h-96">
+        <div className="flex flex-col items-center justify-center h-screen">
+            <div className="relative w-3/4 max-w-2xl h-3/4 max-h-2xl">
                 {/* Marcador */}
                 <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-4 z-20">
                     <div className="w-0 h-0 border-l-8 border-r-8 border-t-8 border-transparent border-t-purple-600"></div>
