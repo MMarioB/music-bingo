@@ -1,44 +1,86 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import SpotifyWebApi from 'spotify-web-api-js';
-import { loginUrl, getTokenFromUrl } from '../lib/spotify';
-
-const spotifyApi = new SpotifyWebApi();
 
 export const useSpotify = () => {
-  const [token, setToken] = useState(null);
+  const [spotify, setSpotify] = useState(null);
   const [loggedIn, setLoggedIn] = useState(false);
-  const [user, setUser] = useState(null);
+  const [token, setToken] = useState(null);
 
+  // Obtener el token de los parámetros de la URL
+  const getTokenFromUrl = () => {
+    return window.location.hash
+      .substring(1)
+      .split('&')
+      .reduce((initial, item) => {
+        let parts = item.split('=');
+        initial[parts[0]] = decodeURIComponent(parts[1]);
+        return initial;
+      }, {});
+  };
+
+  // Inicializar Spotify Web API
+  const initSpotify = useCallback(() => {
+    const spotifyApi = new SpotifyWebApi();
+    setSpotify(spotifyApi);
+  }, []);
+
+  // Login con Spotify
+  const login = useCallback(() => {
+    const clientId = '277eea2816be4656a4612eae1b3ca65e'; // Reemplaza con tu Client ID de Spotify
+    const redirectUri = 'https://music-bingo-swart.vercel.app/'; // Reemplaza con tu Redirect URI
+    const scopes = [
+      'user-read-private',
+      'user-read-email',
+      'user-modify-playback-state',
+      'user-read-playback-state',
+      'streaming'
+    ];
+
+    window.location = `https://accounts.spotify.com/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&scope=${scopes.join('%20')}&response_type=token&show_dialogs=true`;
+  }, []);
+
+  // Efecto para manejar el token y la autenticación
   useEffect(() => {
+    initSpotify();
+
     const hash = getTokenFromUrl();
-    window.location.hash = "";
+    window.location.hash = '';
+
     const _token = hash.access_token;
 
     if (_token) {
+      // Guardar token
       setToken(_token);
-      spotifyApi.setAccessToken(_token);
 
-      // Obtener información del usuario actual
-      spotifyApi.getMe()
-        .then((data) => {
-          setUser(data.body);
+      // Configurar token en la instancia de Spotify
+      if (spotify) {
+        spotify.setAccessToken(_token);
+      }
+
+      // Verificar información del usuario
+      spotify?.getMe()
+        .then(user => {
+          console.log('Usuario autenticado:', user);
           setLoggedIn(true);
-        }, (error) => {
-          console.error('Error obtaining user information:', error);
+        })
+        .catch(error => {
+          console.error('Error autenticando:', error);
           setLoggedIn(false);
         });
     }
+  }, [initSpotify, spotify]);
+
+  // Logout
+  const logout = useCallback(() => {
+    setToken(null);
+    setLoggedIn(false);
   }, []);
 
-  const login = () => {
-    window.location.href = loginUrl;
-  };
-
   return {
-    spotify: spotifyApi,
-    token,
+    spotify,
     loggedIn,
-    user,
-    login
+    token,
+    login,
+    logout
   };
 };
