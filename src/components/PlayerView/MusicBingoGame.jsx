@@ -141,46 +141,48 @@ const MusicBingoGame = () => {
   }, [board, checkWinner]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-100 via-purple-100 to-pink-100 flex flex-col items-center justify-center p-4 sm:p-6">
+    <div className="min-h-screen bg-gradient-to-br from-indigo-100 via-purple-100 to-pink-100 p-3 md:p-6 flex flex-col items-center justify-center">
       <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.5 }}
-        className="w-full max-w-4xl bg-white/80 backdrop-blur-lg rounded-2xl shadow-2xl overflow-hidden"
+        className="w-full max-w-3xl bg-white/80 backdrop-blur-lg rounded-xl shadow-xl overflow-hidden"
       >
-        <div className="bg-gradient-to-r from-purple-600 to-indigo-600 p-4 sm:p-6">
-          <h1 className="text-2xl sm:text-3xl font-bold text-center text-white drop-shadow-md">
+        <div className="bg-gradient-to-r from-purple-600 to-indigo-600 p-4 md:p-6">
+          <h1 className="text-xl md:text-3xl font-bold text-center text-white drop-shadow-md">
             Music Bingo
           </h1>
         </div>
 
-        <div className="p-4 sm:p-6 space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4">
-            <div className="flex items-center gap-4">
-              <span className={`text-sm sm:text-base ${!isExpertMode ? "font-bold text-purple-600" : "text-gray-500"}`}>
+        <div className="p-4 md:p-6 space-y-4 md:space-y-6">
+          {/* Selector de modo */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-center justify-center gap-3 md:gap-4">
+              <span className={`text-sm md:text-base ${!isExpertMode ? "font-bold text-purple-600" : "text-gray-500"}`}>
                 Principiantes
               </span>
               <Switch
                 checked={isExpertMode}
                 onCheckedChange={setIsExpertMode}
+                className="data-[state=checked]:bg-purple-600"
               />
-              <span className={`text-sm sm:text-base ${isExpertMode ? "font-bold text-purple-600" : "text-gray-500"}`}>
+              <span className={`text-sm md:text-base ${isExpertMode ? "font-bold text-purple-600" : "text-gray-500"}`}>
                 Expertos
               </span>
             </div>
           </div>
 
+          {/* Alerta de ganador */}
           <AnimatePresence>
             {hasWinner && (
               <motion.div
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
-                className="mb-4"
               >
                 <Alert className="bg-green-100 border-green-300">
                   <CheckCircleIcon className="h-5 w-5 text-green-600 mr-2" />
-                  <AlertDescription className="text-green-800 font-semibold">
+                  <AlertDescription className="text-green-800 font-semibold text-sm md:text-base">
                     ¡BINGO! ¡Has completado una línea!
                   </AlertDescription>
                 </Alert>
@@ -188,74 +190,81 @@ const MusicBingoGame = () => {
             )}
           </AnimatePresence>
 
-          <Card className="p-2 sm:p-4 mb-6 shadow-lg">
-            <div className="grid grid-cols-5 gap-1 sm:gap-2">
+          {/* Tablero de juego */}
+          <Card className="p-2 md:p-4 shadow-lg">
+            <div className="grid grid-cols-5 gap-1 md:gap-3">
               {board.map((category, index) => (
-                <motion.div
+                <motion.button
                   key={index}
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   className={`
                     ${category.color} 
                     aspect-square 
-                    rounded-lg sm:rounded-xl
+                    rounded-lg
                     flex 
                     flex-col 
                     items-center 
                     justify-center 
-                    p-1 sm:p-2
+                    p-1 md:p-2
                     text-center 
-                    cursor-pointer 
-                    hover:opacity-90 
                     relative 
                     transition-all 
-                    duration-200 
-                    ${category.marked ? 'scale-95 shadow-inner' : 'shadow'}
+                    duration-200
+                    focus:outline-none
+                    focus:ring-2
+                    focus:ring-purple-400
+                    focus:ring-offset-2
+                    ${category.marked ? 'scale-95 shadow-inner' : 'shadow hover:shadow-md'}
                   `}
                   onClick={() => toggleCell(index)}
+                  aria-label={`Casilla ${category.name}`}
                 >
-                  <span className="text-xl sm:text-2xl mb-0 sm:mb-1">{category.icon}</span>
-                  <span className="text-[8px] sm:text-xs leading-none sm:leading-tight">{category.name}</span>
+                  <span className="text-lg md:text-2xl mb-1">{category.icon}</span>
+                  <span className="text-[0.6rem] md:text-xs leading-tight">{category.name}</span>
                   {category.marked && (
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <XCircleIcon className="text-red-500 w-8 sm:w-12 h-8 sm:h-12" />
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/10">
+                      <XCircleIcon className="text-red-500 w-6 md:w-10 h-6 md:h-10" />
                     </div>
                   )}
-                </motion.div>
+                </motion.button>
               ))}
             </div>
           </Card>
 
-          <div className="space-y-3 sm:space-y-4">
+          {/* Formulario de respuesta */}
+          <div className="space-y-3">
             <Input
               value={currentAnswer}
               onChange={(e) => setCurrentAnswer(e.target.value)}
               placeholder="Escribe tu respuesta aquí..."
-              className="w-full text-sm sm:text-base"
+              className="w-full text-sm md:text-base"
+              aria-label="Respuesta"
             />
             <Button
               onClick={() => setCurrentAnswer('')}
-              className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 transition-all duration-300"
+              className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 transition-all duration-300 py-2 md:py-3"
             >
               Enviar Respuesta
             </Button>
           </div>
 
-          <div className="mt-4 sm:mt-6">
-            <h3 className="text-base sm:text-lg font-semibold mb-2 sm:mb-3">
+          {/* Lista de categorías */}
+          <div className="mt-6">
+            <h3 className="text-base md:text-lg font-semibold mb-3">
               Categorías {isExpertMode ? "Expertos" : "Principiantes"}
             </h3>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
               {(isExpertMode ? CATEGORIES_B : CATEGORIES_A).map((category, index) => (
                 <motion.div
                   key={index}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.1 }}
-                  className={`${category.color} p-2 sm:p-3 rounded-md sm:rounded-lg flex items-center gap-2 sm:gap-3 shadow`}
+                  className={`${category.color} p-2 md:p-3 rounded-lg flex items-center gap-2 shadow-sm`}
                 >
-                  <span className="text-xl sm:text-2xl">{category.icon}</span>
-                  <span className="text-xs sm:text-sm font-medium">{category.name}</span>
+                  <span className="text-lg md:text-2xl">{category.icon}</span>
+                  <span className="text-xs md:text-sm font-medium">{category.name}</span>
                 </motion.div>
               ))}
             </div>

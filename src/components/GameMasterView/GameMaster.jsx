@@ -77,7 +77,6 @@ const CATEGORIES = Object.keys(ARTISTS);
 
 const GameMaster = () => {
   const { spotify, loggedIn, login } = useSpotify();
-
   const [currentCard, setCurrentCard] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [difficulty, setDifficulty] = useState('principiante');
@@ -87,14 +86,10 @@ const GameMaster = () => {
 
     setIsLoading(true);
     try {
-      // Seleccionar categoría aleatoria de música
       const randomCategory = CATEGORIES[Math.floor(Math.random() * CATEGORIES.length)];
-
-      // Seleccionar artista aleatorio de esa categoría
       const artistsInCategory = ARTISTS[randomCategory];
       const randomArtist = artistsInCategory[Math.floor(Math.random() * artistsInCategory.length)];
 
-      // Buscar una canción del artista
       const response = await spotify.searchTracks(`artist:"${randomArtist}"`, {
         limit: 50,
         market: 'ES'
@@ -103,7 +98,6 @@ const GameMaster = () => {
       const tracks = response.tracks.items;
       const randomTrack = tracks[Math.floor(Math.random() * tracks.length)];
 
-      // Seleccionar categoría de juego según dificultad
       let randomGameCategory;
       if (difficulty === 'principiante') {
         randomGameCategory = CATEGORIES_A[Math.floor(Math.random() * CATEGORIES_A.length)];
@@ -119,7 +113,6 @@ const GameMaster = () => {
         musicCategory: randomCategory,
         gameCategory: randomGameCategory
       });
-
     } catch (error) {
       console.error("Error generando tarjeta:", error);
       alert('No se pudo generar una tarjeta. Inténtalo de nuevo.');
@@ -130,15 +123,15 @@ const GameMaster = () => {
 
   if (!loggedIn) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen p-4 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500">
-        <div className="bg-white rounded-lg shadow-lg p-8 max-w-md w-full">
-          <h1 className="text-3xl sm:text-4xl font-bold mb-6 sm:mb-8 text-center text-indigo-600">
+      <div className="flex flex-col items-center justify-center min-h-screen p-4 sm:p-6 md:p-8 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500">
+        <div className="bg-white/90 backdrop-blur-sm rounded-xl shadow-xl p-6 md:p-8 w-full max-w-sm md:max-w-md mx-4">
+          <h1 className="text-2xl md:text-4xl font-bold mb-6 md:mb-8 text-center text-indigo-600 leading-tight">
             Music Bingo<br />Game Master
           </h1>
           <div className="flex justify-center">
             <Button
               onClick={login}
-              className="py-4 sm:py-6 px-8 sm:px-10 text-lg sm:text-xl font-semibold bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-full shadow-md hover:from-purple-700 hover:to-indigo-700 transition duration-300"
+              className="w-full md:w-auto py-4 px-6 text-base md:text-lg font-semibold bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-full shadow-md hover:from-purple-700 hover:to-indigo-700 transition duration-300"
             >
               Conectar con Spotify
             </Button>
@@ -149,28 +142,28 @@ const GameMaster = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-100 via-purple-100 to-pink-100 flex flex-col items-center justify-center p-4 sm:p-6">
-      <div className="w-full max-w-xl bg-white/80 backdrop-blur-lg rounded-2xl shadow-2xl overflow-hidden">
-        <div className="bg-gradient-to-r from-purple-600 to-indigo-600 p-4 sm:p-6">
-          <h1 className="text-2xl sm:text-3xl font-bold text-center text-white drop-shadow-md">
+    <div className="min-h-screen bg-gradient-to-br from-indigo-100 via-purple-100 to-pink-100 p-4 md:p-8">
+      <div className="w-full max-w-lg mx-auto bg-white/80 backdrop-blur-lg rounded-xl shadow-xl overflow-hidden">
+        <div className="bg-gradient-to-r from-purple-600 to-indigo-600 p-4 md:p-6">
+          <h1 className="text-2xl md:text-3xl font-bold text-center text-white drop-shadow-md">
             Music Bingo
           </h1>
         </div>
 
-        <div className="p-4 sm:p-6 space-y-5">
+        <div className="p-4 md:p-6 space-y-4">
           <div className="space-y-2">
-            <label className="text-xs sm:text-sm font-medium text-gray-700">
+            <label className="text-sm font-medium text-gray-700">
               Selecciona dificultad
             </label>
             <Select value={difficulty} onValueChange={setDifficulty}>
-              <SelectTrigger className="w-full bg-white border-purple-300">
+              <SelectTrigger className="w-full bg-white/90 border-purple-300">
                 <SelectValue placeholder="Nivel de juego" />
               </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="principiante" className="hover:bg-purple-100">
+              <SelectContent className="bg-white/90 backdrop-blur-sm">
+                <SelectItem value="principiante" className="hover:bg-purple-50">
                   🟢 Principiante
                 </SelectItem>
-                <SelectItem value="experto" className="hover:bg-purple-100">
+                <SelectItem value="experto" className="hover:bg-purple-50">
                   🔥 Experto
                 </SelectItem>
               </SelectContent>
@@ -178,50 +171,52 @@ const GameMaster = () => {
           </div>
 
           <Button
-            className="w-full py-4 sm:py-6 text-base sm:text-lg bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 transition-all duration-300"
+            className="w-full py-4 text-base bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 transition-all duration-300"
             onClick={generateNewCard}
             disabled={isLoading}
           >
             {isLoading ? 'Generando...' : 'Nueva Tarjeta'}
           </Button>
 
-          <AnimatePresence>
+          <AnimatePresence mode="wait">
             {currentCard && (
               <motion.div
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.9 }}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
                 transition={{ duration: 0.3 }}
               >
-                <Card className="overflow-hidden border-2 border-purple-200 shadow-lg">
-                  <div className="relative bg-gradient-to-br from-purple-100 to-indigo-100 p-4 sm:p-6 space-y-3 sm:space-y-4">
+                <Card className="overflow-hidden border-purple-200 shadow-lg">
+                  <div className="relative bg-gradient-to-br from-purple-100 to-indigo-100 p-4 space-y-4">
                     <div className="text-center">
-                      <h2 className="text-lg sm:text-2xl font-bold text-gray-800 mb-1 sm:mb-2">
+                      <h2 className="text-lg md:text-xl font-bold text-gray-800 mb-2 line-clamp-2 px-2">
                         {currentCard.title}
                       </h2>
-                      <div className="flex justify-center items-center space-x-1 sm:space-x-2 text-gray-600">
-                        <MusicIcon className="w-4 h-4 sm:w-5 sm:h-5" />
-                        <span className="text-sm sm:text-base">{currentCard.artist}</span>
+                      <div className="flex justify-center items-center space-x-2 text-gray-600">
+                        <MusicIcon className="w-4 h-4" />
+                        <span className="text-base truncate max-w-[250px] md:max-w-[350px]">
+                          {currentCard.artist}
+                        </span>
                       </div>
                     </div>
 
-                    <div className="flex justify-between items-center bg-white/60 rounded-md sm:rounded-lg p-3 sm:p-4 shadow-inner">
-                      <div className="flex items-center space-x-1 sm:space-x-2">
-                        <CalendarIcon className="w-5 h-5 sm:w-6 sm:h-6 text-purple-600" />
-                        <span className="text-2xl sm:text-3xl font-bold text-gray-800">
+                    <div className="flex justify-between items-center bg-white/60 rounded-lg p-3 shadow-inner">
+                      <div className="flex items-center space-x-2">
+                        <CalendarIcon className="w-5 h-5 text-purple-600" />
+                        <span className="text-xl md:text-2xl font-bold text-gray-800">
                           {currentCard.year}
                         </span>
                       </div>
-                      <div className="flex items-center space-x-1 sm:space-x-2">
-                        <MicIcon className="w-5 h-5 sm:w-6 sm:h-6 text-indigo-600" />
-                        <span className="text-sm sm:text-lg text-gray-700">
+                      <div className="flex items-center space-x-2">
+                        <MicIcon className="w-5 h-5 text-indigo-600" />
+                        <span className="text-sm text-gray-700">
                           {
                             {
-                              tradicional: 'Música Tradicional',
-                              rockEspanol: 'Rock Español',
+                              tradicional: 'Tradicional',
+                              rockEspanol: 'Rock',
                               popNacional: 'Pop Nacional',
-                              popRockIndie: 'Pop-Rock/Indie',
-                              musicaUrbana: 'Música Urbana',
+                              popRockIndie: 'Indie',
+                              musicaUrbana: 'Urbana',
                               internacional: 'Internacional'
                             }[currentCard.musicCategory]
                           }
@@ -229,14 +224,18 @@ const GameMaster = () => {
                       </div>
                     </div>
 
-                    <div className={`flex items-center justify-center p-2 sm:p-3 rounded-md sm:rounded-lg ${currentCard.gameCategory.color}`}>
-                      <span className="mr-1 sm:mr-2 text-xl sm:text-2xl">
+                    <motion.div
+                      className={`flex items-center justify-center p-3 rounded-lg ${currentCard.gameCategory.color}`}
+                      whileHover={{ scale: 1.02 }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      <span className="mr-2 text-xl">
                         {currentCard.gameCategory.icon}
                       </span>
-                      <span className="text-sm sm:text-base font-semibold text-gray-800">
+                      <span className="text-sm font-semibold text-gray-800">
                         {currentCard.gameCategory.name}
                       </span>
-                    </div>
+                    </motion.div>
                   </div>
                 </Card>
               </motion.div>
@@ -248,21 +247,16 @@ const GameMaster = () => {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.3 }}
+              className="w-full"
             >
-              <a
-                href={currentCard.spotifyUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="block w-full"
+              <Button
+                variant="outline"
+                className="w-full py-4 text-base border-purple-400 text-purple-700 hover:bg-purple-50 transition-colors"
+                onClick={() => window.open(currentCard.spotifyUrl, '_blank')}
               >
-                <Button
-                  variant="outline"
-                  className="w-full py-4 sm:py-6 text-base sm:text-lg border-purple-400 text-purple-700hover:bg-purple-50 transition-colors"
-                >
-                  <ExternalLinkIcon className="mr-1 sm:mr-2 h-4 w-4 sm:h-5 sm:w-5" />
-                  Abrir en Spotify
-                </Button>
-              </a>
+                <ExternalLinkIcon className="mr-2 h-4 w-4" />
+                Abrir en Spotify
+              </Button>
             </motion.div>
           )}
         </div>
@@ -270,4 +264,5 @@ const GameMaster = () => {
     </div>
   );
 };
+
 export default GameMaster;
