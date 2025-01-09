@@ -3,7 +3,8 @@ import { Button } from '../../components/ui/button';
 import { Card } from '../../components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../components/ui/select";
 import { useSpotify } from '../../hooks/useSpotify';
-import { ExternalLinkIcon } from 'lucide-react';
+import { ExternalLinkIcon, MusicIcon, CalendarIcon, MicIcon } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion'
 
 const CATEGORIES_A = [
   { name: 'Grupo o solista', color: 'bg-green-200', icon: '🎸' },
@@ -139,93 +140,126 @@ const GameMaster = () => {
  }
 
  return (
-   <div className="p-4 max-w-xl mx-auto pb-20">
-     <h1 className="text-2xl font-bold text-center mb-8">Music Bingo</h1>
-     
-     <div className="mb-6">
-       <Select value={difficulty} onValueChange={setDifficulty}>
-         <SelectTrigger className="w-full">
-           <SelectValue placeholder="Selecciona dificultad" />
-         </SelectTrigger>
-         <SelectContent>
-           <SelectItem value="principiante">Principiante</SelectItem>
-           <SelectItem value="experto">Experto</SelectItem>
-         </SelectContent>
-       </Select>
-     </div>
+  <div className="min-h-screen bg-gradient-to-br from-indigo-100 via-purple-100 to-pink-100 flex flex-col items-center justify-center p-4">
+    <div className="w-full max-w-xl bg-white/80 backdrop-blur-lg rounded-2xl shadow-2xl overflow-hidden">
+      <div className="bg-gradient-to-r from-purple-600 to-indigo-600 p-6">
+        <h1 className="text-3xl font-bold text-center text-white drop-shadow-md">
+          Music Bingo
+        </h1>
+      </div>
 
-     <Button 
-       className="w-full py-6 text-lg mb-6"
-       onClick={generateNewCard}
-       disabled={isLoading}
-     >
-       {isLoading ? 'Generando...' : 'Nueva Tarjeta'}
-     </Button>
-     
-     {currentCard && (
-       <Card className="mb-6 overflow-hidden">
-         <div className="flex flex-col h-[500px] bg-gradient-to-b from-purple-100 to-blue-100">
-           <div className="flex-1 flex items-center justify-center p-4 border-b">
-             <h2 className="text-2xl font-bold text-center">
-               {currentCard.title}
-             </h2>
-           </div>
-           
-           <div className="flex-1 flex items-center justify-center p-4 border-b bg-opacity-50 bg-white">
-             <div className="text-4xl font-bold">
-               {currentCard.year}
-             </div>
-           </div>
-           
-           <div className="flex-1 flex items-center justify-center p-4">
-             <div className="text-xl font-semibold">
-               {currentCard.artist}
-             </div>
-           </div>
-           
-           <div className={`flex-1 flex items-center justify-center p-4 ${currentCard.gameCategory.color}`}>
-             <div className="text-lg text-gray-800 flex items-center">
-               <span className="mr-2">{currentCard.gameCategory.icon}</span>
-               {currentCard.gameCategory.name}
-             </div>
-           </div>
-           
-           <div className="flex-1 flex items-center justify-center p-4 bg-gray-100">
-             <div className="text-lg text-gray-700">
-               Categoría Musical: {
-                 {
-                   tradicional: 'Música Tradicional',
-                   rockEspanol: 'Rock Español',
-                   popNacional: 'Pop Nacional',
-                   popRockIndie: 'Pop-Rock/Indie',
-                   musicaUrbana: 'Música Urbana',
-                   internacional: 'Internacional'
-                 }[currentCard.musicCategory]
-               }
-             </div>
-           </div>
-         </div>
-       </Card>
-     )}
-     
-     {currentCard && currentCard.spotifyUrl && (
-       <a 
-         href={currentCard.spotifyUrl} 
-         target="_blank" 
-         rel="noopener noreferrer"
-         className="block w-full"
-       >
-         <Button 
-           variant="outline"
-           className="w-full py-6 text-lg"
-         >
-           <ExternalLinkIcon className="mr-2 h-5 w-5" />
-           Abrir en Spotify
-         </Button>
-       </a>
-     )}
-   </div>
- );
+      <div className="p-6 space-y-6">
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-gray-700">
+            Selecciona dificultad
+          </label>
+          <Select value={difficulty} onValueChange={setDifficulty}>
+            <SelectTrigger className="w-full bg-white border-purple-300">
+              <SelectValue placeholder="Nivel de juego" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="principiante" className="hover:bg-purple-100">
+                🟢 Principiante
+              </SelectItem>
+              <SelectItem value="experto" className="hover:bg-purple-100">
+                🔥 Experto
+              </SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <Button 
+          className="w-full py-6 text-lg bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 transition-all duration-300"
+          onClick={generateNewCard}
+          disabled={isLoading}
+        >
+          {isLoading ? 'Generando...' : 'Nueva Tarjeta'}
+        </Button>
+        
+        <AnimatePresence>
+          {currentCard && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              transition={{ duration: 0.3 }}
+            >
+              <Card className="overflow-hidden border-2 border-purple-200 shadow-lg">
+                <div className="relative bg-gradient-to-br from-purple-100 to-indigo-100 p-6 space-y-4">
+                  <div className="text-center">
+                    <h2 className="text-2xl font-bold text-gray-800 mb-2">
+                      {currentCard.title}
+                    </h2>
+                    <div className="flex justify-center items-center space-x-2 text-gray-600">
+                      <MusicIcon className="w-5 h-5" />
+                      <span>{currentCard.artist}</span>
+                    </div>
+                  </div>
+                  
+                  <div className="flex justify-between items-center bg-white/60 rounded-lg p-4 shadow-inner">
+                    <div className="flex items-center space-x-2">
+                      <CalendarIcon className="w-6 h-6 text-purple-600" />
+                      <span className="text-3xl font-bold text-gray-800">
+                        {currentCard.year}
+                      </span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <MicIcon className="w-6 h-6 text-indigo-600" />
+                      <span className="text-lg text-gray-700">
+                        {
+                          {
+                            tradicional: 'Música Tradicional',
+                            rockEspanol: 'Rock Español',
+                            popNacional: 'Pop Nacional',
+                            popRockIndie: 'Pop-Rock/Indie',
+                            musicaUrbana: 'Música Urbana',
+                            internacional: 'Internacional'
+                          }[currentCard.musicCategory]
+                        }
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className={`flex items-center justify-center p-3 rounded-lg ${currentCard.gameCategory.color}`}>
+                    <span className="mr-2 text-2xl">
+                      {currentCard.gameCategory.icon}
+                    </span>
+                    <span className="font-semibold text-gray-800">
+                      {currentCard.gameCategory.name}
+                    </span>
+                  </div>
+                </div>
+              </Card>
+            </motion.div>
+          )}
+        </AnimatePresence>
+        
+        {currentCard && currentCard.spotifyUrl && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.3 }}
+          >
+            <a 
+              href={currentCard.spotifyUrl} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="block w-full"
+            >
+              <Button 
+                variant="outline"
+                className="w-full py-6 text-lg border-purple-400 text-purple-700 hover:bg-purple-50 transition-colors"
+              >
+                <ExternalLinkIcon className="mr-2 h-5 w-5" />
+                Abrir en Spotify
+              </Button>
+            </a>
+          </motion.div>
+        )}
+      </div>
+    </div>
+  </div>
+);
 };
 
 export default GameMaster;
