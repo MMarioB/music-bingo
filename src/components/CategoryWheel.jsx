@@ -1,9 +1,8 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Button } from './ui/button';
+import { Button } from '@/components/ui/button';
 import PropTypes from 'prop-types';
 
-// Definimos las categorías aquí para que el componente sea autónomo
 const CATEGORIES_A = [
     { name: 'Grupo o solista', color: 'bg-green-200', icon: '🎸' },
     { name: '¿Anterior al 2000?', color: 'bg-pink-200', icon: '20' },
@@ -20,99 +19,118 @@ const CATEGORIES_B = [
     { name: '3 años arriba o abajo', color: 'bg-blue-200', icon: '3' }
 ];
 
+// Función para convertir las clases de Tailwind a colores CSS
+const getColorFromClass = (colorClass) => {
+    const colorMap = {
+        'bg-green-200': '#BBF7D0',
+        'bg-pink-200': '#FBCFE8',
+        'bg-yellow-200': '#FEF08A',
+        'bg-purple-200': '#E9D5FF',
+        'bg-blue-200': '#BFDBFE'
+    };
+    return colorMap[colorClass] || colorMap['bg-purple-200'];
+};
+
 const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () => { } }) => {
     const [isSpinning, setIsSpinning] = useState(false);
     const [rotation, setRotation] = useState(0);
 
-    // Seleccionar las categorías según la dificultad
     const categories = difficulty === 'principiante' ? CATEGORIES_A : CATEGORIES_B;
+    const segmentAngle = 360 / categories.length;
 
     const spinWheel = () => {
         if (isSpinning) return;
 
         setIsSpinning(true);
 
-        // Calcular la rotación final
-        const spins = 5 + Math.random() * 5; // Entre 5 y 10 vueltas completas
+        const spins = 5 + Math.random() * 5;
         const baseRotation = spins * 360;
-        const categoryAngle = (Math.random() * categories.length) * (360 / categories.length);
+        const categoryAngle = (Math.random() * categories.length) * segmentAngle;
         const finalRotation = rotation + baseRotation + categoryAngle;
 
         setRotation(finalRotation);
 
-        // Determinar la categoría seleccionada después de la animación
         setTimeout(() => {
             const normalizedRotation = finalRotation % 360;
-            const categoryIndex = Math.floor((360 - normalizedRotation) / (360 / categories.length));
+            const categoryIndex = Math.floor((360 - normalizedRotation) / segmentAngle);
             const selectedCategory = categories[categoryIndex % categories.length];
 
             setIsSpinning(false);
             onCategorySelected(selectedCategory);
-        }, 4000); // Duración de la animación
+        }, 4000);
     };
 
     return (
         <div className="flex flex-col items-center justify-center p-4 md:p-6">
             <div className="relative w-64 h-64 md:w-96 md:h-96">
-                {/* Indicador/Flecha */}
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-4 z-10">
-                    <div className="w-0 h-0 border-l-8 border-r-8 border-t-12 border-solid border-transparent border-t-purple-600"></div>
+                {/* Marcador */}
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-4 z-20">
+                    <div className="w-0 h-0 border-l-8 border-r-8 border-t-8 border-transparent border-t-purple-600"></div>
                 </div>
 
-                {/* Ruleta */}
-                <motion.div
-                    className="w-full h-full rounded-full relative overflow-hidden border-4 border-purple-600 shadow-xl"
-                    style={{
-                        transformOrigin: "center"
-                    }}
-                    animate={{
-                        rotate: rotation
-                    }}
-                    transition={{
-                        duration: 4,
-                        ease: [0.2, 0.85, 0.3, 1],
-                    }}
-                >
-                    {categories.map((category, index) => {
-                        const segments = categories.length;
-                        const angle = (360 / segments) * index;
-                        const skewAngle = 90 - (360 / segments);
+                {/* Contenedor de la ruleta */}
+                <div className="absolute inset-0 rounded-full overflow-hidden border-4 border-purple-600 shadow-xl">
+                    {/* Ruleta giratoria */}
+                    <motion.div
+                        className="w-full h-full relative"
+                        style={{
+                            transformOrigin: "center"
+                        }}
+                        animate={{
+                            rotate: rotation
+                        }}
+                        transition={{
+                            duration: 4,
+                            ease: [0.2, 0.85, 0.3, 1],
+                        }}
+                    >
+                        {categories.map((category, index) => {
+                            const angle = segmentAngle * index;
+                            const color = getColorFromClass(category.color);
 
-                        return (
-                            <div
-                                key={index}
-                                className={`absolute w-full h-full ${category.color} border-r border-purple-200`}
-                                style={{
-                                    transform: `rotate(${angle}deg) skewY(-${skewAngle}deg)`,
-                                    transformOrigin: "50% 50%",
-                                }}
-                            >
+                            return (
                                 <div
-                                    className="absolute left-1/2 top-4 -translate-x-1/2 whitespace-nowrap"
+                                    key={index}
+                                    className="absolute w-1/2 h-1/2 origin-bottom-right"
                                     style={{
-                                        transform: `
-                      rotate(${-angle - (180 - (360 / segments) / 2)}deg)
-                      translateY(20px)
-                    `,
+                                        top: '0',
+                                        right: '50%',
+                                        transform: `rotate(${angle}deg) skewY(-${90 - segmentAngle}deg)`,
+                                        background: color,
                                     }}
                                 >
-                                    <div className="flex flex-col items-center gap-1">
-                                        <span className="text-2xl">{category.icon}</span>
-                                        <span className="text-xs font-medium text-center max-w-24 leading-tight">
-                                            {category.name}
-                                        </span>
+                                    {/* Contenedor del texto */}
+                                    <div
+                                        className="absolute whitespace-nowrap transform origin-left"
+                                        style={{
+                                            left: '100%',
+                                            top: '50%',
+                                            transform: `rotate(${-(90 - segmentAngle / 2)}deg) translateY(-50%)`,
+                                        }}
+                                    >
+                                        <div className="flex flex-col items-center gap-1 -translate-y-1/2">
+                                            <span className="text-2xl md:text-3xl">{category.icon}</span>
+                                            <span className="text-xs md:text-sm font-medium text-center">
+                                                {category.name}
+                                            </span>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                        );
-                    })}
-                </motion.div>
+                            );
+                        })}
+                    </motion.div>
+                </div>
+
+                {/* Centro de la ruleta */}
+                <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="w-4 h-4 md:w-6 md:h-6 bg-purple-600 rounded-full z-10"></div>
+                </div>
             </div>
 
             <Button
                 onClick={spinWheel}
                 disabled={isSpinning}
-                className="mt-6 px-8 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-semibold rounded-full transition-all duration-300 disabled:opacity-50"
+                className="mt-8 px-8 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-semibold rounded-full transition-all duration-300 disabled:opacity-50"
             >
                 {isSpinning ? "Girando..." : "Girar Ruleta"}
             </Button>
@@ -123,11 +141,6 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
 CategoryWheel.propTypes = {
     difficulty: PropTypes.oneOf(['principiante', 'experto']),
     onCategorySelected: PropTypes.func
-};
-
-CategoryWheel.defaultProps = {
-    difficulty: 'principiante',
-    onCategorySelected: () => { }
 };
 
 export default CategoryWheel;
