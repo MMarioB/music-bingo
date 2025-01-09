@@ -141,30 +141,30 @@ const MusicBingoGame = () => {
   }, [board, checkWinner]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-100 via-purple-100 to-pink-100 flex flex-col items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-indigo-100 via-purple-100 to-pink-100 flex flex-col items-center justify-center p-4 sm:p-6">
       <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.5 }}
         className="w-full max-w-4xl bg-white/80 backdrop-blur-lg rounded-2xl shadow-2xl overflow-hidden"
       >
-        <div className="bg-gradient-to-r from-purple-600 to-indigo-600 p-6">
-          <h1 className="text-3xl font-bold text-center text-white drop-shadow-md">
+        <div className="bg-gradient-to-r from-purple-600 to-indigo-600 p-4 sm:p-6">
+          <h1 className="text-2xl sm:text-3xl font-bold text-center text-white drop-shadow-md">
             Music Bingo
           </h1>
         </div>
 
-        <div className="p-6 space-y-6">
-          <div className="flex items-center justify-between mb-4">
+        <div className="p-4 sm:p-6 space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4">
             <div className="flex items-center gap-4">
-              <span className={`text-base ${!isExpertMode ? "font-bold text-purple-600" : "text-gray-500"}`}>
+              <span className={`text-sm sm:text-base ${!isExpertMode ? "font-bold text-purple-600" : "text-gray-500"}`}>
                 Principiantes
               </span>
               <Switch
                 checked={isExpertMode}
                 onCheckedChange={setIsExpertMode}
               />
-              <span className={`text-base ${isExpertMode ? "font-bold text-purple-600" : "text-gray-500"}`}>
+              <span className={`text-sm sm:text-base ${isExpertMode ? "font-bold text-purple-600" : "text-gray-500"}`}>
                 Expertos
               </span>
             </div>
@@ -188,8 +188,8 @@ const MusicBingoGame = () => {
             )}
           </AnimatePresence>
 
-          <Card className="p-4 mb-6 shadow-lg">
-            <div className="grid grid-cols-5 gap-2">
+          <Card className="p-2 sm:p-4 mb-6 shadow-lg">
+            <div className="grid grid-cols-5 gap-1 sm:gap-2">
               {board.map((category, index) => (
                 <motion.div
                   key={index}
@@ -198,27 +198,27 @@ const MusicBingoGame = () => {
                   className={`
                     ${category.color} 
                     aspect-square 
-                    rounded-xl 
+                    rounded-lg sm:rounded-xl
                     flex 
                     flex-col 
                     items-center 
                     justify-center 
-                    p-2 
+                    p-1 sm:p-2
                     text-center 
                     cursor-pointer 
                     hover:opacity-90 
                     relative 
                     transition-all 
                     duration-200 
-                    ${category.marked ? 'scale-95 shadow-inner' : 'shadow-md'}
+                    ${category.marked ? 'scale-95 shadow-inner' : 'shadow'}
                   `}
                   onClick={() => toggleCell(index)}
                 >
-                  <span className="text-2xl mb-1">{category.icon}</span>
-                  <span className="text-xs leading-tight">{category.name}</span>
+                  <span className="text-xl sm:text-2xl mb-0 sm:mb-1">{category.icon}</span>
+                  <span className="text-[8px] sm:text-xs leading-none sm:leading-tight">{category.name}</span>
                   {category.marked && (
                     <div className="absolute inset-0 flex items-center justify-center">
-                      <XCircleIcon className="text-red-500 w-12 h-12" />
+                      <XCircleIcon className="text-red-500 w-8 sm:w-12 h-8 sm:h-12" />
                     </div>
                   )}
                 </motion.div>
@@ -226,12 +226,12 @@ const MusicBingoGame = () => {
             </div>
           </Card>
 
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4">
             <Input
               value={currentAnswer}
               onChange={(e) => setCurrentAnswer(e.target.value)}
               placeholder="Escribe tu respuesta aquí..."
-              className="w-full text-base"
+              className="w-full text-sm sm:text-base"
             />
             <Button
               onClick={() => setCurrentAnswer('')}
@@ -241,21 +241,21 @@ const MusicBingoGame = () => {
             </Button>
           </div>
 
-          <div className="mt-6">
-            <h3 className="text-lg font-semibold mb-3">
+          <div className="mt-4 sm:mt-6">
+            <h3 className="text-base sm:text-lg font-semibold mb-2 sm:mb-3">
               Categorías {isExpertMode ? "Expertos" : "Principiantes"}
             </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               {(isExpertMode ? CATEGORIES_B : CATEGORIES_A).map((category, index) => (
                 <motion.div
                   key={index}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.1 }}
-                  className={`${category.color} p-3 rounded-lg flex items-center gap-3 shadow-md`}
+                  className={`${category.color} p-2 sm:p-3 rounded-md sm:rounded-lg flex items-center gap-2 sm:gap-3 shadow`}
                 >
-                  <span className="text-2xl">{category.icon}</span>
-                  <span className="text-sm font-medium">{category.name}</span>
+                  <span className="text-xl sm:text-2xl">{category.icon}</span>
+                  <span className="text-xs sm:text-sm font-medium">{category.name}</span>
                 </motion.div>
               ))}
             </div>

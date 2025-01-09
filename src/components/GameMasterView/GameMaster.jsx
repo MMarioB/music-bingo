@@ -26,46 +26,46 @@ const ARTISTS = {
   tradicional: [
     'Raphael', 'Julio Iglesias', 'Rocío Jurado', 'Isabel Pantoja', 'Camilo Sesto',
     'José Luis Perales', 'Manolo Escobar', 'Massiel', 'Miguel Ríos', 'Nuestro Small',
-    'Lola Flores', 'Antonio Machín', 'Marifé de Triana', 'Juanito Valderrama', 
-    'Los Chunguitos', 'Paso Doble', 'Dúo Dinámico', 'Juan Pardo', 'Mari Trini', 
+    'Lola Flores', 'Antonio Machín', 'Marifé de Triana', 'Juanito Valderrama',
+    'Los Chunguitos', 'Paso Doble', 'Dúo Dinámico', 'Juan Pardo', 'Mari Trini',
     'Imanol', 'Los Diablos', 'Roberto Carlos', 'Sandro', 'Peret'
   ],
   rockEspanol: [
-    'Joaquín Sabina', 'Alaska', 'Hombres G', 'Mecano', 'Los Rodriguez', 
+    'Joaquín Sabina', 'Alaska', 'Hombres G', 'Mecano', 'Los Rodriguez',
     'La Unión', 'Duncan Dhu', 'Radio Futura', 'Loquillo', 'Los Secretos',
     'Heroes del Silencio', 'Barricada', 'Tequila', 'Burning', 'Leño',
     'Triana', 'Más Birras', 'Eskorbuto', 'La Polla Records', 'Extremoduro',
     'Rosendo', 'Barón Rojo', 'Asfalto', 'Alerta Roja', 'Los Nikis'
   ],
   popNacional: [
-    'Alejandro Sanz', 'David Bustamante', 'Chenoa', 'Rosa López', 'David Bisbal', 
+    'Alejandro Sanz', 'David Bustamante', 'Chenoa', 'Rosa López', 'David Bisbal',
     'Operación Triunfo Artists', 'Melendi', 'Pablo Alborán', 'Beret', 'Antonio José',
     'Ana Torroja', 'Conchita', 'Marta Sánchez', 'Sergio Dalma', 'Miguel Bosé',
     'Juan Luis Guerra', 'Elsa Pataky', 'Emma García', 'Pastora Soler', 'Soraya',
     'David DeMaría', 'Tamara', 'Malú', 'Carlos Baute', 'Edurne'
   ],
   popRockIndie: [
-    'La Oreja de Van Gogh', 'Amaral', 'Vetusta Morla', 'Izal', 'Sidecars', 
+    'La Oreja de Van Gogh', 'Amaral', 'Vetusta Morla', 'Izal', 'Sidecars',
     'León Benavente', 'Fito & Fitipaldis', 'Leiva', 'Dani Martín', 'Supersubmarina',
     'M Clan', 'Pereza', 'Luz Casal', 'La Casa Azul', 'Dorian',
     'Second', 'Depedro', 'Antonio Vega', 'Los Piratas', 'Jarabe de Palo',
     'Carlos Tarque', 'Santa', 'Raimundo Amador', 'Los de Marras', 'Revólver'
   ],
   musicaUrbana: [
-    'C. Tangana', 'Rosalía', 'Bad Bunny', 'Rauw Alejandro', 'Aitana', 
+    'C. Tangana', 'Rosalía', 'Bad Bunny', 'Rauw Alejandro', 'Aitana',
     'Alfred García', 'Ana Guerra', 'Lola Índigo', 'Rels B', 'Cruje',
-    'Daddy Yankee', 'J Balvin', 'Maluma', 'Ozuna', 'Nicky Jam', 
-    'De La Ghetto', 'Wisin', 'Yandel', 'Anuel AA', 'Farruko', 
+    'Daddy Yankee', 'J Balvin', 'Maluma', 'Ozuna', 'Nicky Jam',
+    'De La Ghetto', 'Wisin', 'Yandel', 'Anuel AA', 'Farruko',
     'Sech', 'Jhay Cortez', 'Myke Towers', 'Bryant Myers', 'Arcángel',
     'Don Omar', 'Tego Calderón', 'Zion y Lennox', 'Chencho Corleone', 'Justin Quiles'
   ],
   internacional: [
-    'Queen', 'Michael Jackson', 'Madonna', 'The Beatles', 'Coldplay', 
+    'Queen', 'Michael Jackson', 'Madonna', 'The Beatles', 'Coldplay',
     'Bruno Mars', 'Taylor Swift', 'Ed Sheeran', 'Lady Gaga', 'The Weeknd',
     'Adele', 'Beyoncé', 'Rihanna', 'Justin Bieber', 'Katy Perry',
     'Ariana Grande', 'Drake', 'Post Malone', 'The Killers', 'Maroon 5',
-    'Dua Lipa', 'Billie Eilish', 'Harry Styles', 'Shawn Mendes', 
-    'Imagine Dragons', 'Sam Smith', 'Daft Punk', 'David Guetta', 
+    'Dua Lipa', 'Billie Eilish', 'Harry Styles', 'Shawn Mendes',
+    'Imagine Dragons', 'Sam Smith', 'Daft Punk', 'David Guetta',
     'Calvin Harris', 'Avicci', 'Martin Garrix', 'The Chainsmokers',
     'Bruno Mars', 'Pharrell Williams', 'John Legend', 'Justin Timberlake',
     'Pink', 'Shakira', 'Enrique Iglesias', 'Jennifer Lopez',
@@ -76,190 +76,189 @@ const ARTISTS = {
 const CATEGORIES = Object.keys(ARTISTS);
 
 const GameMaster = () => {
- const { spotify, loggedIn, login } = useSpotify();
- 
- const [currentCard, setCurrentCard] = useState(null);
- const [isLoading, setIsLoading] = useState(false);
- const [difficulty, setDifficulty] = useState('principiante');
+  const { spotify, loggedIn, login } = useSpotify();
 
- const generateNewCard = useCallback(async () => {
-   if (!loggedIn) return;
+  const [currentCard, setCurrentCard] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [difficulty, setDifficulty] = useState('principiante');
 
-   setIsLoading(true);
-   try {
-     // Seleccionar categoría aleatoria de música
-     const randomCategory = CATEGORIES[Math.floor(Math.random() * CATEGORIES.length)];
-     
-     // Seleccionar artista aleatorio de esa categoría
-     const artistsInCategory = ARTISTS[randomCategory];
-     const randomArtist = artistsInCategory[Math.floor(Math.random() * artistsInCategory.length)];
+  const generateNewCard = useCallback(async () => {
+    if (!loggedIn) return;
 
-     // Buscar una canción del artista
-     const response = await spotify.searchTracks(`artist:"${randomArtist}"`, { 
-       limit: 50,
-       market: 'ES'
-     });
+    setIsLoading(true);
+    try {
+      // Seleccionar categoría aleatoria de música
+      const randomCategory = CATEGORIES[Math.floor(Math.random() * CATEGORIES.length)];
 
-     const tracks = response.tracks.items;
-     const randomTrack = tracks[Math.floor(Math.random() * tracks.length)];
+      // Seleccionar artista aleatorio de esa categoría
+      const artistsInCategory = ARTISTS[randomCategory];
+      const randomArtist = artistsInCategory[Math.floor(Math.random() * artistsInCategory.length)];
 
-     // Seleccionar categoría de juego según dificultad
-     let randomGameCategory;
-     if (difficulty === 'principiante') {
-       randomGameCategory = CATEGORIES_A[Math.floor(Math.random() * CATEGORIES_A.length)];
-     } else {
-       randomGameCategory = CATEGORIES_B[Math.floor(Math.random() * CATEGORIES_B.length)];
-     }
+      // Buscar una canción del artista
+      const response = await spotify.searchTracks(`artist:"${randomArtist}"`, {
+        limit: 50,
+        market: 'ES'
+      });
 
-     setCurrentCard({
-       title: randomTrack.name,
-       artist: randomTrack.artists[0].name,
-       year: randomTrack.album.release_date.split('-')[0],
-       spotifyUrl: randomTrack.external_urls.spotify,
-       musicCategory: randomCategory,
-       gameCategory: randomGameCategory
-     });
+      const tracks = response.tracks.items;
+      const randomTrack = tracks[Math.floor(Math.random() * tracks.length)];
 
-   } catch (error) {
-     console.error("Error generando tarjeta:", error);
-     alert('No se pudo generar una tarjeta. Inténtalo de nuevo.');
-   } finally {
-     setIsLoading(false);
-   }
- }, [loggedIn, spotify, difficulty]);
+      // Seleccionar categoría de juego según dificultad
+      let randomGameCategory;
+      if (difficulty === 'principiante') {
+        randomGameCategory = CATEGORIES_A[Math.floor(Math.random() * CATEGORIES_A.length)];
+      } else {
+        randomGameCategory = CATEGORIES_B[Math.floor(Math.random() * CATEGORIES_B.length)];
+      }
 
- if (!loggedIn) {
-   return (
-     <div className="flex flex-col items-center justify-center min-h-screen p-4">
-       <h1 className="text-2xl font-bold mb-8">Music Bingo - Game Master</h1>
-       <Button onClick={login} className="py-6 px-8 text-lg">
-         Conectar con Spotify
-       </Button>
-     </div>
-   );
- }
+      setCurrentCard({
+        title: randomTrack.name,
+        artist: randomTrack.artists[0].name,
+        year: randomTrack.album.release_date.split('-')[0],
+        spotifyUrl: randomTrack.external_urls.spotify,
+        musicCategory: randomCategory,
+        gameCategory: randomGameCategory
+      });
 
- return (
-  <div className="min-h-screen bg-gradient-to-br from-indigo-100 via-purple-100 to-pink-100 flex flex-col items-center justify-center p-4">
-    <div className="w-full max-w-xl bg-white/80 backdrop-blur-lg rounded-2xl shadow-2xl overflow-hidden">
-      <div className="bg-gradient-to-r from-purple-600 to-indigo-600 p-6">
-        <h1 className="text-3xl font-bold text-center text-white drop-shadow-md">
-          Music Bingo
-        </h1>
+    } catch (error) {
+      console.error("Error generando tarjeta:", error);
+      alert('No se pudo generar una tarjeta. Inténtalo de nuevo.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [loggedIn, spotify, difficulty]);
+
+  if (!loggedIn) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen p-4">
+        <h1 className="text-xl sm:text-2xl font-bold mb-6 sm:mb-8">Music Bingo - Game Master</h1>
+        <Button onClick={login} className="py-4 sm:py-6 px-6 sm:px-8 text-base sm:text-lg">
+          Conectar con Spotify
+        </Button>
       </div>
+    );
+  }
 
-      <div className="p-6 space-y-6">
-        <div className="space-y-2">
-          <label className="text-sm font-medium text-gray-700">
-            Selecciona dificultad
-          </label>
-          <Select value={difficulty} onValueChange={setDifficulty}>
-            <SelectTrigger className="w-full bg-white border-purple-300">
-              <SelectValue placeholder="Nivel de juego" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="principiante" className="hover:bg-purple-100">
-                🟢 Principiante
-              </SelectItem>
-              <SelectItem value="experto" className="hover:bg-purple-100">
-                🔥 Experto
-              </SelectItem>
-            </SelectContent>
-          </Select>
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-indigo-100 via-purple-100 to-pink-100 flex flex-col items-center justify-center p-4 sm:p-6">
+      <div className="w-full max-w-xl bg-white/80 backdrop-blur-lg rounded-2xl shadow-2xl overflow-hidden">
+        <div className="bg-gradient-to-r from-purple-600 to-indigo-600 p-4 sm:p-6">
+          <h1 className="text-2xl sm:text-3xl font-bold text-center text-white drop-shadow-md">
+            Music Bingo
+          </h1>
         </div>
 
-        <Button 
-          className="w-full py-6 text-lg bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 transition-all duration-300"
-          onClick={generateNewCard}
-          disabled={isLoading}
-        >
-          {isLoading ? 'Generando...' : 'Nueva Tarjeta'}
-        </Button>
-        
-        <AnimatePresence>
-          {currentCard && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              transition={{ duration: 0.3 }}
-            >
-              <Card className="overflow-hidden border-2 border-purple-200 shadow-lg">
-                <div className="relative bg-gradient-to-br from-purple-100 to-indigo-100 p-6 space-y-4">
-                  <div className="text-center">
-                    <h2 className="text-2xl font-bold text-gray-800 mb-2">
-                      {currentCard.title}
-                    </h2>
-                    <div className="flex justify-center items-center space-x-2 text-gray-600">
-                      <MusicIcon className="w-5 h-5" />
-                      <span>{currentCard.artist}</span>
-                    </div>
-                  </div>
-                  
-                  <div className="flex justify-between items-center bg-white/60 rounded-lg p-4 shadow-inner">
-                    <div className="flex items-center space-x-2">
-                      <CalendarIcon className="w-6 h-6 text-purple-600" />
-                      <span className="text-3xl font-bold text-gray-800">
-                        {currentCard.year}
-                      </span>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <MicIcon className="w-6 h-6 text-indigo-600" />
-                      <span className="text-lg text-gray-700">
-                        {
-                          {
-                            tradicional: 'Música Tradicional',
-                            rockEspanol: 'Rock Español',
-                            popNacional: 'Pop Nacional',
-                            popRockIndie: 'Pop-Rock/Indie',
-                            musicaUrbana: 'Música Urbana',
-                            internacional: 'Internacional'
-                          }[currentCard.musicCategory]
-                        }
-                      </span>
-                    </div>
-                  </div>
+        <div className="p-4 sm:p-6 space-y-5">
+          <div className="space-y-2">
+            <label className="text-xs sm:text-sm font-medium text-gray-700">
+              Selecciona dificultad
+            </label>
+            <Select value={difficulty} onValueChange={setDifficulty}>
+              <SelectTrigger className="w-full bg-white border-purple-300">
+                <SelectValue placeholder="Nivel de juego" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="principiante" className="hover:bg-purple-100">
+                  🟢 Principiante
+                </SelectItem>
+                <SelectItem value="experto" className="hover:bg-purple-100">
+                  🔥 Experto
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
-                  <div className={`flex items-center justify-center p-3 rounded-lg ${currentCard.gameCategory.color}`}>
-                    <span className="mr-2 text-2xl">
-                      {currentCard.gameCategory.icon}
-                    </span>
-                    <span className="font-semibold text-gray-800">
-                      {currentCard.gameCategory.name}
-                    </span>
+          <Button
+            className="w-full py-4 sm:py-6 text-base sm:text-lg bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 transition-all duration-300"
+            onClick={generateNewCard}
+            disabled={isLoading}
+          >
+            {isLoading ? 'Generando...' : 'Nueva Tarjeta'}
+          </Button>
+
+          <AnimatePresence>
+            {currentCard && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                transition={{ duration: 0.3 }}
+              >
+                <Card className="overflow-hidden border-2 border-purple-200 shadow-lg">
+                  <div className="relative bg-gradient-to-br from-purple-100 to-indigo-100 p-4 sm:p-6 space-y-3 sm:space-y-4">
+                    <div className="text-center">
+                      <h2 className="text-lg sm:text-2xl font-bold text-gray-800 mb-1 sm:mb-2">
+                        {currentCard.title}
+                      </h2>
+                      <div className="flex justify-center items-center space-x-1 sm:space-x-2 text-gray-600">
+                        <MusicIcon className="w-4 h-4 sm:w-5 sm:h-5" />
+                        <span className="text-sm sm:text-base">{currentCard.artist}</span>
+                      </div>
+                    </div>
+
+                    <div className="flex justify-between items-center bg-white/60 rounded-md sm:rounded-lg p-3 sm:p-4 shadow-inner">
+                      <div className="flex items-center space-x-1 sm:space-x-2">
+                        <CalendarIcon className="w-5 h-5 sm:w-6 sm:h-6 text-purple-600" />
+                        <span className="text-2xl sm:text-3xl font-bold text-gray-800">
+                          {currentCard.year}
+                        </span>
+                      </div>
+                      <div className="flex items-center space-x-1 sm:space-x-2">
+                        <MicIcon className="w-5 h-5 sm:w-6 sm:h-6 text-indigo-600" />
+                        <span className="text-sm sm:text-lg text-gray-700">
+                          {
+                            {
+                              tradicional: 'Música Tradicional',
+                              rockEspanol: 'Rock Español',
+                              popNacional: 'Pop Nacional',
+                              popRockIndie: 'Pop-Rock/Indie',
+                              musicaUrbana: 'Música Urbana',
+                              internacional: 'Internacional'
+                            }[currentCard.musicCategory]
+                          }
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className={`flex items-center justify-center p-2 sm:p-3 rounded-md sm:rounded-lg ${currentCard.gameCategory.color}`}>
+                      <span className="mr-1 sm:mr-2 text-xl sm:text-2xl">
+                        {currentCard.gameCategory.icon}
+                      </span>
+                      <span className="text-sm sm:text-base font-semibold text-gray-800">
+                        {currentCard.gameCategory.name}
+                      </span>
+                    </div>
                   </div>
-                </div>
-              </Card>
+                </Card>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {currentCard && currentCard.spotifyUrl && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.3 }}
+            >
+              <a
+                href={currentCard.spotifyUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block w-full"
+              >
+                <Button
+                  variant="outline"
+                  className="w-full py-4 sm:py-6 text-base sm:text-lg border-purple-400 text-purple-700hover:bg-purple-50 transition-colors"
+                >
+                  <ExternalLinkIcon className="mr-1 sm:mr-2 h-4 w-4 sm:h-5 sm:w-5" />
+                  Abrir en Spotify
+                </Button>
+              </a>
             </motion.div>
           )}
-        </AnimatePresence>
-        
-        {currentCard && currentCard.spotifyUrl && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.3 }}
-          >
-            <a 
-              href={currentCard.spotifyUrl} 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="block w-full"
-            >
-              <Button 
-                variant="outline"
-                className="w-full py-6 text-lg border-purple-400 text-purple-700 hover:bg-purple-50 transition-colors"
-              >
-                <ExternalLinkIcon className="mr-2 h-5 w-5" />
-                Abrir en Spotify
-              </Button>
-            </a>
-          </motion.div>
-        )}
+        </div>
       </div>
     </div>
-  </div>
-);
+  );
 };
-
 export default GameMaster;
