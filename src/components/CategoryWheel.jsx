@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Button } from '@/components/ui/button';
+import { Button } from './ui/button';
 import PropTypes from 'prop-types';
 
 // Definimos las categorías aquí para que el componente sea autónomo

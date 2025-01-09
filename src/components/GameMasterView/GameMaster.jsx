@@ -5,7 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { useSpotify } from '../../hooks/useSpotify';
 import { ExternalLinkIcon, MusicIcon, CalendarIcon, MicIcon, RefreshCwIcon } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import CategoryWheel from './CategoryWheel';
+import CategoryWheel from '../CategoryWheel';
 
 const ARTISTS = {
   tradicional: [
