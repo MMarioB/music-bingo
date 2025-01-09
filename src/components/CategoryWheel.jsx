@@ -9,6 +9,7 @@ const CATEGORIES_A = [
     { name: '4 años arriba o abajo', color: 'bg-yellow-200', icon: '4' },
     { name: 'Década', color: 'bg-purple-200', icon: '0s' },
     { name: '2 años arriba o abajo', color: 'bg-blue-200', icon: '2' },
+    { name: 'Bingo Music', color: 'bg-orange-200', icon: '🎵' },
 ];
 
 const CATEGORIES_B = [
@@ -17,6 +18,7 @@ const CATEGORIES_B = [
     { name: 'Nombre del grupo o solista', color: 'bg-yellow-200', icon: '🎤' },
     { name: 'Década', color: 'bg-purple-200', icon: '0s' },
     { name: '3 años arriba o abajo', color: 'bg-blue-200', icon: '3' },
+    { name: 'Bingo Music', color: 'bg-orange-200', icon: '🎵' },
 ];
 
 const getColorFromClass = (colorClass) => {
@@ -26,6 +28,7 @@ const getColorFromClass = (colorClass) => {
         'bg-yellow-200': '#FEF08A',
         'bg-purple-200': '#E9D5FF',
         'bg-blue-200': '#BFDBFE',
+        'bg-orange-200': '#FED7AA', // Added orange color
     };
     return colorMap[colorClass] || colorMap['bg-purple-200'];
 };
