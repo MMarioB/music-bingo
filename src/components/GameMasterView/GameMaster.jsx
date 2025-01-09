@@ -130,11 +130,20 @@ const GameMaster = () => {
 
   if (!loggedIn) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen p-4">
-        <h1 className="text-xl sm:text-2xl font-bold mb-6 sm:mb-8">Music Bingo - Game Master</h1>
-        <Button onClick={login} className="py-4 sm:py-6 px-6 sm:px-8 text-base sm:text-lg">
-          Conectar con Spotify
-        </Button>
+      <div className="flex flex-col items-center justify-center min-h-screen p-4 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500">
+        <div className="bg-white rounded-lg shadow-lg p-8 max-w-md w-full">
+          <h1 className="text-3xl sm:text-4xl font-bold mb-6 sm:mb-8 text-center text-indigo-600">
+            Music Bingo<br />Game Master
+          </h1>
+          <div className="flex justify-center">
+            <Button
+              onClick={login}
+              className="py-4 sm:py-6 px-8 sm:px-10 text-lg sm:text-xl font-semibold bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-full shadow-md hover:from-purple-700 hover:to-indigo-700 transition duration-300"
+            >
+              Conectar con Spotify
+            </Button>
+          </div>
+        </div>
       </div>
     );
   }
