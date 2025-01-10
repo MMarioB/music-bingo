@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Button } from './ui/button';
 import PropTypes from 'prop-types';
 
@@ -29,70 +29,39 @@ const CATEGORIES_B = [
 const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () => { } }) => {
     const [isSpinning, setIsSpinning] = useState(false);
     const [highlightedIndex, setHighlightedIndex] = useState(-1);
-    const [intervalId, setIntervalId] = useState(null);
-    const [selectedCategory, setSelectedCategory] = useState(null);
+    const [finalSelectedIndex, setFinalSelectedIndex] = useState(-1);
 
-    const baseCategories = difficulty === 'principiante' ? CATEGORIES_A : CATEGORIES_B;
-    const categories = [...baseCategories, ...baseCategories];
-
-    useEffect(() => {
-        return () => {
-            if (intervalId) {
-                clearInterval(intervalId);
-            }
-        };
-    }, [intervalId]);
+    const categories = difficulty === 'principiante' ? CATEGORIES_A : CATEGORIES_B;
 
     const spinWheel = () => {
         if (isSpinning) return;
 
         setIsSpinning(true);
-        setSelectedCategory(null);
-        let currentIndex = 0;
-        let speed = 100;
-        let cycles = 0;
-        const maxCycles = 20;
+        setHighlightedIndex(-1);
+        setFinalSelectedIndex(-1);
 
-        // Generar un índice aleatorio para la categoría final
-        const finalCategoryIndex = Math.floor(Math.random() * baseCategories.length);
+        // Genera un índice aleatorio para la categoría final
+        const randomFinalIndex = Math.floor(Math.random() * categories.length);
 
-        const tick = () => {
-            setHighlightedIndex(currentIndex);
-            currentIndex = (currentIndex + 1) % categories.length;
-            cycles++;
-
-            if (cycles > maxCycles) {
-                speed *= 1.2;
-                if (speed > 500) {
-                    clearInterval(intervalId);
-                    setIntervalId(null);
-                    setIsSpinning(false);
-
-                    // Seleccionar la categoría final
-                    const finalCategory = baseCategories[finalCategoryIndex];
-                    
-                    // Debug para verificar la selección
-                    console.log({
-                        finalCategoryIndex,
-                        categoryName: finalCategory.name
-                    });
-                    
-                    setSelectedCategory(finalCategory);
-                    onCategorySelected(finalCategory);
-
-                    setTimeout(() => {
-                        setHighlightedIndex(-1);
-                    }, 2000);
-                    
-                    return;
-                }
-                clearInterval(intervalId);
-                setIntervalId(setInterval(tick, Math.floor(speed)));
+        // Función para simular la iluminación de la ruleta
+        const animateSpin = (currentIndex) => {
+            if (currentIndex >= 10) {
+                // Detener la animación y seleccionar la categoría
+                setIsSpinning(false);
+                setFinalSelectedIndex(randomFinalIndex);
+                onCategorySelected(categories[randomFinalIndex]);
+                return;
             }
+
+            setHighlightedIndex(currentIndex % categories.length);
+
+            setTimeout(() => {
+                animateSpin(currentIndex + 1);
+            }, 100);
         };
 
-        const interval = setInterval(tick, speed);
-        setIntervalId(interval);
+        // Iniciar la animación
+        animateSpin(0);
     };
 
     const generateWheelSegments = () => {
@@ -117,6 +86,7 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
                             Z`;
 
             const isHighlighted = index === highlightedIndex;
+            const isSelected = index === finalSelectedIndex;
 
             return (
                 <g key={index}>
@@ -126,7 +96,7 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
                         stroke="white"
                         strokeWidth="0.01"
                         className={`transition-opacity duration-100 ${
-                            isHighlighted ? 'opacity-100' : 'opacity-50'
+                            isHighlighted || isSelected ? 'opacity-100' : 'opacity-50'
                         }`}
                     />
                     <text
@@ -138,7 +108,7 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
                         fontSize="0.15"
                         transform={`rotate(${midAngle}, ${textX}, ${textY})`}
                         className={`transition-transform duration-100 ${
-                            isHighlighted ? 'scale-110' : 'scale-100'
+                            isHighlighted || isSelected ? 'scale-110' : 'scale-100'
                         }`}
                     >
                         {category.icon}
@@ -176,10 +146,10 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
                 {isSpinning ? "Girando..." : "Girar Ruleta"}
             </Button>
 
-            {selectedCategory && (
+            {finalSelectedIndex !== -1 && (
                 <div className="mt-4 text-center">
                     <p className="text-xl font-bold">
-                        Categoría seleccionada: {selectedCategory.name}
+                        Categoría seleccionada: {categories[finalSelectedIndex].name}
                     </p>
                 </div>
             )}
