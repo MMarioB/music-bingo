@@ -30,6 +30,7 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
     const [isSpinning, setIsSpinning] = useState(false);
     const [highlightedIndex, setHighlightedIndex] = useState(-1);
     const [intervalId, setIntervalId] = useState(null);
+    const [selectedCategory, setSelectedCategory] = useState(null);
 
     const baseCategories = difficulty === 'principiante' ? CATEGORIES_A : CATEGORIES_B;
     const categories = [...baseCategories, ...baseCategories];
@@ -46,10 +47,14 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
         if (isSpinning) return;
 
         setIsSpinning(true);
+        setSelectedCategory(null);
         let currentIndex = 0;
         let speed = 100;
         let cycles = 0;
         const maxCycles = 20;
+
+        // Generar un índice aleatorio para la categoría final
+        const finalCategoryIndex = Math.floor(Math.random() * baseCategories.length);
 
         const tick = () => {
             setHighlightedIndex(currentIndex);
@@ -63,17 +68,17 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
                     setIntervalId(null);
                     setIsSpinning(false);
 
-                    const finalIndex = currentIndex - 1;
-                    const baseIndex = finalIndex >= 5 ? finalIndex - 5 : finalIndex;
+                    // Seleccionar la categoría final
+                    const finalCategory = baseCategories[finalCategoryIndex];
                     
                     // Debug para verificar la selección
                     console.log({
-                        finalIndex,
-                        baseIndex,
-                        categoryName: baseCategories[baseIndex].name
+                        finalCategoryIndex,
+                        categoryName: finalCategory.name
                     });
                     
-                    onCategorySelected(baseCategories[baseIndex]);
+                    setSelectedCategory(finalCategory);
+                    onCategorySelected(finalCategory);
 
                     setTimeout(() => {
                         setHighlightedIndex(-1);
@@ -170,6 +175,14 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
             >
                 {isSpinning ? "Girando..." : "Girar Ruleta"}
             </Button>
+
+            {selectedCategory && (
+                <div className="mt-4 text-center">
+                    <p className="text-xl font-bold">
+                        Categoría seleccionada: {selectedCategory.name}
+                    </p>
+                </div>
+            )}
         </div>
     );
 };
