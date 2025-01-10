@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { Button } from './ui/button';
-import { Switch } from './ui/switch';
 import PropTypes from 'prop-types';
 
 const WHEEL_COLORS = {
@@ -27,11 +26,10 @@ const CATEGORIES_B = [
     { name: '3 años arriba o abajo', color: WHEEL_COLORS.blue, icon: '3' }
 ];
 
-const CategoryWheel = ({ onCategorySelected = () => { } }) => {
+const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () => { } }) => {
     const [isSpinning, setIsSpinning] = useState(false);
     const [highlightedIndex, setHighlightedIndex] = useState(-1);
     const [finalSelectedCategory, setFinalSelectedCategory] = useState(null);
-    const [difficulty, setDifficulty] = useState('principiante');
 
     const categories = difficulty === 'principiante' ? CATEGORIES_A : CATEGORIES_B;
 
@@ -47,7 +45,7 @@ const CategoryWheel = ({ onCategorySelected = () => { } }) => {
             const currentTime = Date.now();
             const elapsedTime = currentTime - startTime;
 
-            if (elapsedTime >= 3000) {
+            if (elapsedTime >= 3500) {
                 // Detener la animación y seleccionar la categoría
                 const randomFinalIndex = Math.floor(Math.random() * categories.length);
                 const finalCategory = categories[randomFinalIndex];
@@ -137,17 +135,6 @@ const CategoryWheel = ({ onCategorySelected = () => { } }) => {
                 </svg>
             </div>
 
-            <div className="flex items-center justify-center mt-4">
-                <Switch
-                    checked={difficulty === 'experto'}
-                    onChange={() => setDifficulty(difficulty === 'principiante' ? 'experto' : 'principiante')}
-                    className="mr-2"
-                />
-                <span className="text-lg font-medium">
-                    {difficulty === 'principiante' ? 'Principiante' : 'Experto'}
-                </span>
-            </div>
-
             <Button
                 onClick={spinWheel}
                 disabled={isSpinning}
@@ -168,6 +155,7 @@ const CategoryWheel = ({ onCategorySelected = () => { } }) => {
 };
 
 CategoryWheel.propTypes = {
+    difficulty: PropTypes.oneOf(['principiante', 'experto']),
     onCategorySelected: PropTypes.func
 };
 
