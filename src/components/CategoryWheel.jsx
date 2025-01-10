@@ -41,8 +41,11 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
         setFinalSelectedCategory(null);
 
         // Función para simular la iluminación de la ruleta
-        const animateSpin = (currentIndex) => {
-            if (currentIndex >= 10) {
+        const animateSpin = (currentIndex, startTime) => {
+            const currentTime = Date.now();
+            const elapsedTime = currentTime - startTime;
+
+            if (elapsedTime >= 3000) {
                 // Detener la animación y seleccionar la categoría
                 const randomFinalIndex = Math.floor(Math.random() * categories.length);
                 const finalCategory = categories[randomFinalIndex];
@@ -53,21 +56,20 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
             }
 
             const randomFinalIndex = Math.floor(Math.random() * categories.length);
-            setHighlightedIndex((currentIndex + randomFinalIndex) % categories.length);
+            const highlightedIndex = (currentIndex + randomFinalIndex) % categories.length;
+            setHighlightedIndex(highlightedIndex);
 
-            setTimeout(() => {
-                animateSpin(currentIndex + 1);
-            }, 200);
+            requestAnimationFrame(() => {
+                animateSpin(currentIndex + 1, startTime);
+            });
         };
 
         // Iniciar la animación
-        animateSpin(0);
+        animateSpin(0, Date.now());
     };
 
     const generateWheelSegments = () => {
         return categories.map((category, index) => {
-            const randomFinalIndex = Math.floor(Math.random() * categories.length);
-
             const startAngle = index * (360 / categories.length);
             const endAngle = startAngle + (360 / categories.length);
             const midAngle = startAngle + (180 / categories.length);
@@ -87,7 +89,7 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
                             A 1 1 0 ${largeArcFlag} 1 ${endX} ${endY} 
                             Z`;
 
-            const isHighlighted = (index + randomFinalIndex) % categories.length === highlightedIndex;
+            const isHighlighted = index === highlightedIndex;
             const isSelected = category === finalSelectedCategory;
 
             return (
@@ -97,7 +99,7 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
                         fill={category.color}
                         stroke="white"
                         strokeWidth="0.01"
-                        className={`transition-opacity duration-100 ${
+                        className={`transition-opacity duration-300 ${
                             isHighlighted || isSelected ? 'opacity-100' : 'opacity-50'
                         }`}
                     />
@@ -109,7 +111,7 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
                         fill="black"
                         fontSize="0.15"
                         transform={`rotate(${midAngle}, ${textX}, ${textY})`}
-                        className={`transition-transform duration-100 ${
+                        className={`transition-transform duration-300 ${
                             isHighlighted || isSelected ? 'scale-110' : 'scale-100'
                         }`}
                     >
