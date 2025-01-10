@@ -55,7 +55,7 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
                 return;
             }
 
-            const highlightedIndex = Math.floor(((currentIndex) / 5) * categories.length);
+            const highlightedIndex = Math.floor((currentIndex / 50) * categories.length);
             setHighlightedIndex(highlightedIndex);
 
             requestAnimationFrame(() => {
