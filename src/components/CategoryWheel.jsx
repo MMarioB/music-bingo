@@ -37,39 +37,43 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
 
     const spinWheel = () => {
         if (isSpinning) return;
-
+    
         setIsSpinning(true);
-        setHighlightedIndex(-1);
         setFinalSelectedCategory(null);
-
+    
         const duration = 3500; // Duración total de la animación
         const startTime = Date.now();
         const totalSpins = 10; // Número de vueltas completas antes de detenerse
-
+    
+        // Índice inicial aleatorio
+        const initialIndex = Math.floor(Math.random() * categories.length);
+        setHighlightedIndex(initialIndex);
+    
         const animateSpin = () => {
             const currentTime = Date.now();
             const elapsedTime = currentTime - startTime;
             const progress = Math.min(elapsedTime / duration, 1); // Progreso entre 0 y 1
-
+    
             const easedProgress = easeOutQuad(progress);
             const totalSteps = totalSpins * categories.length + Math.floor(easedProgress * categories.length);
-
-            const currentIndex = totalSteps % categories.length;
+    
+            // Calculamos el índice actual basado en el progreso
+            const currentIndex = (initialIndex + totalSteps) % categories.length;
             setHighlightedIndex(currentIndex);
-
+    
             if (progress < 1) {
                 requestAnimationFrame(animateSpin);
             } else {
-                const finalIndex = currentIndex;
-                const finalCategory = categories[finalIndex];
-                setIsSpinning(false);
+                // Al final, seleccionamos la categoría final
+                const finalCategory = categories[currentIndex];
                 setFinalSelectedCategory(finalCategory);
+                setIsSpinning(false);
                 onCategorySelected(finalCategory);
             }
         };
-
+    
         animateSpin();
-    };
+    };    
 
     const generateWheelSegments = () => {
         return categories.map((category, index) => {
