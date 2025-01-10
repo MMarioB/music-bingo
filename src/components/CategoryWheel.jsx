@@ -35,6 +35,27 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
     const categories = [...baseCategories, ...baseCategories];
     const segmentAngle = 360 / categories.length;
 
+    const spinWheel = () => {
+        if (isSpinning) return;
+
+        setIsSpinning(true);
+        const spins = 5 + Math.random() * 5;
+        const extraDegrees = Math.random() * 360;
+        const totalRotation = spins * 360 + extraDegrees;
+
+        setRotation(rotation + totalRotation);
+
+        setTimeout(() => {
+            const normalizedRotation = (rotation + totalRotation) % 360;
+            // La flecha apunta a 0 grados (arriba), así que necesitamos invertir el ángulo
+            const selectedIndex = Math.floor(((360 - normalizedRotation) % 360) / segmentAngle);
+            const selectedCategory = categories[selectedIndex % categories.length];
+
+            setIsSpinning(false);
+            onCategorySelected(selectedCategory);
+        }, 4000);
+    };
+
     const generateWheelSegments = () => {
         return categories.map((category, index) => {
             const startAngle = index * segmentAngle;
@@ -69,7 +90,7 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
                         y={textY}
                         textAnchor="middle"
                         dominantBaseline="middle"
-                        fill="black" // Cambiado a negro para mejor contraste con los colores más claros
+                        fill="black"
                         fontSize="0.15"
                         transform={`rotate(${midAngle}, ${textX}, ${textY})`}
                     >
@@ -78,26 +99,6 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
                 </g>
             );
         });
-    };
-
-    const spinWheel = () => {
-        if (isSpinning) return;
-
-        setIsSpinning(true);
-        const spins = 5 + Math.random() * 5;
-        const extraDegrees = Math.random() * 360;
-        const totalRotation = spins * 360 + extraDegrees;
-        
-        setRotation(rotation + totalRotation);
-
-        setTimeout(() => {
-            const normalizedRotation = (rotation + totalRotation) % 360;
-            const selectedIndex = Math.floor(normalizedRotation / segmentAngle);
-            const selectedCategory = categories[selectedIndex];
-            
-            setIsSpinning(false);
-            onCategorySelected(selectedCategory);
-        }, 4000);
     };
 
     return (

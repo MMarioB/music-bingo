@@ -83,7 +83,6 @@ const GameMaster = () => {
 
       // Generar información específica según la categoría seleccionada
       const categoryInfo = {};
-      // En la función generateNewCard, modifica el switch así:
       switch (selectedCategory.name) {
         case 'Grupo o solista': {
           categoryInfo.respuesta = randomTrack.artists[0].name.includes('Los ') ||
@@ -133,7 +132,8 @@ const GameMaster = () => {
         spotifyUrl: randomTrack.external_urls.spotify,
         musicCategory: randomMusicCategory,
         gameCategory: selectedCategory,
-        categoryInfo: categoryInfo
+        categoryInfo: categoryInfo,
+        revealed: false
       });
     } catch (error) {
       console.error("Error generando tarjeta:", error);
@@ -245,53 +245,58 @@ const GameMaster = () => {
                 ) : (
                   <Card className="overflow-hidden border-purple-200 p-4">
                     <div className="space-y-3">
-                      <div className="text-center">
-                        <h2 className="text-xl font-bold text-gray-800 mb-2">
-                          {currentCard.title}
-                        </h2>
-                        <div className="flex justify-center items-center space-x-2 text-gray-600">
-                          <MusicIcon className="w-4 h-4" />
-                          <span className="text-base">{currentCard.artist}</span>
+                      <div className={`transition-all duration-500 ${currentCard.revealed ? '' : 'blur-md'}`}>
+                        <div className="text-center">
+                          <h2 className="text-xl font-bold text-gray-800 mb-2">
+                            {currentCard.title}
+                          </h2>
+                          <div className="flex justify-center items-center space-x-2 text-gray-600">
+                            <MusicIcon className="w-4 h-4" />
+                            <span className="text-base">{currentCard.artist}</span>
+                          </div>
                         </div>
-                      </div>
 
-                      <div className="flex justify-between items-center bg-white/60 rounded-lg p-3">
-                        <div className="flex items-center space-x-2">
-                          <CalendarIcon className="w-5 h-5 text-purple-600" />
-                          <span className="text-2xl font-bold text-gray-800">
-                            {currentCard.year}
-                          </span>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <MicIcon className="w-5 h-5 text-indigo-600" />
-                          <span className="text-sm text-gray-700">
-                            {currentCard.musicCategory}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Información específica de la categoría */}
-                      {currentCard.categoryInfo && (
-                        <div className="bg-purple-50 rounded-lg p-3">
-                          <div className="flex justify-between items-center">
-                            <span className="text-sm font-medium text-purple-700">
-                              Respuesta para {selectedCategory.name}:
+                        <div className="flex justify-between items-center bg-white/60 rounded-lg p-3 mt-3">
+                          <div className="flex items-center space-x-2">
+                            <CalendarIcon className="w-5 h-5 text-purple-600" />
+                            <span className="text-2xl font-bold text-gray-800">
+                              {currentCard.year}
                             </span>
-                            <span className="text-lg font-bold text-purple-900">
-                              {currentCard.categoryInfo.respuesta}
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <MicIcon className="w-5 h-5 text-indigo-600" />
+                            <span className="text-sm text-gray-700">
+                              {currentCard.musicCategory}
                             </span>
                           </div>
                         </div>
-                      )}
+
+                        {/* Información específica de la categoría */}
+                        {currentCard.categoryInfo && (
+                          <div className="bg-purple-50 rounded-lg p-3 mt-3">
+                            <div className="flex justify-between items-center">
+                              <span className="text-sm font-medium text-purple-700">
+                                Respuesta para {selectedCategory.name}:
+                              </span>
+                              <span className="text-lg font-bold text-purple-900">
+                                {currentCard.categoryInfo.respuesta}
+                              </span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
 
                       {currentCard.spotifyUrl && (
                         <Button
                           variant="outline"
                           className="w-full border-purple-400 text-purple-700"
-                          onClick={() => window.open(currentCard.spotifyUrl, '_blank')}
+                          onClick={() => {
+                            window.open(currentCard.spotifyUrl, '_blank');
+                            setCurrentCard({ ...currentCard, revealed: true });
+                          }}
                         >
                           <ExternalLinkIcon className="mr-2 h-4 w-4" />
-                          Abrir en Spotify
+                          {currentCard.revealed ? 'Abrir en Spotify' : 'Revelar Canción'}
                         </Button>
                       )}
 

@@ -199,29 +199,27 @@ const MusicBingoGame = () => {
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   className={`
-                    ${category.color} 
-                    aspect-square 
-                    rounded-lg
-                    flex 
-                    flex-col 
-                    items-center 
-                    justify-center 
-                    p-1 md:p-2
-                    text-center 
-                    relative 
-                    transition-all 
-                    duration-200
-                    focus:outline-none
-                    focus:ring-2
-                    focus:ring-purple-400
-                    focus:ring-offset-2
-                    ${category.marked ? 'scale-95 shadow-inner' : 'shadow hover:shadow-md'}
-                  `}
+          ${category.color} 
+          aspect-square 
+          rounded-lg
+          flex 
+          items-center 
+          justify-center 
+          p-1 md:p-2
+          text-center 
+          relative 
+          transition-all 
+          duration-200
+          focus:outline-none
+          focus:ring-2
+          focus:ring-purple-400
+          focus:ring-offset-2
+          ${category.marked ? 'scale-95 shadow-inner' : 'shadow hover:shadow-md'}
+        `}
                   onClick={() => toggleCell(index)}
                   aria-label={`Casilla ${category.name}`}
                 >
-                  <span className="text-lg md:text-2xl mb-1">{category.icon}</span>
-                  <span className="text-[0.6rem] md:text-xs leading-tight">{category.name}</span>
+                  <span className="text-2xl md:text-4xl">{category.icon}</span>
                   {category.marked && (
                     <div className="absolute inset-0 flex items-center justify-center bg-black/10">
                       <XCircleIcon className="text-red-500 w-6 md:w-10 h-6 md:h-10" />
