@@ -51,6 +51,9 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
         let cycles = 0;
         const maxCycles = 20;
 
+        // Generar un índice aleatorio que garantice que no siempre sea el mismo
+        const finalCategoryIndex = Math.floor(Math.random() * baseCategories.length);
+
         const tick = () => {
             setHighlightedIndex(currentIndex);
             currentIndex = (currentIndex + 1) % categories.length;
@@ -63,17 +66,13 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
                     setIntervalId(null);
                     setIsSpinning(false);
 
-                    const finalIndex = currentIndex - 1;
-                    const baseIndex = finalIndex >= 5 ? finalIndex - 5 : finalIndex;
-                    
-                    // Debug para verificar la selección
+                    // Usar el índice aleatorio generado previamente
                     console.log({
-                        finalIndex,
-                        baseIndex,
-                        categoryName: baseCategories[baseIndex].name
+                        finalCategoryIndex,
+                        categoryName: baseCategories[finalCategoryIndex].name
                     });
                     
-                    onCategorySelected(baseCategories[baseIndex]);
+                    onCategorySelected(baseCategories[finalCategoryIndex]);
 
                     setTimeout(() => {
                         setHighlightedIndex(-1);
