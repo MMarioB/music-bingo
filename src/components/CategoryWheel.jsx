@@ -25,31 +25,31 @@ const CATEGORIES_A = [
         name: 'Grupo o solista', 
         color: WHEEL_COLORS.green, 
         icon: Users,
-        iconProps: { size: 20, strokeWidth: 1.5 }
+        iconProps: { size: 24, strokeWidth: 1.5 }
     },
     { 
         name: '¿Anterior al 2000?', 
         color: WHEEL_COLORS.pink, 
         icon: Clock,
-        iconProps: { size: 20, strokeWidth: 1.5 }
+        iconProps: { size: 24, strokeWidth: 1.5 }
     },
     { 
         name: '4 años arriba o abajo', 
         color: WHEEL_COLORS.yellow, 
         icon: Calculator,
-        iconProps: { size: 20, strokeWidth: 1.5 }
+        iconProps: { size: 24, strokeWidth: 1.5 }
     },
     { 
         name: 'Década', 
         color: WHEEL_COLORS.purple, 
         icon: Calendar,
-        iconProps: { size: 20, strokeWidth: 1.5 }
+        iconProps: { size: 24, strokeWidth: 1.5 }
     },
     { 
         name: '2 años arriba o abajo', 
         color: WHEEL_COLORS.blue, 
         icon: TimerOff,
-        iconProps: { size: 20, strokeWidth: 1.5 }
+        iconProps: { size: 24, strokeWidth: 1.5 }
     }
 ];
 
@@ -58,31 +58,31 @@ const CATEGORIES_B = [
         name: 'Título de la canción', 
         color: WHEEL_COLORS.green, 
         icon: Music2,
-        iconProps: { size: 20, strokeWidth: 1.5 }
+        iconProps: { size: 24, strokeWidth: 1.5 }
     },
     { 
         name: 'Año exacto', 
         color: WHEEL_COLORS.pink, 
         icon: CalendarDays,
-        iconProps: { size: 20, strokeWidth: 1.5 }
+        iconProps: { size: 24, strokeWidth: 1.5 }
     },
     { 
         name: 'Nombre del grupo o solista', 
         color: WHEEL_COLORS.yellow, 
         icon: Mic2,
-        iconProps: { size: 20, strokeWidth: 1.5 }
+        iconProps: { size: 24, strokeWidth: 1.5 }
     },
     { 
         name: 'Década', 
         color: WHEEL_COLORS.purple, 
         icon: Calendar,
-        iconProps: { size: 20, strokeWidth: 1.5 }
+        iconProps: { size: 24, strokeWidth: 1.5 }
     },
     { 
         name: '3 años arriba o abajo', 
         color: WHEEL_COLORS.blue, 
         icon: Calculator,
-        iconProps: { size: 20, strokeWidth: 1.5 }
+        iconProps: { size: 24, strokeWidth: 1.5 }
     }
 ];
 
@@ -160,6 +160,9 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
             const isSelected = category === finalSelectedCategory;
             const Icon = category.icon;
 
+            // Calcular la rotación inversa para mantener el icono derecho
+            const iconRotation = -midAngle;
+
             return (
                 <g key={index}>
                     <path
@@ -172,15 +175,20 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
                         }`}
                     />
                     <foreignObject
-                        x={textX - 0.1}
-                        y={textY - 0.1}
-                        width="0.2"
-                        height="0.2"
-                        transform={`rotate(${midAngle}, ${textX}, ${textY})`}
+                        x={textX - 0.15}
+                        y={textY - 0.15}
+                        width="0.3"
+                        height="0.3"
                     >
-                        <div className={`w-full h-full flex items-center justify-center transition-transform duration-300 ${
-                            isHighlighted || isSelected ? 'scale-110' : 'scale-100'
-                        }`}>
+                        <div 
+                            className={`w-full h-full flex items-center justify-center transition-transform duration-300 ${
+                                isHighlighted || isSelected ? 'scale-110' : 'scale-100'
+                            }`}
+                            style={{
+                                transform: `rotate(${iconRotation}deg)`,
+                                transformOrigin: 'center'
+                            }}
+                        >
                             <Icon 
                                 {...category.iconProps}
                                 className="text-gray-800"
