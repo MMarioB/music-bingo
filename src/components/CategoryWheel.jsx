@@ -33,33 +33,29 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
 
     const baseCategories = difficulty === 'principiante' ? CATEGORIES_A : CATEGORIES_B;
     const categories = [...baseCategories, ...baseCategories];
-    const segmentAngle = 36; // 360/10 - ángulo fijo por segmento
+    const segmentAngle = 36;
 
     const spinWheel = () => {
         if (isSpinning) return;
-
+    
         setIsSpinning(true);
         
-        // Seleccionamos una categoría aleatoria
-        const selectedIndex = Math.floor(Math.random() * categories.length);
-        
-        // Calculamos las vueltas completas (5-8 vueltas)
         const spins = 5 + Math.random() * 3;
-        const extraSpins = spins * 360;
+        const extraDegrees = Math.random() * 360;
+        const totalRotation = spins * 360 + extraDegrees;
         
-        // Calculamos la rotación para la posición final
-        const targetRotation = selectedIndex * segmentAngle;
-        
-        // Rotación total = vueltas completas + posición final
-        const totalRotation = extraSpins + targetRotation;
-        
-        setRotation(totalRotation);
-
-        // Después de la animación, notificamos la categoría seleccionada
+        setRotation(rotation + totalRotation);
+    
         setTimeout(() => {
+            const finalRotation = (rotation + totalRotation) % 360;
+            
+            const adjustedRotation = (finalRotation + 90) % 360;
+            const selectedIndex = Math.floor(adjustedRotation / 36);
+            
             console.log({
+                finalRotation,
+                adjustedRotation,
                 selectedIndex,
-                totalRotation,
                 categoryName: categories[selectedIndex].name
             });
             
