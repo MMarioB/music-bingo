@@ -20,68 +20,25 @@ const WHEEL_COLORS = {
     green: '#BBF7D0'
 };
 
-// Definimos los iconos como funciones que retornan el componente
-const renderIcon = (Icon, props) => <Icon {...props} />;
-
 const CATEGORIES_A = [
-    { 
-        name: 'Grupo o solista', 
-        color: WHEEL_COLORS.green, 
-        renderIcon: (props) => renderIcon(Users, props)
-    },
-    { 
-        name: '¿Anterior al 2000?', 
-        color: WHEEL_COLORS.pink, 
-        renderIcon: (props) => renderIcon(Clock, props)
-    },
-    { 
-        name: '4 años arriba o abajo', 
-        color: WHEEL_COLORS.yellow, 
-        renderIcon: (props) => renderIcon(Calculator, props)
-    },
-    { 
-        name: 'Década', 
-        color: WHEEL_COLORS.purple, 
-        renderIcon: (props) => renderIcon(Calendar, props)
-    },
-    { 
-        name: '2 años arriba o abajo', 
-        color: WHEEL_COLORS.blue, 
-        renderIcon: (props) => renderIcon(TimerOff, props)
-    }
+    { name: 'Grupo o solista', color: WHEEL_COLORS.green, Icon: Users },
+    { name: '¿Anterior al 2000?', color: WHEEL_COLORS.pink, Icon: Clock },
+    { name: '4 años arriba o abajo', color: WHEEL_COLORS.yellow, Icon: Calculator },
+    { name: 'Década', color: WHEEL_COLORS.purple, Icon: Calendar },
+    { name: '2 años arriba o abajo', color: WHEEL_COLORS.blue, Icon: TimerOff }
 ];
 
 const CATEGORIES_B = [
-    { 
-        name: 'Título de la canción', 
-        color: WHEEL_COLORS.green, 
-        renderIcon: (props) => renderIcon(Music2, props)
-    },
-    { 
-        name: 'Año exacto', 
-        color: WHEEL_COLORS.pink, 
-        renderIcon: (props) => renderIcon(CalendarDays, props)
-    },
-    { 
-        name: 'Nombre del grupo o solista', 
-        color: WHEEL_COLORS.yellow, 
-        renderIcon: (props) => renderIcon(Mic2, props)
-    },
-    { 
-        name: 'Década', 
-        color: WHEEL_COLORS.purple, 
-        renderIcon: (props) => renderIcon(Calendar, props)
-    },
-    { 
-        name: '3 años arriba o abajo', 
-        color: WHEEL_COLORS.blue, 
-        renderIcon: (props) => renderIcon(Calculator, props)
-    }
+    { name: 'Título de la canción', color: WHEEL_COLORS.green, Icon: Music2 },
+    { name: 'Año exacto', color: WHEEL_COLORS.pink, Icon: CalendarDays },
+    { name: 'Nombre del grupo o solista', color: WHEEL_COLORS.yellow, Icon: Mic2 },
+    { name: 'Década', color: WHEEL_COLORS.purple, Icon: Calendar },
+    { name: '3 años arriba o abajo', color: WHEEL_COLORS.blue, Icon: Calculator }
 ];
 
 const easeOutQuad = (t) => t * (2 - t);
 
-const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () => { } }) => {
+const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () => {} }) => {
     const [isSpinning, setIsSpinning] = useState(false);
     const [highlightedIndex, setHighlightedIndex] = useState(-1);
     const [finalSelectedCategory, setFinalSelectedCategory] = useState(null);
@@ -137,26 +94,25 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
             const startAngle = index * (360 / categories.length);
             const endAngle = startAngle + (360 / categories.length);
             const midAngle = startAngle + (180 / categories.length);
-    
+
             const startX = Math.cos((startAngle - 90) * Math.PI / 180);
             const startY = Math.sin((startAngle - 90) * Math.PI / 180);
             const endX = Math.cos((endAngle - 90) * Math.PI / 180);
             const endY = Math.sin((endAngle - 90) * Math.PI / 180);
-    
-            // Ajustamos la posición para que esté más cerca del borde exterior
-            const radius = 0.6; // Reducido de 0.7 para acercar al centro
+
+            const radius = 0.65;
             const textX = Math.cos((midAngle - 90) * Math.PI / 180) * radius;
             const textY = Math.sin((midAngle - 90) * Math.PI / 180) * radius;
-    
+
             const largeArcFlag = "0";
             const pathData = `M 0 0 L ${startX} ${startY} A 1 1 0 ${largeArcFlag} 1 ${endX} ${endY} Z`;
-    
+
             const isHighlighted = index === highlightedIndex;
             const isSelected = category === finalSelectedCategory;
-    
-            // El ángulo de rotación necesita tener en cuenta la posición inicial
+            const { Icon } = category;
+
             const iconRotation = midAngle;
-    
+
             return (
                 <g key={index}>
                     <path
@@ -168,16 +124,27 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
                             isHighlighted || isSelected ? 'opacity-100' : 'opacity-50'
                         }`}
                     />
-                    <g 
-                        transform={`translate(${textX} ${textY}) rotate(${iconRotation})`}
+                    <foreignObject
+                        x={textX - 0.1}
+                        y={textY - 0.1}
+                        width="0.2"
+                        height="0.2"
+                        style={{
+                            transform: `rotate(${iconRotation}deg)`,
+                            transformOrigin: `${textX}px ${textY}px`
+                        }}
                     >
-                        {category.renderIcon({ 
-                            size: 24,
-                            strokeWidth: 1.5,
-                            className: "text-gray-800",
-                            style: { transform: `rotate(-${iconRotation}deg)` }
-                        })}
-                    </g>
+                        <div className="w-full h-full flex items-center justify-center">
+                            <Icon
+                                size={20}
+                                strokeWidth={1.5}
+                                className="text-gray-800"
+                                style={{
+                                    transform: `rotate(-${iconRotation}deg)`
+                                }}
+                            />
+                        </div>
+                    </foreignObject>
                 </g>
             );
         });
