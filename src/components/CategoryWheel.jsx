@@ -26,7 +26,7 @@ const CATEGORIES_B = [
     { name: '3 años arriba o abajo', color: WHEEL_COLORS.blue, icon: '3' }
 ];
 
-const easeOutQuad = (t) => t * (2 - t); // Función de easing para ralentizar la animación
+const easeOutQuad = (t) => t * (2 - t);
 
 const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () => { } }) => {
     const [isSpinning, setIsSpinning] = useState(false);
@@ -34,7 +34,6 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
     const [finalSelectedCategory, setFinalSelectedCategory] = useState(null);
 
     const categories = difficulty === 'principiante' ? CATEGORIES_A : CATEGORIES_B;
-    const randomSpins = Math.floor(Math.random() * (20 - 10 + 1)) + 10;
 
     const spinWheel = () => {
         if (isSpinning) return;
@@ -42,43 +41,45 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
         setIsSpinning(true);
         setFinalSelectedCategory(null);
     
-        const duration = 3500; // Duración total de la animación
+        const duration = 3500;
         const startTime = Date.now();
-        const totalSpins = randomSpins; // Número de vueltas completas antes de detenerse
     
-        // Índice inicial aleatorio
-        const initialIndex = Math.floor(Math.random() * categories.length);
+        const totalSegments = categories.length;
+        const randomSpins = Math.floor(Math.random() * (20 - 10 + 1)) + 10;
+        const totalSteps = randomSpins * totalSegments;
+    
+        const initialIndex = Math.floor(Math.random() * totalSegments);
         setHighlightedIndex(initialIndex);
     
         const animateSpin = () => {
             const currentTime = Date.now();
             const elapsedTime = currentTime - startTime;
-            const progress = Math.min(elapsedTime / duration, 1); // Progreso entre 0 y 1
+            const progress = Math.min(elapsedTime / duration, 1);
     
             const easedProgress = easeOutQuad(progress);
-            const totalSteps = totalSpins * categories.length + Math.floor(easedProgress * categories.length);
     
-            // Calculamos el índice actual basado en el progreso
-            const currentIndex = (initialIndex + totalSteps) % categories.length;
+            const currentStep = Math.floor(easedProgress * totalSteps);
+            const currentIndex = (initialIndex + currentStep) % totalSegments;
+    
             setHighlightedIndex(currentIndex);
     
             if (progress < 1) {
                 requestAnimationFrame(animateSpin);
             } else {
-                // Al final, seleccionamos la categoría final
-                const finalCategory = categories[currentIndex];
+                const finalIndex = (initialIndex + totalSteps) % totalSegments;
+                const finalCategory = categories[finalIndex];
                 setFinalSelectedCategory(finalCategory);
                 setIsSpinning(false);
     
-                // Espera 2 segundos antes de notificar la selección y cambiar de vista
                 setTimeout(() => {
-                    onCategorySelected(finalCategory); // Llama a la función para avanzar
-                }, 2000); // 2000 ms = 2 segundos
+                    onCategorySelected(finalCategory);
+                }, 2000);
             }
         };
     
         animateSpin();
     };
+    
     
 
     const generateWheelSegments = () => {
@@ -138,13 +139,11 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
     return (
         <div className="flex flex-col items-center justify-center min-h-screen p-4">
             <div className="relative w-full max-w-xl aspect-square">
-                {/* SVG Ruleta */}
                 <svg
                     viewBox="-1.1 -1.1 2.2 2.2"
                     className="w-full h-full"
                 >
                     {generateWheelSegments()}
-                    {/* Centro de la ruleta */}
                     <circle cx="0" cy="0" r="0.15" fill="white" />
                 </svg>
             </div>
