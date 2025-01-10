@@ -29,7 +29,7 @@ const CATEGORIES_B = [
 const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () => { } }) => {
     const [isSpinning, setIsSpinning] = useState(false);
     const [highlightedIndex, setHighlightedIndex] = useState(-1);
-    const [finalSelectedIndex, setFinalSelectedIndex] = useState(-1);
+    const [finalSelectedCategory, setFinalSelectedCategory] = useState(null);
 
     const categories = difficulty === 'principiante' ? CATEGORIES_A : CATEGORIES_B;
 
@@ -38,22 +38,22 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
 
         setIsSpinning(true);
         setHighlightedIndex(-1);
-        setFinalSelectedIndex(-1);
-
-        // Genera un índice aleatorio para la categoría final
-        const randomFinalIndex = Math.floor(Math.random() * categories.length);
+        setFinalSelectedCategory(null);
 
         // Función para simular la iluminación de la ruleta
         const animateSpin = (currentIndex) => {
             if (currentIndex >= 10) {
                 // Detener la animación y seleccionar la categoría
+                const randomFinalIndex = Math.floor(Math.random() * categories.length);
+                const finalCategory = categories[randomFinalIndex];
                 setIsSpinning(false);
-                setFinalSelectedIndex(randomFinalIndex);
-                onCategorySelected(categories[randomFinalIndex]);
+                setFinalSelectedCategory(finalCategory);
+                onCategorySelected(finalCategory);
                 return;
             }
 
-            setHighlightedIndex(currentIndex % categories.length);
+            const randomFinalIndex = Math.floor(Math.random() * categories.length);
+            setHighlightedIndex((currentIndex + randomFinalIndex) % categories.length);
 
             setTimeout(() => {
                 animateSpin(currentIndex + 1);
@@ -66,6 +66,8 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
 
     const generateWheelSegments = () => {
         return categories.map((category, index) => {
+            const randomFinalIndex = Math.floor(Math.random() * categories.length);
+
             const startAngle = index * (360 / categories.length);
             const endAngle = startAngle + (360 / categories.length);
             const midAngle = startAngle + (180 / categories.length);
@@ -85,8 +87,8 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
                             A 1 1 0 ${largeArcFlag} 1 ${endX} ${endY} 
                             Z`;
 
-            const isHighlighted = index === highlightedIndex;
-            const isSelected = index === finalSelectedIndex;
+            const isHighlighted = (index + randomFinalIndex) % categories.length === highlightedIndex;
+            const isSelected = category === finalSelectedCategory;
 
             return (
                 <g key={index}>
@@ -145,10 +147,10 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
                 {isSpinning ? "Girando..." : "Girar Ruleta"}
             </Button>
 
-            {finalSelectedIndex !== -1 && (
+            {finalSelectedCategory && (
                 <div className="mt-4 text-center">
                     <p className="text-xl font-bold">
-                        Categoría seleccionada: {categories[finalSelectedIndex].name}
+                        Categoría seleccionada: {finalSelectedCategory.name}
                     </p>
                 </div>
             )}
