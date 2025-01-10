@@ -18,7 +18,6 @@ const WHEEL_COLORS = {
     green: '#BBF7D0'
 };
 
-// Números estilizados
 const Number2Icon = (props) => (
     <svg
         xmlns="http://www.w3.org/2000/svg"
@@ -27,13 +26,13 @@ const Number2Icon = (props) => (
         viewBox="0 0 24 24"
         fill="none"
         stroke="currentColor"
-        strokeWidth="2"
+        strokeWidth="2.5"
         strokeLinecap="round"
         strokeLinejoin="round"
         {...props}
     >
-        <path d="M6 8a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2a4 4 0 0 1-4 4H8" />
-        <path d="M6 16h12" />
+        <path d="M8 7a4 4 0 0 1 8 0v1a4 4 0 0 1-4 4H8" />
+        <line x1="8" y1="16" x2="16" y2="16" />
     </svg>
 );
 
@@ -45,13 +44,13 @@ const Number3Icon = (props) => (
         viewBox="0 0 24 24"
         fill="none"
         stroke="currentColor"
-        strokeWidth="2"
+        strokeWidth="2.5"
         strokeLinecap="round"
         strokeLinejoin="round"
         {...props}
     >
-        <path d="M6 8a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v8a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4" />
-        <path d="M8 12h8" />
+        <path d="M8 7a4 4 0 0 1 8 0v10a4 4 0 0 1-8 0" />
+        <line x1="8" y1="12" x2="16" y2="12" />
     </svg>
 );
 
@@ -63,14 +62,14 @@ const Number4Icon = (props) => (
         viewBox="0 0 24 24"
         fill="none"
         stroke="currentColor"
-        strokeWidth="2"
+        strokeWidth="2.5"
         strokeLinecap="round"
         strokeLinejoin="round"
         {...props}
     >
-        <path d="M14 4v16" />
-        <path d="M6 12h12" />
-        <path d="M6 8l8 0" />
+        <line x1="14" y1="4" x2="14" y2="20" />
+        <line x1="6" y1="12" x2="16" y2="12" />
+        <line x1="6" y1="8" x2="14" y2="8" />
     </svg>
 );
 
@@ -178,13 +177,12 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
                     />
                     <g transform={`translate(${textX}, ${textY})`}>
                         <g transform={`rotate(${midAngle})`}>
-                            <g transform="scale(0.006)">
+                            <g transform="scale(0.007)">
                                 <Icon 
                                     size={24}
-                                    strokeWidth={2}
-                                    className="text-gray-800 filter drop-shadow"
+                                    className="text-gray-800"
                                     style={{
-                                        filter: 'drop-shadow(0 0 2px currentColor)'
+                                        filter: 'drop-shadow(0 0 1px rgba(0,0,0,0.5))'
                                     }}
                                     absoluteStrokeWidth
                                 />

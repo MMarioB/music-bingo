@@ -10,28 +10,172 @@ import {
   XCircleIcon,
   Users,
   Clock,
-  Calculator,
+  Target,
   Calendar,
-  Music2,
-  CalendarDays,
-  Mic2,
-  TimerOff
+  Music,
+  Mic2
 } from "lucide-react";
 
+// Números personalizados
+const Number2Icon = (props) => (
+    <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="24"
+        height="24"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        {...props}
+    >
+        <path d="M8 7a4 4 0 0 1 8 0v1a4 4 0 0 1-4 4H8" />
+        <line x1="8" y1="16" x2="16" y2="16" />
+    </svg>
+);
+
+const Number3Icon = (props) => (
+    <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="24"
+        height="24"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        {...props}
+    >
+        <path d="M8 7a4 4 0 0 1 8 0v10a4 4 0 0 1-8 0" />
+        <line x1="8" y1="12" x2="16" y2="12" />
+    </svg>
+);
+
+const Number4Icon = (props) => (
+    <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="24"
+        height="24"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        {...props}
+    >
+        <line x1="14" y1="4" x2="14" y2="20" />
+        <line x1="6" y1="12" x2="16" y2="12" />
+        <line x1="6" y1="8" x2="14" y2="8" />
+    </svg>
+);
+
 const CATEGORIES_A = [
-  { name: 'Grupo o solista', color: 'bg-green-200', icon: Users, iconProps: { size: 24, className: 'text-gray-700' } },
-  { name: '¿Anterior al 2000?', color: 'bg-pink-200', icon: Clock, iconProps: { size: 24, className: 'text-gray-700' } },
-  { name: '4 años arriba o abajo', color: 'bg-yellow-200', icon: Calculator, iconProps: { size: 24, className: 'text-gray-700' } },
-  { name: 'Década', color: 'bg-purple-200', icon: Calendar, iconProps: { size: 24, className: 'text-gray-700' } },
-  { name: '2 años arriba o abajo', color: 'bg-blue-200', icon: TimerOff, iconProps: { size: 24, className: 'text-gray-700' } }
+  { 
+    name: 'Grupo o solista', 
+    color: 'bg-green-200', 
+    icon: Users,
+    iconProps: { 
+      size: 24, 
+      className: 'text-gray-700',
+      style: { filter: 'drop-shadow(0 0 1px rgba(0,0,0,0.5))' }
+    } 
+  },
+  { 
+    name: '¿Anterior al 2000?', 
+    color: 'bg-pink-200', 
+    icon: Clock,
+    iconProps: { 
+      size: 24, 
+      className: 'text-gray-700',
+      style: { filter: 'drop-shadow(0 0 1px rgba(0,0,0,0.5))' }
+    } 
+  },
+  { 
+    name: '4 años arriba o abajo', 
+    color: 'bg-yellow-200', 
+    icon: Number4Icon,
+    iconProps: { 
+      size: 24, 
+      className: 'text-gray-700',
+      style: { filter: 'drop-shadow(0 0 1px rgba(0,0,0,0.5))' }
+    } 
+  },
+  { 
+    name: 'Década', 
+    color: 'bg-purple-200', 
+    icon: Calendar,
+    iconProps: { 
+      size: 24, 
+      className: 'text-gray-700',
+      style: { filter: 'drop-shadow(0 0 1px rgba(0,0,0,0.5))' }
+    } 
+  },
+  { 
+    name: '2 años arriba o abajo', 
+    color: 'bg-blue-200', 
+    icon: Number2Icon,
+    iconProps: { 
+      size: 24, 
+      className: 'text-gray-700',
+      style: { filter: 'drop-shadow(0 0 1px rgba(0,0,0,0.5))' }
+    } 
+  }
 ];
 
 const CATEGORIES_B = [
-  { name: 'Título de la canción', color: 'bg-green-200', icon: Music2, iconProps: { size: 24, className: 'text-gray-700' } },
-  { name: 'Año exacto', color: 'bg-pink-200', icon: CalendarDays, iconProps: { size: 24, className: 'text-gray-700' } },
-  { name: 'Nombre del grupo o solista', color: 'bg-yellow-200', icon: Mic2, iconProps: { size: 24, className: 'text-gray-700' } },
-  { name: 'Década', color: 'bg-purple-200', icon: Calendar, iconProps: { size: 24, className: 'text-gray-700' } },
-  { name: '3 años arriba o abajo', color: 'bg-blue-200', icon: Calculator, iconProps: { size: 24, className: 'text-gray-700' } }
+  { 
+    name: 'Título de la canción', 
+    color: 'bg-green-200', 
+    icon: Music,
+    iconProps: { 
+      size: 24, 
+      className: 'text-gray-700',
+      style: { filter: 'drop-shadow(0 0 1px rgba(0,0,0,0.5))' }
+    } 
+  },
+  { 
+    name: 'Año exacto', 
+    color: 'bg-pink-200', 
+    icon: Target,
+    iconProps: { 
+      size: 24, 
+      className: 'text-gray-700',
+      style: { filter: 'drop-shadow(0 0 1px rgba(0,0,0,0.5))' }
+    } 
+  },
+  { 
+    name: 'Nombre del grupo o solista', 
+    color: 'bg-yellow-200', 
+    icon: Mic2,
+    iconProps: { 
+      size: 24, 
+      className: 'text-gray-700',
+      style: { filter: 'drop-shadow(0 0 1px rgba(0,0,0,0.5))' }
+    } 
+  },
+  { 
+    name: 'Década', 
+    color: 'bg-purple-200', 
+    icon: Calendar,
+    iconProps: { 
+      size: 24, 
+      className: 'text-gray-700',
+      style: { filter: 'drop-shadow(0 0 1px rgba(0,0,0,0.5))' }
+    } 
+  },
+  { 
+    name: '3 años arriba o abajo', 
+    color: 'bg-blue-200', 
+    icon: Number3Icon,
+    iconProps: { 
+      size: 24, 
+      className: 'text-gray-700',
+      style: { filter: 'drop-shadow(0 0 1px rgba(0,0,0,0.5))' }
+    } 
+  }
 ];
 
 const MusicBingoGame = () => {
