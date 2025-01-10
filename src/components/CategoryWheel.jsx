@@ -57,7 +57,7 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
 
             setTimeout(() => {
                 animateSpin(currentIndex + 1);
-            }, 100);
+            }, 200);
         };
 
         // Iniciar la animación
@@ -66,9 +66,9 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
 
     const generateWheelSegments = () => {
         return categories.map((category, index) => {
-            const startAngle = index * 36;
-            const endAngle = startAngle + 36;
-            const midAngle = startAngle + 18;
+            const startAngle = index * (360 / categories.length);
+            const endAngle = startAngle + (360 / categories.length);
+            const midAngle = startAngle + (180 / categories.length);
 
             const startX = Math.cos((startAngle - 90) * Math.PI / 180);
             const startY = Math.sin((startAngle - 90) * Math.PI / 180);
@@ -130,11 +130,10 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
                 <svg
                     viewBox="-1.1 -1.1 2.2 2.2"
                     className="w-full h-full"
-                    style={{ transform: 'rotate(-90deg)' }}
                 >
                     {generateWheelSegments()}
                     {/* Centro de la ruleta */}
-                    <circle r="0.15" fill="white" />
+                    <circle cx="0" cy="0" r="0.15" fill="white" />
                 </svg>
             </div>
 
