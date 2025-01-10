@@ -45,7 +45,7 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
             const currentTime = Date.now();
             const elapsedTime = currentTime - startTime;
 
-            if (elapsedTime >= 3000) {
+            if (elapsedTime >= 3500) {
                 // Detener la animación y seleccionar la categoría
                 const randomFinalIndex = Math.floor(Math.random() * categories.length);
                 const finalCategory = categories[randomFinalIndex];
@@ -55,8 +55,7 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
                 return;
             }
 
-            const randomFinalIndex = Math.floor(Math.random() * categories.length);
-            const highlightedIndex = (currentIndex + randomFinalIndex) % categories.length;
+            const highlightedIndex = Math.floor(((currentIndex) / 10) * categories.length);
             setHighlightedIndex(highlightedIndex);
 
             requestAnimationFrame(() => {
