@@ -37,29 +37,34 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
 
     const spinWheel = () => {
         if (isSpinning) return;
-    
+
         setIsSpinning(true);
-        const spins = 5 + Math.random() * 5;
-        const extraDegrees = Math.random() * 360;
-        const totalRotation = spins * 360 + extraDegrees;
+        
+        // Primero decidimos qué categoría queremos seleccionar
+        const targetIndex = Math.floor(Math.random() * categories.length);
+        
+        // Calculamos cuántos grados necesitamos girar para llegar a esa categoría
+        // Añadimos spins completos para el efecto visual
+        const spins = 5 + Math.random() * 3; // Entre 5 y 8 vueltas completas
+        const baseRotation = spins * 360;
+        // El ángulo para la categoría específica
+        const categoryAngle = targetIndex * segmentAngle;
+        
+        const totalRotation = baseRotation + categoryAngle;
         
         setRotation(rotation + totalRotation);
-    
+
         setTimeout(() => {
-            const finalRotation = (rotation + totalRotation) % 360;
-            // El triángulo está en 0 grados (arriba)
-            // Como la ruleta gira en sentido horario, necesitamos invertir el cálculo
-            const selectedIndex = Math.floor((360 - finalRotation) / segmentAngle) % categories.length;
-            const selectedCategory = categories[selectedIndex];
+            const selectedCategory = categories[targetIndex];
             
             // Para debug
             console.log({
-                finalRotation,
+                totalRotation,
                 segmentAngle,
-                selectedIndex,
+                targetIndex,
                 categoryName: selectedCategory.name
             });
-    
+
             setIsSpinning(false);
             onCategorySelected(selectedCategory);
         }, 4000);
