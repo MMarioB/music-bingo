@@ -26,6 +26,8 @@ const CATEGORIES_B = [
     { name: '3 años arriba o abajo', color: WHEEL_COLORS.blue, icon: '3' }
 ];
 
+const easeOutQuad = (t) => t * (2 - t); // Función de easing para ralentizar la animación
+
 const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () => { } }) => {
     const [isSpinning, setIsSpinning] = useState(false);
     const [highlightedIndex, setHighlightedIndex] = useState(-1);
@@ -40,31 +42,33 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
         setHighlightedIndex(-1);
         setFinalSelectedCategory(null);
 
-        // Función para simular la iluminación de la ruleta
-        const animateSpin = (currentIndex, startTime) => {
+        const duration = 3500; // Duración total de la animación
+        const startTime = Date.now();
+        const totalSpins = 10; // Número de vueltas completas antes de detenerse
+
+        const animateSpin = () => {
             const currentTime = Date.now();
             const elapsedTime = currentTime - startTime;
+            const progress = Math.min(elapsedTime / duration, 1); // Progreso entre 0 y 1
 
-            if (elapsedTime >= 3500) {
-                // Detener la animación y seleccionar la categoría
-                const randomFinalIndex = Math.floor(Math.random() * categories.length);
-                const finalCategory = categories[randomFinalIndex];
+            const easedProgress = easeOutQuad(progress);
+            const totalSteps = totalSpins * categories.length + Math.floor(easedProgress * categories.length);
+
+            const currentIndex = totalSteps % categories.length;
+            setHighlightedIndex(currentIndex);
+
+            if (progress < 1) {
+                requestAnimationFrame(animateSpin);
+            } else {
+                const finalIndex = currentIndex;
+                const finalCategory = categories[finalIndex];
                 setIsSpinning(false);
                 setFinalSelectedCategory(finalCategory);
                 onCategorySelected(finalCategory);
-                return;
             }
-
-            const highlightedIndex = Math.floor((currentIndex / 50) * categories.length);
-            setHighlightedIndex(highlightedIndex);
-
-            requestAnimationFrame(() => {
-                animateSpin(currentIndex + 1, startTime);
-            });
         };
 
-        // Iniciar la animación
-        animateSpin(0, Date.now());
+        animateSpin();
     };
 
     const generateWheelSegments = () => {
