@@ -79,14 +79,61 @@ const GameMaster = () => {
 
       const tracks = response.tracks.items;
       const randomTrack = tracks[Math.floor(Math.random() * tracks.length)];
+      const year = parseInt(randomTrack.album.release_date.split('-')[0]);
+
+      // Generar información específica según la categoría seleccionada
+      const categoryInfo = {};
+      // En la función generateNewCard, modifica el switch así:
+      switch (selectedCategory.name) {
+        case 'Grupo o solista': {
+          categoryInfo.respuesta = randomTrack.artists[0].name.includes('Los ') ||
+            randomTrack.artists[0].name.includes('Las ') ?
+            'Grupo' : 'Solista';
+          break;
+        }
+        case '¿Anterior al 2000?': {
+          categoryInfo.respuesta = year < 2000 ? 'Sí' : 'No';
+          break;
+        }
+        case '4 años arriba o abajo': {
+          categoryInfo.respuesta = `${year - 4} - ${year + 4}`;
+          break;
+        }
+        case '2 años arriba o abajo': {
+          categoryInfo.respuesta = `${year - 2} - ${year + 2}`;
+          break;
+        }
+        case '3 años arriba o abajo': {
+          categoryInfo.respuesta = `${year - 3} - ${year + 3}`;
+          break;
+        }
+        case 'Década': {
+          const decade = Math.floor(year / 10) * 10;
+          categoryInfo.respuesta = `${decade}s`;
+          break;
+        }
+        case 'Título de la canción': {
+          categoryInfo.respuesta = randomTrack.name;
+          break;
+        }
+        case 'Año exacto': {
+          categoryInfo.respuesta = year.toString();
+          break;
+        }
+        case 'Nombre del grupo o solista': {
+          categoryInfo.respuesta = randomTrack.artists[0].name;
+          break;
+        }
+      }
 
       setCurrentCard({
         title: randomTrack.name,
         artist: randomTrack.artists[0].name,
-        year: randomTrack.album.release_date.split('-')[0],
+        year: year,
         spotifyUrl: randomTrack.external_urls.spotify,
         musicCategory: randomMusicCategory,
-        gameCategory: selectedCategory
+        gameCategory: selectedCategory,
+        categoryInfo: categoryInfo
       });
     } catch (error) {
       console.error("Error generando tarjeta:", error);
@@ -222,6 +269,20 @@ const GameMaster = () => {
                           </span>
                         </div>
                       </div>
+
+                      {/* Información específica de la categoría */}
+                      {currentCard.categoryInfo && (
+                        <div className="bg-purple-50 rounded-lg p-3">
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm font-medium text-purple-700">
+                              Respuesta para {selectedCategory.name}:
+                            </span>
+                            <span className="text-lg font-bold text-purple-900">
+                              {currentCard.categoryInfo.respuesta}
+                            </span>
+                          </div>
+                        </div>
+                      )}
 
                       {currentCard.spotifyUrl && (
                         <Button
