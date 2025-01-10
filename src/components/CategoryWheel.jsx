@@ -47,16 +47,16 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
     
         setTimeout(() => {
             const finalRotation = (rotation + totalRotation) % 360;
-            const selectedIndex = Math.floor(finalRotation / segmentAngle);
-            const adjustedIndex = (categories.length - selectedIndex) % categories.length;
-            const selectedCategory = categories[adjustedIndex];
+            // El triángulo está en 0 grados (arriba)
+            // Como la ruleta gira en sentido horario, necesitamos invertir el cálculo
+            const selectedIndex = Math.floor((360 - finalRotation) / segmentAngle) % categories.length;
+            const selectedCategory = categories[selectedIndex];
             
             // Para debug
             console.log({
                 finalRotation,
                 segmentAngle,
                 selectedIndex,
-                adjustedIndex,
                 categoryName: selectedCategory.name
             });
     
