@@ -68,12 +68,17 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
                 const finalCategory = categories[currentIndex];
                 setFinalSelectedCategory(finalCategory);
                 setIsSpinning(false);
-                onCategorySelected(finalCategory);
+    
+                // Espera 2 segundos antes de notificar la selección y cambiar de vista
+                setTimeout(() => {
+                    onCategorySelected(finalCategory); // Llama a la función para avanzar
+                }, 2000); // 2000 ms = 2 segundos
             }
         };
     
         animateSpin();
-    };    
+    };
+    
 
     const generateWheelSegments = () => {
         return categories.map((category, index) => {
