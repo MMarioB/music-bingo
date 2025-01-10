@@ -30,50 +30,43 @@ const CATEGORIES_B = [
 const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () => { } }) => {
     const [isSpinning, setIsSpinning] = useState(false);
     const [rotation, setRotation] = useState(0);
-
     const baseCategories = difficulty === 'principiante' ? CATEGORIES_A : CATEGORIES_B;
     const categories = [...baseCategories, ...baseCategories];
-    const segmentAngle = 36;
 
     const spinWheel = () => {
         if (isSpinning) return;
-    
+
         setIsSpinning(true);
         
-        // Hacemos girar la ruleta aleatoriamente
         const spins = 5 + Math.random() * 3;
         const totalRotation = spins * 360 + Math.random() * 360;
         
-        setRotation(totalRotation);
-    
+        setRotation(rotation + totalRotation);
+
         setTimeout(() => {
-            const finalRotation = totalRotation % 360;
-            const segmentSize = 360 / categories.length;
-            const nearestSegment = Math.round(finalRotation / segmentSize);
+            const finalRotation = (rotation + totalRotation) % 360;
+            const segmentIndex = Math.floor(finalRotation / 36);
             
-            const selectedIndex = nearestSegment % (categories.length / 2);
+            const baseIndex = segmentIndex >= 5 ? segmentIndex - 5 : segmentIndex;
             
             // Debug
             console.log({
                 finalRotation,
-                segmentSize,
-                nearestSegment,
-                originalIndex: nearestSegment % categories.length,
-                normalizedIndex: selectedIndex,
-                selectedCategory: baseCategories[selectedIndex].name,
-                visualCategory: categories[nearestSegment % categories.length].name
+                segmentIndex,
+                baseIndex,
+                categoryName: baseCategories[baseIndex].name
             });
             
             setIsSpinning(false);
-            onCategorySelected(baseCategories[selectedIndex]);
+            onCategorySelected(baseCategories[baseIndex]);
         }, 4000);
     };
 
     const generateWheelSegments = () => {
         return categories.map((category, index) => {
-            const startAngle = index * segmentAngle;
-            const endAngle = startAngle + segmentAngle;
-            const midAngle = startAngle + (segmentAngle / 2);
+            const startAngle = index * 36;
+            const endAngle = startAngle + 36;
+            const midAngle = startAngle + 18;
 
             const startX = Math.cos((startAngle - 90) * Math.PI / 180);
             const startY = Math.sin((startAngle - 90) * Math.PI / 180);
@@ -83,7 +76,7 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
             const textX = Math.cos((midAngle - 90) * Math.PI / 180) * 0.7;
             const textY = Math.sin((midAngle - 90) * Math.PI / 180) * 0.7;
 
-            const largeArcFlag = segmentAngle <= 180 ? "0" : "1";
+            const largeArcFlag = "0";
 
             const pathData = `M 0 0 
                             L ${startX} ${startY} 
