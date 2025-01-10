@@ -33,50 +33,44 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
 
     const baseCategories = difficulty === 'principiante' ? CATEGORIES_A : CATEGORIES_B;
     const categories = [...baseCategories, ...baseCategories];
-    const segmentAngle = 360 / categories.length;
+    const segmentAngle = 36; // 360/10 - ángulo fijo por segmento
 
     const spinWheel = () => {
         if (isSpinning) return;
 
         setIsSpinning(true);
         
-        // Seleccionamos la categoría objetivo
-        const targetIndex = Math.floor(Math.random() * categories.length);
+        // Seleccionamos una categoría aleatoria
+        const selectedIndex = Math.floor(Math.random() * categories.length);
         
-        // Calculamos el ángulo necesario considerando la rotación inicial de -90 grados
-        const spins = 5 + Math.random() * 3; // Entre 5 y 8 vueltas completas
-        const baseRotation = spins * 360;
+        // Calculamos las vueltas completas (5-8 vueltas)
+        const spins = 5 + Math.random() * 3;
+        const extraSpins = spins * 360;
         
-        // Ajustamos el ángulo para que la categoría quede alineada con el marcador
-        // Necesitamos restar 90 grados por la rotación inicial del SVG
-        // y invertir la dirección para que gire en el sentido correcto
-        const categoryAngle = (360 - (targetIndex * segmentAngle)) - 90;
+        // Calculamos la rotación para la posición final
+        const targetRotation = selectedIndex * segmentAngle;
         
-        const totalRotation = baseRotation + categoryAngle;
+        // Rotación total = vueltas completas + posición final
+        const totalRotation = extraSpins + targetRotation;
         
-        setRotation(rotation + totalRotation);
+        setRotation(totalRotation);
 
+        // Después de la animación, notificamos la categoría seleccionada
         setTimeout(() => {
-            const selectedCategory = categories[targetIndex];
-            
-            // Para debug
             console.log({
+                selectedIndex,
                 totalRotation,
-                categoryAngle,
-                segmentAngle,
-                targetIndex,
-                categoryName: selectedCategory.name
+                categoryName: categories[selectedIndex].name
             });
-
+            
             setIsSpinning(false);
-            onCategorySelected(selectedCategory);
+            onCategorySelected(categories[selectedIndex]);
         }, 4000);
     };
 
     const generateWheelSegments = () => {
         return categories.map((category, index) => {
-            // Ajustamos los ángulos considerando la rotación inicial
-            const startAngle = (index * segmentAngle);
+            const startAngle = index * segmentAngle;
             const endAngle = startAngle + segmentAngle;
             const midAngle = startAngle + (segmentAngle / 2);
 
