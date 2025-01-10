@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from './ui/button';
 import PropTypes from 'prop-types';
 
@@ -33,6 +33,14 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
 
     const categories = difficulty === 'principiante' ? CATEGORIES_A : CATEGORIES_B;
 
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setHighlightedIndex(-1);
+        }, 3500);
+
+        return () => clearTimeout(timer);
+    }, [finalSelectedCategory]);
+
     const spinWheel = () => {
         if (isSpinning) return;
 
@@ -55,7 +63,7 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
                 return;
             }
 
-            const highlightedIndex = Math.floor((currentIndex / 50) * categories.length);
+            const highlightedIndex = Math.floor((currentIndex / 70) * categories.length);
             setHighlightedIndex(highlightedIndex);
 
             requestAnimationFrame(() => {
@@ -98,7 +106,7 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
                         fill={category.color}
                         stroke="white"
                         strokeWidth="0.01"
-                        className={`transition-opacity duration-300 ${
+                        className={`transition-opacity duration-500 ${
                             isHighlighted || isSelected ? 'opacity-100' : 'opacity-50'
                         }`}
                     />
@@ -110,7 +118,7 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
                         fill="black"
                         fontSize="0.15"
                         transform={`rotate(${midAngle}, ${textX}, ${textY})`}
-                        className={`transition-transform duration-300 ${
+                        className={`transition-transform duration-500 ${
                             isHighlighted || isSelected ? 'scale-110' : 'scale-100'
                         }`}
                     >
