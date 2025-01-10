@@ -35,24 +35,27 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
 
     const spinWheel = () => {
         if (isSpinning) return;
-
+    
         setIsSpinning(true);
         
+        // Hacemos girar la ruleta aleatoriamente
         const spins = 5 + Math.random() * 3;
         const totalRotation = spins * 360 + Math.random() * 360;
         
         setRotation(rotation + totalRotation);
-
+    
         setTimeout(() => {
-            const finalRotation = (rotation + totalRotation) % 360;
+            const finalRotation = ((rotation + totalRotation + 90) % 360);
             const segmentIndex = Math.floor(finalRotation / 36);
             
-            const baseIndex = segmentIndex >= 5 ? segmentIndex - 5 : segmentIndex;
+            const invertedIndex = (10 - segmentIndex) % 10;
+            const baseIndex = invertedIndex >= 5 ? invertedIndex - 5 : invertedIndex;
             
             // Debug
             console.log({
                 finalRotation,
                 segmentIndex,
+                invertedIndex,
                 baseIndex,
                 categoryName: baseCategories[baseIndex].name
             });
