@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from './ui/button';
 import PropTypes from 'prop-types';
 
@@ -29,10 +29,18 @@ const CATEGORIES_B = [
 const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () => { } }) => {
     const [isSpinning, setIsSpinning] = useState(false);
     const [highlightedIndex, setHighlightedIndex] = useState(-1);
-    const [selectedCategory, setSelectedCategory] = useState(null);
+    const [intervalId, setIntervalId] = useState(null);
 
     const baseCategories = difficulty === 'principiante' ? CATEGORIES_A : CATEGORIES_B;
     const categories = [...baseCategories, ...baseCategories];
+
+    useEffect(() => {
+        return () => {
+            if (intervalId) {
+                clearInterval(intervalId);
+            }
+        };
+    }, [intervalId]);
 
     const spinWheel = () => {
         if (isSpinning) return;
@@ -43,9 +51,6 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
         let cycles = 0;
         const maxCycles = 20;
 
-        // Generar un índice aleatorio para la categoría final
-        const finalCategoryIndex = Math.floor(Math.random() * baseCategories.length);
-
         const tick = () => {
             setHighlightedIndex(currentIndex);
             currentIndex = (currentIndex + 1) % categories.length;
@@ -54,29 +59,35 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
             if (cycles > maxCycles) {
                 speed *= 1.2;
                 if (speed > 500) {
-                    // Detener la animación
+                    clearInterval(intervalId);
+                    setIntervalId(null);
                     setIsSpinning(false);
-                    setHighlightedIndex(-1);
 
-                    // Seleccionar la categoría final
-                    const selectedCat = baseCategories[finalCategoryIndex];
-                    setSelectedCategory(selectedCat);
-                    onCategorySelected(selectedCat);
+                    const finalIndex = currentIndex - 1;
+                    const baseIndex = finalIndex >= 5 ? finalIndex - 5 : finalIndex;
+                    
+                    // Debug para verificar la selección
+                    console.log({
+                        finalIndex,
+                        baseIndex,
+                        categoryName: baseCategories[baseIndex].name
+                    });
+                    
+                    onCategorySelected(baseCategories[baseIndex]);
 
+                    setTimeout(() => {
+                        setHighlightedIndex(-1);
+                    }, 2000);
+                    
                     return;
                 }
+                clearInterval(intervalId);
+                setIntervalId(setInterval(tick, Math.floor(speed)));
             }
         };
 
-        // Iniciar intervalos de animación
-        const intervalId = setInterval(tick, speed);
-        
-        // Limpiar el intervalo después de un tiempo máximo
-        setTimeout(() => {
-            clearInterval(intervalId);
-            setIsSpinning(false);
-            setHighlightedIndex(-1);
-        }, 3000);
+        const interval = setInterval(tick, speed);
+        setIntervalId(interval);
     };
 
     const generateWheelSegments = () => {
@@ -159,14 +170,6 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
             >
                 {isSpinning ? "Girando..." : "Girar Ruleta"}
             </Button>
-
-            {selectedCategory && (
-                <div className="mt-4 text-center">
-                    <p className="text-xl font-bold">
-                        Categoría seleccionada: {selectedCategory.name}
-                    </p>
-                </div>
-            )}
         </div>
     );
 };
