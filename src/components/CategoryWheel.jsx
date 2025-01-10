@@ -1,6 +1,16 @@
 import { useState } from 'react';
 import { Button } from './ui/button';
 import PropTypes from 'prop-types';
+import { 
+    Users, 
+    Clock, 
+    Calculator, 
+    Calendar, 
+    Music2,
+    CalendarDays,
+    Mic2,
+    TimerOff
+} from 'lucide-react';
 
 const WHEEL_COLORS = {
     blue: '#BFDBFE',
@@ -11,19 +21,69 @@ const WHEEL_COLORS = {
 };
 
 const CATEGORIES_A = [
-    { name: 'Grupo o solista', color: WHEEL_COLORS.green, icon: '🎸' },
-    { name: '¿Anterior al 2000?', color: WHEEL_COLORS.pink, icon: '20' },
-    { name: '4 años arriba o abajo', color: WHEEL_COLORS.yellow, icon: '4' },
-    { name: 'Década', color: WHEEL_COLORS.purple, icon: '0s' },
-    { name: '2 años arriba o abajo', color: WHEEL_COLORS.blue, icon: '2' }
+    { 
+        name: 'Grupo o solista', 
+        color: WHEEL_COLORS.green, 
+        icon: Users,
+        iconProps: { size: 20, strokeWidth: 1.5 }
+    },
+    { 
+        name: '¿Anterior al 2000?', 
+        color: WHEEL_COLORS.pink, 
+        icon: Clock,
+        iconProps: { size: 20, strokeWidth: 1.5 }
+    },
+    { 
+        name: '4 años arriba o abajo', 
+        color: WHEEL_COLORS.yellow, 
+        icon: Calculator,
+        iconProps: { size: 20, strokeWidth: 1.5 }
+    },
+    { 
+        name: 'Década', 
+        color: WHEEL_COLORS.purple, 
+        icon: Calendar,
+        iconProps: { size: 20, strokeWidth: 1.5 }
+    },
+    { 
+        name: '2 años arriba o abajo', 
+        color: WHEEL_COLORS.blue, 
+        icon: TimerOff,
+        iconProps: { size: 20, strokeWidth: 1.5 }
+    }
 ];
 
 const CATEGORIES_B = [
-    { name: 'Título de la canción', color: WHEEL_COLORS.green, icon: '🎵' },
-    { name: 'Año exacto', color: WHEEL_COLORS.pink, icon: '📅' },
-    { name: 'Nombre del grupo o solista', color: WHEEL_COLORS.yellow, icon: '🎤' },
-    { name: 'Década', color: WHEEL_COLORS.purple, icon: '0s' },
-    { name: '3 años arriba o abajo', color: WHEEL_COLORS.blue, icon: '3' }
+    { 
+        name: 'Título de la canción', 
+        color: WHEEL_COLORS.green, 
+        icon: Music2,
+        iconProps: { size: 20, strokeWidth: 1.5 }
+    },
+    { 
+        name: 'Año exacto', 
+        color: WHEEL_COLORS.pink, 
+        icon: CalendarDays,
+        iconProps: { size: 20, strokeWidth: 1.5 }
+    },
+    { 
+        name: 'Nombre del grupo o solista', 
+        color: WHEEL_COLORS.yellow, 
+        icon: Mic2,
+        iconProps: { size: 20, strokeWidth: 1.5 }
+    },
+    { 
+        name: 'Década', 
+        color: WHEEL_COLORS.purple, 
+        icon: Calendar,
+        iconProps: { size: 20, strokeWidth: 1.5 }
+    },
+    { 
+        name: '3 años arriba o abajo', 
+        color: WHEEL_COLORS.blue, 
+        icon: Calculator,
+        iconProps: { size: 20, strokeWidth: 1.5 }
+    }
 ];
 
 const easeOutQuad = (t) => t * (2 - t);
@@ -57,7 +117,6 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
             const progress = Math.min(elapsedTime / duration, 1);
     
             const easedProgress = easeOutQuad(progress);
-    
             const currentStep = Math.floor(easedProgress * totalSteps);
             const currentIndex = (initialIndex + currentStep) % totalSegments;
     
@@ -79,8 +138,6 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
     
         animateSpin();
     };
-    
-    
 
     const generateWheelSegments = () => {
         return categories.map((category, index) => {
@@ -97,14 +154,11 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
             const textY = Math.sin((midAngle - 90) * Math.PI / 180) * 0.7;
 
             const largeArcFlag = "0";
-
-            const pathData = `M 0 0 
-                            L ${startX} ${startY} 
-                            A 1 1 0 ${largeArcFlag} 1 ${endX} ${endY} 
-                            Z`;
+            const pathData = `M 0 0 L ${startX} ${startY} A 1 1 0 ${largeArcFlag} 1 ${endX} ${endY} Z`;
 
             const isHighlighted = index === highlightedIndex;
             const isSelected = category === finalSelectedCategory;
+            const Icon = category.icon;
 
             return (
                 <g key={index}>
@@ -117,20 +171,22 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
                             isHighlighted || isSelected ? 'opacity-100' : 'opacity-50'
                         }`}
                     />
-                    <text
-                        x={textX}
-                        y={textY}
-                        textAnchor="middle"
-                        dominantBaseline="middle"
-                        fill="black"
-                        fontSize="0.15"
+                    <foreignObject
+                        x={textX - 0.1}
+                        y={textY - 0.1}
+                        width="0.2"
+                        height="0.2"
                         transform={`rotate(${midAngle}, ${textX}, ${textY})`}
-                        className={`transition-transform duration-300 ${
-                            isHighlighted || isSelected ? 'scale-110' : 'scale-100'
-                        }`}
                     >
-                        {category.icon}
-                    </text>
+                        <div className={`w-full h-full flex items-center justify-center transition-transform duration-300 ${
+                            isHighlighted || isSelected ? 'scale-110' : 'scale-100'
+                        }`}>
+                            <Icon 
+                                {...category.iconProps}
+                                className="text-gray-800"
+                            />
+                        </div>
+                    </foreignObject>
                 </g>
             );
         });

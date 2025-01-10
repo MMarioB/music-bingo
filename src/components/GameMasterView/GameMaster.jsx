@@ -56,7 +56,7 @@ const GameMaster = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [difficulty, setDifficulty] = useState('principiante');
   const [selectedCategory, setSelectedCategory] = useState(null);
-  const [gameStep, setGameStep] = useState('wheel'); // 'wheel' | 'card'
+  const [gameStep, setGameStep] = useState('wheel');
 
   const handleCategorySelected = useCallback((category) => {
     setSelectedCategory(category);
@@ -81,7 +81,6 @@ const GameMaster = () => {
       const randomTrack = tracks[Math.floor(Math.random() * tracks.length)];
       const year = parseInt(randomTrack.album.release_date.split('-')[0]);
 
-      // Generar información específica según la categoría seleccionada
       const categoryInfo = {};
       switch (selectedCategory.name) {
         case 'Grupo o solista': {
@@ -174,7 +173,6 @@ const GameMaster = () => {
         </div>
 
         <div className="p-4 space-y-4">
-          {/* Configuración */}
           <div className="flex items-center justify-between gap-4">
             <div className="flex-1">
               <Select value={difficulty} onValueChange={(value) => {
@@ -202,7 +200,6 @@ const GameMaster = () => {
             )}
           </div>
 
-          {/* Contenido Principal */}
           <AnimatePresence mode="wait">
             {gameStep === 'wheel' ? (
               <motion.div
@@ -225,7 +222,6 @@ const GameMaster = () => {
                 exit={{ opacity: 0, y: -20 }}
                 className="space-y-4"
               >
-                {/* Categoría seleccionada */}
                 {selectedCategory && (
                   <div className={`${selectedCategory.color} p-3 rounded-lg flex items-center justify-center gap-2`}>
                     <span className="text-2xl">{selectedCategory.icon}</span>
@@ -233,7 +229,6 @@ const GameMaster = () => {
                   </div>
                 )}
 
-                {/* Botón generar/tarjeta */}
                 {!currentCard ? (
                   <Button
                     onClick={generateNewCard}
@@ -271,7 +266,6 @@ const GameMaster = () => {
                           </div>
                         </div>
 
-                        {/* Información específica de la categoría */}
                         {currentCard.categoryInfo && (
                           <div className="bg-purple-50 rounded-lg p-3 mt-3">
                             <div className="flex justify-between items-center">

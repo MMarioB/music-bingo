@@ -5,22 +5,33 @@ import { Input } from "../ui/input";
 import { Switch } from "../ui/switch";
 import { Alert, AlertDescription } from "../ui/alert";
 import { motion, AnimatePresence } from "framer-motion";
-import { CheckCircleIcon, XCircleIcon } from "lucide-react";
+import { 
+  CheckCircleIcon, 
+  XCircleIcon,
+  Users,
+  Clock,
+  Calculator,
+  Calendar,
+  Music2,
+  CalendarDays,
+  Mic2,
+  TimerOff
+} from "lucide-react";
 
 const CATEGORIES_A = [
-  { name: 'Grupo o solista', color: 'bg-green-200', icon: '🎸' },
-  { name: '¿Anterior al 2000?', color: 'bg-pink-200', icon: '20' },
-  { name: '4 años arriba o abajo', color: 'bg-yellow-200', icon: '4' },
-  { name: 'Década', color: 'bg-purple-200', icon: '0s' },
-  { name: '2 años arriba o abajo', color: 'bg-blue-200', icon: '2' }
+  { name: 'Grupo o solista', color: 'bg-green-200', icon: Users, iconProps: { size: 24, className: 'text-gray-700' } },
+  { name: '¿Anterior al 2000?', color: 'bg-pink-200', icon: Clock, iconProps: { size: 24, className: 'text-gray-700' } },
+  { name: '4 años arriba o abajo', color: 'bg-yellow-200', icon: Calculator, iconProps: { size: 24, className: 'text-gray-700' } },
+  { name: 'Década', color: 'bg-purple-200', icon: Calendar, iconProps: { size: 24, className: 'text-gray-700' } },
+  { name: '2 años arriba o abajo', color: 'bg-blue-200', icon: TimerOff, iconProps: { size: 24, className: 'text-gray-700' } }
 ];
 
 const CATEGORIES_B = [
-  { name: 'Título de la canción', color: 'bg-green-200', icon: '🎵' },
-  { name: 'Año exacto', color: 'bg-pink-200', icon: '📅' },
-  { name: 'Nombre del grupo o solista', color: 'bg-yellow-200', icon: '🎤' },
-  { name: 'Década', color: 'bg-purple-200', icon: '0s' },
-  { name: '3 años arriba o abajo', color: 'bg-blue-200', icon: '3' }
+  { name: 'Título de la canción', color: 'bg-green-200', icon: Music2, iconProps: { size: 24, className: 'text-gray-700' } },
+  { name: 'Año exacto', color: 'bg-pink-200', icon: CalendarDays, iconProps: { size: 24, className: 'text-gray-700' } },
+  { name: 'Nombre del grupo o solista', color: 'bg-yellow-200', icon: Mic2, iconProps: { size: 24, className: 'text-gray-700' } },
+  { name: 'Década', color: 'bg-purple-200', icon: Calendar, iconProps: { size: 24, className: 'text-gray-700' } },
+  { name: '3 años arriba o abajo', color: 'bg-blue-200', icon: Calculator, iconProps: { size: 24, className: 'text-gray-700' } }
 ];
 
 const MusicBingoGame = () => {
@@ -52,7 +63,6 @@ const MusicBingoGame = () => {
     while (attempts < MAX_ATTEMPTS) {
       attempts++;
   
-      // Contador para rastrear cuántas veces se ha usado cada categoría
       const categoryCounts = currentCategories.reduce((acc, category) => {
         acc[category.name] = 0;
         return acc;
@@ -60,13 +70,11 @@ const MusicBingoGame = () => {
   
       let validBoard = true;
       board = Array(BOARD_SIZE * BOARD_SIZE).fill(null).map(() => {
-        // Seleccionar una categoría al azar, verificando el límite
         let selectedCategory;
         do {
           selectedCategory = currentCategories[Math.floor(Math.random() * currentCategories.length)];
         } while (categoryCounts[selectedCategory.name] >= MAX_PER_CATEGORY);
   
-        // Incrementar el conteo de la categoría seleccionada
         categoryCounts[selectedCategory.name]++;
   
         return {
@@ -110,13 +118,11 @@ const MusicBingoGame = () => {
       }
     }
   
-    // Fallback: devolver un tablero generado sin validación estricta si se agotan los intentos
     return Array(BOARD_SIZE * BOARD_SIZE).fill(null).map(() => ({
       ...currentCategories[Math.floor(Math.random() * currentCategories.length)],
       marked: false
     }));
   }, [isExpertMode, validateLine]);
-  
 
   const [board, setBoard] = useState(() => generateBoard());
 
@@ -175,7 +181,6 @@ const MusicBingoGame = () => {
         </div>
 
         <div className="p-4 md:p-6 space-y-4 md:space-y-6">
-          {/* Selector de modo */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="flex items-center justify-center gap-3 md:gap-4">
               <span className={`text-sm md:text-base ${!isExpertMode ? "font-bold text-purple-600" : "text-gray-500"}`}>
@@ -192,7 +197,6 @@ const MusicBingoGame = () => {
             </div>
           </div>
 
-          {/* Alerta de ganador */}
           <AnimatePresence>
             {hasWinner && (
               <motion.div
@@ -210,47 +214,48 @@ const MusicBingoGame = () => {
             )}
           </AnimatePresence>
 
-          {/* Tablero de juego */}
           <Card className="p-2 md:p-4 shadow-lg">
             <div className="grid grid-cols-5 gap-1 md:gap-3">
-              {board.map((category, index) => (
-                <motion.button
-                  key={index}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  className={`
-          ${category.color} 
-          aspect-square 
-          rounded-lg
-          flex 
-          items-center 
-          justify-center 
-          p-1 md:p-2
-          text-center 
-          relative 
-          transition-all 
-          duration-200
-          focus:outline-none
-          focus:ring-2
-          focus:ring-purple-400
-          focus:ring-offset-2
-          ${category.marked ? 'scale-95 shadow-inner' : 'shadow hover:shadow-md'}
-        `}
-                  onClick={() => toggleCell(index)}
-                  aria-label={`Casilla ${category.name}`}
-                >
-                  <span className="text-2xl md:text-4xl">{category.icon}</span>
-                  {category.marked && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/10">
-                      <XCircleIcon className="text-red-500 w-6 md:w-10 h-6 md:h-10" />
-                    </div>
-                  )}
-                </motion.button>
-              ))}
+              {board.map((category, index) => {
+                const Icon = category.icon;
+                return (
+                  <motion.button
+                    key={index}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    className={`
+                      ${category.color} 
+                      aspect-square 
+                      rounded-lg
+                      flex 
+                      items-center 
+                      justify-center 
+                      p-1 md:p-2
+                      text-center 
+                      relative 
+                      transition-all 
+                      duration-200
+                      focus:outline-none
+                      focus:ring-2
+                      focus:ring-purple-400
+                      focus:ring-offset-2
+                      ${category.marked ? 'scale-95 shadow-inner' : 'shadow hover:shadow-md'}
+                    `}
+                    onClick={() => toggleCell(index)}
+                    aria-label={`Casilla ${category.name}`}
+                  >
+                    <Icon {...category.iconProps} />
+                    {category.marked && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/10">
+                        <XCircleIcon className="text-red-500 w-6 md:w-10 h-6 md:h-10" />
+                      </div>
+                    )}
+                  </motion.button>
+                );
+              })}
             </div>
           </Card>
 
-          {/* Formulario de respuesta */}
           <div className="space-y-3">
             <Input
               value={currentAnswer}
@@ -267,24 +272,26 @@ const MusicBingoGame = () => {
             </Button>
           </div>
 
-          {/* Lista de categorías */}
           <div className="mt-6">
             <h3 className="text-base md:text-lg font-semibold mb-3">
               Categorías {isExpertMode ? "Expertos" : "Principiantes"}
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-              {(isExpertMode ? CATEGORIES_B : CATEGORIES_A).map((category, index) => (
-                <motion.div
-                  key={index}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.1 }}
-                  className={`${category.color} p-2 md:p-3 rounded-lg flex items-center gap-2 shadow-sm`}
-                >
-                  <span className="text-lg md:text-2xl">{category.icon}</span>
-                  <span className="text-xs md:text-sm font-medium">{category.name}</span>
-                </motion.div>
-              ))}
+              {(isExpertMode ? CATEGORIES_B : CATEGORIES_A).map((category, index) => {
+                const Icon = category.icon;
+                return (
+                  <motion.div
+                    key={index}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.1 }}
+                    className={`${category.color} p-2 md:p-3 rounded-lg flex items-center gap-2 shadow-sm`}
+                  >
+                    <Icon {...category.iconProps} />
+                    <span className="text-xs md:text-sm font-medium">{category.name}</span>
+                  </motion.div>
+                );
+              })}
             </div>
           </div>
         </div>
