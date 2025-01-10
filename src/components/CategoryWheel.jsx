@@ -49,12 +49,23 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
         setTimeout(() => {
             const finalRotation = totalRotation % 360;
             const segmentSize = 360 / categories.length;
-            
             const nearestSegment = Math.round(finalRotation / segmentSize);
-            const selectedIndex = nearestSegment % categories.length;
+            
+            const selectedIndex = nearestSegment % (categories.length / 2);
+            
+            // Debug
+            console.log({
+                finalRotation,
+                segmentSize,
+                nearestSegment,
+                originalIndex: nearestSegment % categories.length,
+                normalizedIndex: selectedIndex,
+                selectedCategory: baseCategories[selectedIndex].name,
+                visualCategory: categories[nearestSegment % categories.length].name
+            });
             
             setIsSpinning(false);
-            onCategorySelected(categories[selectedIndex]);
+            onCategorySelected(baseCategories[selectedIndex]);
         }, 4000);
     };
 
