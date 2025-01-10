@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Button } from './ui/button';
 import PropTypes from 'prop-types';
 
@@ -33,14 +33,6 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
 
     const categories = difficulty === 'principiante' ? CATEGORIES_A : CATEGORIES_B;
 
-    useEffect(() => {
-        const timer = setTimeout(() => {
-            setHighlightedIndex(-1);
-        }, 5000);
-
-        return () => clearTimeout(timer);
-    }, [finalSelectedCategory]);
-
     const spinWheel = () => {
         if (isSpinning) return;
 
@@ -53,7 +45,7 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
             const currentTime = Date.now();
             const elapsedTime = currentTime - startTime;
 
-            if (elapsedTime >= 5000) {
+            if (elapsedTime >= 3500) {
                 // Detener la animación y seleccionar la categoría
                 const randomFinalIndex = Math.floor(Math.random() * categories.length);
                 const finalCategory = categories[randomFinalIndex];
@@ -63,7 +55,7 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
                 return;
             }
 
-            const highlightedIndex = Math.floor(Math.random() * categories.length);
+            const highlightedIndex = Math.floor((currentIndex / 50) * categories.length);
             setHighlightedIndex(highlightedIndex);
 
             requestAnimationFrame(() => {
@@ -106,7 +98,7 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
                         fill={category.color}
                         stroke="white"
                         strokeWidth="0.01"
-                        className={`transition-opacity duration-500 ${
+                        className={`transition-opacity duration-300 ${
                             isHighlighted || isSelected ? 'opacity-100' : 'opacity-50'
                         }`}
                     />
@@ -118,7 +110,7 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
                         fill="black"
                         fontSize="0.15"
                         transform={`rotate(${midAngle}, ${textX}, ${textY})`}
-                        className={`transition-transform duration-500 ${
+                        className={`transition-transform duration-300 ${
                             isHighlighted || isSelected ? 'scale-110' : 'scale-100'
                         }`}
                     >
