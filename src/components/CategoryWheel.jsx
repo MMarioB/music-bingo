@@ -1,15 +1,13 @@
 import { useState } from 'react';
 import { Button } from './ui/button';
 import PropTypes from 'prop-types';
-import { 
-    Users, 
-    Clock, 
-    Calculator, 
-    Calendar, 
-    Music2,
-    CalendarDays,
+import {
+    Users,
+    Clock,
+    Target,
+    Calendar,
+    Music,
     Mic2,
-    TimerOff
 } from 'lucide-react';
 
 const WHEEL_COLORS = {
@@ -20,25 +18,81 @@ const WHEEL_COLORS = {
     green: '#BBF7D0'
 };
 
+// Componentes personalizados para números
+const Number2Icon = (props) => (
+    <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="24"
+        height="24"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        {...props}
+    >
+        <path d="M8 4h8a4 4 0 0 1 4 4v4a4 4 0 0 1-4 4H8" />
+        <path d="M8 16h12" />
+    </svg>
+);
+
+const Number3Icon = (props) => (
+    <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="24"
+        height="24"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        {...props}
+    >
+        <path d="M8 4h8a4 4 0 0 1 4 4v8a4 4 0 0 1-4 4H8" />
+        <path d="M8 12h8" />
+    </svg>
+);
+
+const Number4Icon = (props) => (
+    <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="24"
+        height="24"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        {...props}
+    >
+        <path d="M16 4v16" />
+        <path d="M4 12h12" />
+        <path d="M4 4v8" />
+    </svg>
+);
+
 const CATEGORIES_A = [
     { name: 'Grupo o solista', color: WHEEL_COLORS.green, Icon: Users },
     { name: '¿Anterior al 2000?', color: WHEEL_COLORS.pink, Icon: Clock },
-    { name: '4 años arriba o abajo', color: WHEEL_COLORS.yellow, Icon: Calculator },
+    { name: '4 años arriba o abajo', color: WHEEL_COLORS.yellow, Icon: Number4Icon },
     { name: 'Década', color: WHEEL_COLORS.purple, Icon: Calendar },
-    { name: '2 años arriba o abajo', color: WHEEL_COLORS.blue, Icon: TimerOff }
+    { name: '2 años arriba o abajo', color: WHEEL_COLORS.blue, Icon: Number2Icon }
 ];
 
 const CATEGORIES_B = [
-    { name: 'Título de la canción', color: WHEEL_COLORS.green, Icon: Music2 },
-    { name: 'Año exacto', color: WHEEL_COLORS.pink, Icon: CalendarDays },
+    { name: 'Título de la canción', color: WHEEL_COLORS.green, Icon: Music },
+    { name: 'Año exacto', color: WHEEL_COLORS.pink, Icon: Target },
     { name: 'Nombre del grupo o solista', color: WHEEL_COLORS.yellow, Icon: Mic2 },
     { name: 'Década', color: WHEEL_COLORS.purple, Icon: Calendar },
-    { name: '3 años arriba o abajo', color: WHEEL_COLORS.blue, Icon: Calculator }
+    { name: '3 años arriba o abajo', color: WHEEL_COLORS.blue, Icon: Number3Icon }
 ];
 
 const easeOutQuad = (t) => t * (2 - t);
 
-const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () => {} }) => {
+const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () => { } }) => {
     const [isSpinning, setIsSpinning] = useState(false);
     const [highlightedIndex, setHighlightedIndex] = useState(-1);
     const [finalSelectedCategory, setFinalSelectedCategory] = useState(null);
@@ -47,31 +101,31 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
 
     const spinWheel = () => {
         if (isSpinning) return;
-    
+
         setIsSpinning(true);
         setFinalSelectedCategory(null);
-    
+
         const duration = 3500;
         const startTime = Date.now();
-    
+
         const totalSegments = categories.length;
         const randomSpins = Math.floor(Math.random() * (20 - 10 + 1)) + 10;
         const totalSteps = randomSpins * totalSegments;
-    
+
         const initialIndex = Math.floor(Math.random() * totalSegments);
         setHighlightedIndex(initialIndex);
-    
+
         const animateSpin = () => {
             const currentTime = Date.now();
             const elapsedTime = currentTime - startTime;
             const progress = Math.min(elapsedTime / duration, 1);
-    
+
             const easedProgress = easeOutQuad(progress);
             const currentStep = Math.floor(easedProgress * totalSteps);
             const currentIndex = (initialIndex + currentStep) % totalSegments;
-    
+
             setHighlightedIndex(currentIndex);
-    
+
             if (progress < 1) {
                 requestAnimationFrame(animateSpin);
             } else {
@@ -79,13 +133,13 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
                 const finalCategory = categories[finalIndex];
                 setFinalSelectedCategory(finalCategory);
                 setIsSpinning(false);
-    
+
                 setTimeout(() => {
                     onCategorySelected(finalCategory);
                 }, 2000);
             }
         };
-    
+
         animateSpin();
     };
 
@@ -118,14 +172,13 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
                         fill={category.color}
                         stroke="white"
                         strokeWidth="0.01"
-                        className={`transition-opacity duration-300 ${
-                            isHighlighted || isSelected ? 'opacity-100' : 'opacity-50'
-                        }`}
+                        className={`transition-opacity duration-300 ${isHighlighted || isSelected ? 'opacity-100' : 'opacity-50'
+                            }`}
                     />
                     <g transform={`translate(${textX}, ${textY})`}>
                         <g transform={`rotate(${midAngle})`}>
-                            <g transform="scale(0.004)">
-                                <Icon 
+                            <g transform="scale(0.006)">
+                                <Icon
                                     size={24}
                                     strokeWidth={2}
                                     className="text-gray-800"
