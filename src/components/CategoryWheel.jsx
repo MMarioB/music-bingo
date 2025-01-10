@@ -137,24 +137,26 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
             const startAngle = index * (360 / categories.length);
             const endAngle = startAngle + (360 / categories.length);
             const midAngle = startAngle + (180 / categories.length);
-
+    
             const startX = Math.cos((startAngle - 90) * Math.PI / 180);
             const startY = Math.sin((startAngle - 90) * Math.PI / 180);
             const endX = Math.cos((endAngle - 90) * Math.PI / 180);
             const endY = Math.sin((endAngle - 90) * Math.PI / 180);
-
-            const textX = Math.cos((midAngle - 90) * Math.PI / 180) * 0.7;
-            const textY = Math.sin((midAngle - 90) * Math.PI / 180) * 0.7;
-
+    
+            // Ajustamos la posición para que esté más cerca del borde exterior
+            const radius = 0.6; // Reducido de 0.7 para acercar al centro
+            const textX = Math.cos((midAngle - 90) * Math.PI / 180) * radius;
+            const textY = Math.sin((midAngle - 90) * Math.PI / 180) * radius;
+    
             const largeArcFlag = "0";
             const pathData = `M 0 0 L ${startX} ${startY} A 1 1 0 ${largeArcFlag} 1 ${endX} ${endY} Z`;
-
+    
             const isHighlighted = index === highlightedIndex;
             const isSelected = category === finalSelectedCategory;
-
-            // Calcular la rotación inversa para mantener el icono derecho
-            const iconRotation = -midAngle;
-
+    
+            // El ángulo de rotación necesita tener en cuenta la posición inicial
+            const iconRotation = midAngle;
+    
             return (
                 <g key={index}>
                     <path
@@ -166,28 +168,16 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
                             isHighlighted || isSelected ? 'opacity-100' : 'opacity-50'
                         }`}
                     />
-                    <foreignObject
-                        x={textX - 0.15}
-                        y={textY - 0.15}
-                        width="0.3"
-                        height="0.3"
+                    <g 
+                        transform={`translate(${textX} ${textY}) rotate(${iconRotation})`}
                     >
-                        <div 
-                            className={`w-full h-full flex items-center justify-center transition-transform duration-300 ${
-                                isHighlighted || isSelected ? 'scale-110' : 'scale-100'
-                            }`}
-                            style={{
-                                transform: `rotate(${iconRotation}deg)`,
-                                transformOrigin: 'center'
-                            }}
-                        >
-                            {category.renderIcon({ 
-                                size: 24, 
-                                strokeWidth: 1.5,
-                                className: "text-gray-800"
-                            })}
-                        </div>
-                    </foreignObject>
+                        {category.renderIcon({ 
+                            size: 24,
+                            strokeWidth: 1.5,
+                            className: "text-gray-800",
+                            style: { transform: `rotate(-${iconRotation}deg)` }
+                        })}
+                    </g>
                 </g>
             );
         });
