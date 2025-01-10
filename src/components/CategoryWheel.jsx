@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Button } from './ui/button';
 import PropTypes from 'prop-types';
 
@@ -28,118 +28,35 @@ const CATEGORIES_B = [
 
 const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () => { } }) => {
     const [isSpinning, setIsSpinning] = useState(false);
-    const [highlightedIndex, setHighlightedIndex] = useState(-1);
-    const [intervalId, setIntervalId] = useState(null);
+    const [selectedCategory, setSelectedCategory] = useState(null);
 
-    const baseCategories = difficulty === 'principiante' ? CATEGORIES_A : CATEGORIES_B;
-    const categories = [...baseCategories];
-
-    useEffect(() => {
-        return () => {
-            if (intervalId) {
-                clearInterval(intervalId);
-            }
-        };
-    }, [intervalId]);
+    const categories = difficulty === 'principiante' ? CATEGORIES_A : CATEGORIES_B;
 
     const spinWheel = () => {
         if (isSpinning) return;
 
         setIsSpinning(true);
-        let currentIndex = 0;
-        let speed = 100;
-        let cycles = 0;
-        const maxCycles = 20;
+        
+        // Animación de giro
+        const spinDuration = 3000; // 3 segundos de giro
+        const spinElement = document.querySelector('.wheel-svg');
+        spinElement.style.transition = `transform ${spinDuration}ms cubic-bezier(0.25, 0.1, 0.25, 1)`;
+        
+        // Ángulo aleatorio entre 0 y 360 grados
+        const randomRotation = Math.floor(Math.random() * 360);
+        spinElement.style.transform = `rotate(${randomRotation}deg)`;
 
-        // Generar un índice aleatorio que garantice que no siempre sea el mismo
-        const finalCategoryIndex = Math.floor(Math.random() * baseCategories.length);
+        // Seleccionar categoría basada en rotación
+        const segmentAngle = 360 / categories.length;
+        const normalizedRotation = (360 - randomRotation) % 360;
+        const categoryIndex = Math.floor(normalizedRotation / segmentAngle);
+        const finalCategory = categories[categoryIndex];
 
-        const tick = () => {
-            setHighlightedIndex(currentIndex);
-            currentIndex = (currentIndex + 1) % categories.length;
-            cycles++;
-
-            if (cycles > maxCycles) {
-                speed *= 1.2;
-                if (speed > 500) {
-                    clearInterval(intervalId);
-                    setIntervalId(null);
-                    setIsSpinning(false);
-
-                    // Usar el índice aleatorio generado previamente
-                    console.log({
-                        finalCategoryIndex,
-                        categoryName: baseCategories[finalCategoryIndex].name
-                    });
-                    
-                    onCategorySelected(baseCategories[finalCategoryIndex]);
-
-                    setTimeout(() => {
-                        setHighlightedIndex(-1);
-                    }, 2000);
-                    
-                    return;
-                }
-                clearInterval(intervalId);
-                setIntervalId(setInterval(tick, Math.floor(speed)));
-            }
-        };
-
-        const interval = setInterval(tick, speed);
-        setIntervalId(interval);
-    };
-
-    const generateWheelSegments = () => {
-        return categories.map((category, index) => {
-            const startAngle = index * 36;
-            const endAngle = startAngle + 36;
-            const midAngle = startAngle + 18;
-
-            const startX = Math.cos((startAngle - 90) * Math.PI / 180);
-            const startY = Math.sin((startAngle - 90) * Math.PI / 180);
-            const endX = Math.cos((endAngle - 90) * Math.PI / 180);
-            const endY = Math.sin((endAngle - 90) * Math.PI / 180);
-
-            const textX = Math.cos((midAngle - 90) * Math.PI / 180) * 0.7;
-            const textY = Math.sin((midAngle - 90) * Math.PI / 180) * 0.7;
-
-            const largeArcFlag = "0";
-
-            const pathData = `M 0 0 
-                            L ${startX} ${startY} 
-                            A 1 1 0 ${largeArcFlag} 1 ${endX} ${endY} 
-                            Z`;
-
-            const isHighlighted = index === highlightedIndex;
-
-            return (
-                <g key={index}>
-                    <path
-                        d={pathData}
-                        fill={category.color}
-                        stroke="white"
-                        strokeWidth="0.01"
-                        className={`transition-opacity duration-100 ${
-                            isHighlighted ? 'opacity-100' : 'opacity-50'
-                        }`}
-                    />
-                    <text
-                        x={textX}
-                        y={textY}
-                        textAnchor="middle"
-                        dominantBaseline="middle"
-                        fill="black"
-                        fontSize="0.15"
-                        transform={`rotate(${midAngle}, ${textX}, ${textY})`}
-                        className={`transition-transform duration-100 ${
-                            isHighlighted ? 'scale-110' : 'scale-100'
-                        }`}
-                    >
-                        {category.icon}
-                    </text>
-                </g>
-            );
-        });
+        setTimeout(() => {
+            setSelectedCategory(finalCategory);
+            setIsSpinning(false);
+            onCategorySelected(finalCategory);
+        }, spinDuration);
     };
 
     return (
@@ -152,23 +69,72 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
 
                 {/* SVG Ruleta */}
                 <svg
-                    viewBox="-1.1 -1.1 2.2 2.2"
-                    className="w-full h-full"
-                    style={{ transform: 'rotate(-90deg)' }}
+                    className="wheel-svg w-full h-full"
+                    viewBox="0 0 200 200"
+                    style={{ transition: 'transform 0.3s ease' }}
                 >
-                    {generateWheelSegments()}
+                    {categories.map((category, index) => {
+                        const startAngle = (index * 360) / categories.length;
+                        const endAngle = ((index + 1) * 360) / categories.length;
+                        
+                        const x1 = 100 + 90 * Math.cos(startAngle * Math.PI / 180);
+                        const y1 = 100 + 90 * Math.sin(startAngle * Math.PI / 180);
+                        const x2 = 100 + 90 * Math.cos(endAngle * Math.PI / 180);
+                        const y2 = 100 + 90 * Math.sin(endAngle * Math.PI / 180);
+
+                        return (
+                            <path
+                                key={index}
+                                d={`M 100 100 L ${x1} ${y1} A 90 90 0 0 1 ${x2} ${y2} Z`}
+                                fill={category.color}
+                                stroke="white"
+                                strokeWidth="2"
+                            />
+                        );
+                    })}
+                    
+                    {/* Iconos de categorías */}
+                    {categories.map((category, index) => {
+                        const angle = (index * 360) / categories.length + 360 / (categories.length * 2);
+                        const x = 100 + 70 * Math.cos(angle * Math.PI / 180);
+                        const y = 100 + 70 * Math.sin(angle * Math.PI / 180);
+
+                        return (
+                            <text
+                                key={index}
+                                x={x}
+                                y={y}
+                                textAnchor="middle"
+                                dominantBaseline="middle"
+                                fontSize="20"
+                            >
+                                {category.icon}
+                            </text>
+                        );
+                    })}
+                    
                     {/* Centro de la ruleta */}
-                    <circle r="0.15" fill="white" />
+                    <circle cx="100" cy="100" r="15" fill="white" />
                 </svg>
             </div>
 
-            <Button
-                onClick={spinWheel}
-                disabled={isSpinning}
-                className="mt-8 px-8 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-full"
-            >
-                {isSpinning ? "Girando..." : "Girar Ruleta"}
-            </Button>
+            <div className="mt-4">
+                <Button
+                    onClick={spinWheel}
+                    disabled={isSpinning}
+                    className="mt-4 px-8 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-full"
+                >
+                    {isSpinning ? "Girando..." : "Girar Ruleta"}
+                </Button>
+            </div>
+
+            {selectedCategory && (
+                <div className="mt-4 text-center">
+                    <p className="text-xl font-bold">
+                        Categoría seleccionada: {selectedCategory.name}
+                    </p>
+                </div>
+            )}
         </div>
     );
 };
