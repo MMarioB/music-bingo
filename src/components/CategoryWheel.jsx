@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Button } from './ui/button';
+import { Switch } from './ui/switch';
 import PropTypes from 'prop-types';
 
 const WHEEL_COLORS = {
@@ -26,10 +27,11 @@ const CATEGORIES_B = [
     { name: '3 años arriba o abajo', color: WHEEL_COLORS.blue, icon: '3' }
 ];
 
-const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () => { } }) => {
+const CategoryWheel = ({ onCategorySelected = () => { } }) => {
     const [isSpinning, setIsSpinning] = useState(false);
     const [highlightedIndex, setHighlightedIndex] = useState(-1);
     const [finalSelectedCategory, setFinalSelectedCategory] = useState(null);
+    const [difficulty, setDifficulty] = useState('principiante');
 
     const categories = difficulty === 'principiante' ? CATEGORIES_A : CATEGORIES_B;
 
@@ -45,7 +47,7 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
             const currentTime = Date.now();
             const elapsedTime = currentTime - startTime;
 
-            if (elapsedTime >= 3500) {
+            if (elapsedTime >= 3000) {
                 // Detener la animación y seleccionar la categoría
                 const randomFinalIndex = Math.floor(Math.random() * categories.length);
                 const finalCategory = categories[randomFinalIndex];
@@ -55,7 +57,7 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
                 return;
             }
 
-            const highlightedIndex = Math.floor(((currentIndex) / 10) * categories.length);
+            const highlightedIndex = Math.floor(((currentIndex) / 5) * categories.length);
             setHighlightedIndex(highlightedIndex);
 
             requestAnimationFrame(() => {
@@ -124,11 +126,6 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
     return (
         <div className="flex flex-col items-center justify-center min-h-screen p-4">
             <div className="relative w-full max-w-xl aspect-square">
-                {/* Marcador */}
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-2 z-20">
-                    <div className="w-0 h-0 border-l-4 border-r-4 border-t-8 border-transparent border-t-black"></div>
-                </div>
-
                 {/* SVG Ruleta */}
                 <svg
                     viewBox="-1.1 -1.1 2.2 2.2"
@@ -138,6 +135,17 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
                     {/* Centro de la ruleta */}
                     <circle cx="0" cy="0" r="0.15" fill="white" />
                 </svg>
+            </div>
+
+            <div className="flex items-center justify-center mt-4">
+                <Switch
+                    checked={difficulty === 'experto'}
+                    onChange={() => setDifficulty(difficulty === 'principiante' ? 'experto' : 'principiante')}
+                    className="mr-2"
+                />
+                <span className="text-lg font-medium">
+                    {difficulty === 'principiante' ? 'Principiante' : 'Experto'}
+                </span>
             </div>
 
             <Button
@@ -160,7 +168,6 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
 };
 
 CategoryWheel.propTypes = {
-    difficulty: PropTypes.oneOf(['principiante', 'experto']),
     onCategorySelected: PropTypes.func
 };
 
