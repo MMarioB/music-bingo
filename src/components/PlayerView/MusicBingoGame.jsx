@@ -42,20 +42,39 @@ const MusicBingoGame = () => {
 
   const generateBoard = useCallback(() => {
     const BOARD_SIZE = 5;
+    const MAX_PER_CATEGORY = 5;
     const currentCategories = isExpertMode ? CATEGORIES_B : CATEGORIES_A;
-
+  
     let board;
     let attempts = 0;
     const MAX_ATTEMPTS = 1000;
-
+  
     while (attempts < MAX_ATTEMPTS) {
       attempts++;
+  
+      // Contador para rastrear cuántas veces se ha usado cada categoría
+      const categoryCounts = currentCategories.reduce((acc, category) => {
+        acc[category.name] = 0;
+        return acc;
+      }, {});
+  
       let validBoard = true;
-      board = Array(BOARD_SIZE * BOARD_SIZE).fill(null).map(() => ({
-        ...currentCategories[Math.floor(Math.random() * currentCategories.length)],
-        marked: false
-      }));
-
+      board = Array(BOARD_SIZE * BOARD_SIZE).fill(null).map(() => {
+        // Seleccionar una categoría al azar, verificando el límite
+        let selectedCategory;
+        do {
+          selectedCategory = currentCategories[Math.floor(Math.random() * currentCategories.length)];
+        } while (categoryCounts[selectedCategory.name] >= MAX_PER_CATEGORY);
+  
+        // Incrementar el conteo de la categoría seleccionada
+        categoryCounts[selectedCategory.name]++;
+  
+        return {
+          ...selectedCategory,
+          marked: false
+        };
+      });
+  
       // Verificar filas
       for (let i = 0; i < BOARD_SIZE; i++) {
         const row = board.slice(i * BOARD_SIZE, (i + 1) * BOARD_SIZE);
@@ -64,7 +83,7 @@ const MusicBingoGame = () => {
           break;
         }
       }
-
+  
       // Verificar columnas
       if (validBoard) {
         for (let i = 0; i < BOARD_SIZE; i++) {
@@ -75,28 +94,29 @@ const MusicBingoGame = () => {
           }
         }
       }
-
+  
       // Verificar diagonales
       if (validBoard) {
         const diagonal1 = Array(BOARD_SIZE).fill(0).map((_, i) => board[i * BOARD_SIZE + i]);
         const diagonal2 = Array(BOARD_SIZE).fill(0).map((_, i) => board[i * BOARD_SIZE + (BOARD_SIZE - 1 - i)]);
-
+  
         if (!validateLine(diagonal1) || !validateLine(diagonal2)) {
           validBoard = false;
         }
       }
-
+  
       if (validBoard) {
         return board;
       }
     }
-
+  
     // Fallback: devolver un tablero generado sin validación estricta si se agotan los intentos
     return Array(BOARD_SIZE * BOARD_SIZE).fill(null).map(() => ({
       ...currentCategories[Math.floor(Math.random() * currentCategories.length)],
       marked: false
     }));
   }, [isExpertMode, validateLine]);
+  
 
   const [board, setBoard] = useState(() => generateBoard());
 
