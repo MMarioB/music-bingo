@@ -34,6 +34,7 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
     const [finalSelectedCategory, setFinalSelectedCategory] = useState(null);
 
     const categories = difficulty === 'principiante' ? CATEGORIES_A : CATEGORIES_B;
+    const randomSpins = Math.floor(Math.random() * (20 - 10 + 1)) + 10;
 
     const spinWheel = () => {
         if (isSpinning) return;
@@ -43,7 +44,7 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
     
         const duration = 3500; // Duración total de la animación
         const startTime = Date.now();
-        const totalSpins = 10; // Número de vueltas completas antes de detenerse
+        const totalSpins = randomSpins; // Número de vueltas completas antes de detenerse
     
         // Índice inicial aleatorio
         const initialIndex = Math.floor(Math.random() * categories.length);
