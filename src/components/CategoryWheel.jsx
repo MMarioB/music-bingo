@@ -32,7 +32,7 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
     const [intervalId, setIntervalId] = useState(null);
 
     const baseCategories = difficulty === 'principiante' ? CATEGORIES_A : CATEGORIES_B;
-    const categories = [...baseCategories, ...baseCategories];
+    const categories = [...baseCategories];
 
     useEffect(() => {
         return () => {
