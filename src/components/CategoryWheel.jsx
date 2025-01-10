@@ -67,9 +67,8 @@ const Number4Icon = (props) => (
         strokeLinejoin="round"
         {...props}
     >
-        <line x1="14" y1="4" x2="14" y2="20" />
-        <line x1="6" y1="12" x2="16" y2="12" />
-        <line x1="6" y1="8" x2="14" y2="8" />
+        <path d="M8 4v8h8" />
+        <line x1="16" y1="4" x2="16" y2="20" />
     </svg>
 );
 

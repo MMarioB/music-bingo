@@ -54,22 +54,21 @@ const Number3Icon = (props) => (
 );
 
 const Number4Icon = (props) => (
-    <svg
-        xmlns="http://www.w3.org/2000/svg"
-        width="24"
-        height="24"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        {...props}
-    >
-        <line x1="14" y1="4" x2="14" y2="20" />
-        <line x1="6" y1="12" x2="16" y2="12" />
-        <line x1="6" y1="8" x2="14" y2="8" />
-    </svg>
+  <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      {...props}
+  >
+      <path d="M8 4v8h8" />
+      <line x1="16" y1="4" x2="16" y2="20" />
+  </svg>
 );
 
 const CATEGORIES_A = [
