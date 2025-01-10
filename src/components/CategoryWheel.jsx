@@ -40,15 +40,17 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
 
         setIsSpinning(true);
         
-        // Primero decidimos qué categoría queremos seleccionar
+        // Seleccionamos la categoría objetivo
         const targetIndex = Math.floor(Math.random() * categories.length);
         
-        // Calculamos cuántos grados necesitamos girar para llegar a esa categoría
-        // Añadimos spins completos para el efecto visual
+        // Calculamos el ángulo necesario considerando la rotación inicial de -90 grados
         const spins = 5 + Math.random() * 3; // Entre 5 y 8 vueltas completas
         const baseRotation = spins * 360;
-        // El ángulo para la categoría específica
-        const categoryAngle = targetIndex * segmentAngle;
+        
+        // Ajustamos el ángulo para que la categoría quede alineada con el marcador
+        // Necesitamos restar 90 grados por la rotación inicial del SVG
+        // y invertir la dirección para que gire en el sentido correcto
+        const categoryAngle = (360 - (targetIndex * segmentAngle)) - 90;
         
         const totalRotation = baseRotation + categoryAngle;
         
@@ -60,6 +62,7 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
             // Para debug
             console.log({
                 totalRotation,
+                categoryAngle,
                 segmentAngle,
                 targetIndex,
                 categoryName: selectedCategory.name
@@ -72,7 +75,8 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
 
     const generateWheelSegments = () => {
         return categories.map((category, index) => {
-            const startAngle = index * segmentAngle;
+            // Ajustamos los ángulos considerando la rotación inicial
+            const startAngle = (index * segmentAngle);
             const endAngle = startAngle + segmentAngle;
             const midAngle = startAngle + (segmentAngle / 2);
 
