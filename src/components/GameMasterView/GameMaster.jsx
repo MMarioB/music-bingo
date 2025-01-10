@@ -223,9 +223,18 @@ const GameMaster = () => {
                 className="space-y-4"
               >
                 {selectedCategory && (
-                  <div className={`${selectedCategory.color} p-3 rounded-lg flex items-center justify-center gap-2`}>
-                    <span className="text-2xl">{selectedCategory.icon}</span>
-                    <span className="text-sm font-medium">{selectedCategory.name}</span>
+                  <div className={`${selectedCategory.color} p-4 rounded-lg flex items-center justify-center gap-3`}>
+                    {selectedCategory.icon && (
+                      <div className="flex items-center gap-2">
+                        {(() => {
+                          const Icon = selectedCategory.icon;
+                          return <Icon {...selectedCategory.iconProps} />;
+                        })()}
+                        <span className="text-base font-medium text-gray-800">
+                          {selectedCategory.name}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 )}
 
