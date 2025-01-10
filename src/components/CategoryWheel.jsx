@@ -20,36 +20,34 @@ const WHEEL_COLORS = {
     green: '#BBF7D0'
 };
 
+// Definimos los iconos como funciones que retornan el componente
+const renderIcon = (Icon, props) => <Icon {...props} />;
+
 const CATEGORIES_A = [
     { 
         name: 'Grupo o solista', 
         color: WHEEL_COLORS.green, 
-        icon: Users,
-        iconProps: { size: 24, strokeWidth: 1.5 }
+        renderIcon: (props) => renderIcon(Users, props)
     },
     { 
         name: '¿Anterior al 2000?', 
         color: WHEEL_COLORS.pink, 
-        icon: Clock,
-        iconProps: { size: 24, strokeWidth: 1.5 }
+        renderIcon: (props) => renderIcon(Clock, props)
     },
     { 
         name: '4 años arriba o abajo', 
         color: WHEEL_COLORS.yellow, 
-        icon: Calculator,
-        iconProps: { size: 24, strokeWidth: 1.5 }
+        renderIcon: (props) => renderIcon(Calculator, props)
     },
     { 
         name: 'Década', 
         color: WHEEL_COLORS.purple, 
-        icon: Calendar,
-        iconProps: { size: 24, strokeWidth: 1.5 }
+        renderIcon: (props) => renderIcon(Calendar, props)
     },
     { 
         name: '2 años arriba o abajo', 
         color: WHEEL_COLORS.blue, 
-        icon: TimerOff,
-        iconProps: { size: 24, strokeWidth: 1.5 }
+        renderIcon: (props) => renderIcon(TimerOff, props)
     }
 ];
 
@@ -57,32 +55,27 @@ const CATEGORIES_B = [
     { 
         name: 'Título de la canción', 
         color: WHEEL_COLORS.green, 
-        icon: Music2,
-        iconProps: { size: 24, strokeWidth: 1.5 }
+        renderIcon: (props) => renderIcon(Music2, props)
     },
     { 
         name: 'Año exacto', 
         color: WHEEL_COLORS.pink, 
-        icon: CalendarDays,
-        iconProps: { size: 24, strokeWidth: 1.5 }
+        renderIcon: (props) => renderIcon(CalendarDays, props)
     },
     { 
         name: 'Nombre del grupo o solista', 
         color: WHEEL_COLORS.yellow, 
-        icon: Mic2,
-        iconProps: { size: 24, strokeWidth: 1.5 }
+        renderIcon: (props) => renderIcon(Mic2, props)
     },
     { 
         name: 'Década', 
         color: WHEEL_COLORS.purple, 
-        icon: Calendar,
-        iconProps: { size: 24, strokeWidth: 1.5 }
+        renderIcon: (props) => renderIcon(Calendar, props)
     },
     { 
         name: '3 años arriba o abajo', 
         color: WHEEL_COLORS.blue, 
-        icon: Calculator,
-        iconProps: { size: 24, strokeWidth: 1.5 }
+        renderIcon: (props) => renderIcon(Calculator, props)
     }
 ];
 
@@ -158,7 +151,6 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
 
             const isHighlighted = index === highlightedIndex;
             const isSelected = category === finalSelectedCategory;
-            const Icon = category.icon;
 
             // Calcular la rotación inversa para mantener el icono derecho
             const iconRotation = -midAngle;
@@ -189,10 +181,11 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
                                 transformOrigin: 'center'
                             }}
                         >
-                            <Icon 
-                                {...category.iconProps}
-                                className="text-gray-800"
-                            />
+                            {category.renderIcon({ 
+                                size: 24, 
+                                strokeWidth: 1.5,
+                                className: "text-gray-800"
+                            })}
                         </div>
                     </foreignObject>
                 </g>
