@@ -4,37 +4,28 @@ import { Button } from './ui/button';
 import PropTypes from 'prop-types';
 
 const CATEGORIES_A = [
-    { name: 'Grupo o solista', color: 'bg-green-200', icon: '🎸' },
-    { name: '¿Anterior al 2000?', color: 'bg-pink-200', icon: '20' },
-    { name: '4 años arriba o abajo', color: 'bg-yellow-200', icon: '4' },
-    { name: 'Década', color: 'bg-purple-200', icon: '0s' },
-    { name: '2 años arriba o abajo', color: 'bg-blue-200', icon: '2' }
+    { name: 'Grupo o solista', color: '#4CAF50', icon: '🎸' },
+    { name: '¿Anterior al 2000?', color: '#E91E63', icon: '20' },
+    { name: '4 años arriba o abajo', color: '#FFC107', icon: '4' },
+    { name: 'Década', color: '#9C27B0', icon: '0s' },
+    { name: '2 años arriba o abajo', color: '#2196F3', icon: '2' }
 ];
 
 const CATEGORIES_B = [
-    { name: 'Título de la canción', color: 'bg-green-200', icon: '🎵' },
-    { name: 'Año exacto', color: 'bg-pink-200', icon: '📅' },
-    { name: 'Nombre del grupo o solista', color: 'bg-yellow-200', icon: '🎤' },
-    { name: 'Década', color: 'bg-purple-200', icon: '0s' },
-    { name: '3 años arriba o abajo', color: 'bg-blue-200', icon: '3' }
+    { name: 'Título de la canción', color: '#4CAF50', icon: '🎵' },
+    { name: 'Año exacto', color: '#E91E63', icon: '📅' },
+    { name: 'Nombre del grupo o solista', color: '#FFC107', icon: '🎤' },
+    { name: 'Década', color: '#9C27B0', icon: '0s' },
+    { name: '3 años arriba o abajo', color: '#2196F3', icon: '3' }
 ];
-
-const getColorFromClass = (colorClass) => {
-    const colorMap = {
-        'bg-green-200': '#BBF7D0',
-        'bg-pink-200': '#FBCFE8',
-        'bg-yellow-200': '#FEF08A',
-        'bg-purple-200': '#E9D5FF',
-        'bg-blue-200': '#BFDBFE'
-    };
-    return colorMap[colorClass] || colorMap['bg-purple-200'];
-};
 
 const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () => { } }) => {
     const [isSpinning, setIsSpinning] = useState(false);
     const [rotation, setRotation] = useState(0);
 
-    const categories = difficulty === 'principiante' ? CATEGORIES_A : CATEGORIES_B;
+    const baseCategories = difficulty === 'principiante' ? CATEGORIES_A : CATEGORIES_B;
+    // Duplicar las categorías para tener 10 secciones
+    const categories = [...baseCategories, ...baseCategories];
     const segmentAngle = 360 / categories.length;
 
     const spinWheel = () => {
@@ -64,11 +55,11 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
             <div className="relative w-3/4 max-w-2xl h-3/4 max-h-2xl">
                 {/* Marcador */}
                 <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-4 z-20">
-                    <div className="w-0 h-0 border-l-8 border-r-8 border-t-8 border-transparent border-t-purple-600"></div>
+                    <div className="w-0 h-0 border-l-8 border-r-8 border-t-8 border-transparent border-t-gray-800"></div>
                 </div>
 
                 {/* Contenedor de la ruleta */}
-                <div className="absolute inset-0 rounded-full overflow-hidden border-4 border-purple-600 shadow-xl">
+                <div className="absolute inset-0 rounded-full overflow-hidden shadow-xl">
                     {/* Ruleta giratoria */}
                     <motion.div
                         className="w-full h-full relative"
@@ -85,19 +76,28 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
                     >
                         {categories.map((category, index) => {
                             const angle = segmentAngle * index;
-                            const color = getColorFromClass(category.color);
-
                             return (
                                 <div
                                     key={index}
-                                    className="absolute w-1/2 h-1/2 origin-bottom-right"
+                                    className="absolute w-1/2 h-1/2 origin-bottom-right flex items-center justify-center"
                                     style={{
                                         top: '0',
                                         right: '50%',
                                         transform: `rotate(${angle}deg) skewY(-${90 - segmentAngle}deg)`,
-                                        background: color,
+                                        background: category.color,
                                     }}
                                 >
+                                    <span 
+                                        className="absolute"
+                                        style={{
+                                            transform: `rotate(${-(angle + segmentAngle/2)}deg) translateY(-120%)`,
+                                            color: 'white',
+                                            textShadow: '1px 1px 2px rgba(0,0,0,0.5)',
+                                            fontSize: '1.2rem'
+                                        }}
+                                    >
+                                        {category.icon}
+                                    </span>
                                 </div>
                             );
                         })}
@@ -106,7 +106,9 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
 
                 {/* Centro de la ruleta */}
                 <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="w-4 h-4 md:w-6 md:h-6 bg-purple-600 rounded-full z-10"></div>
+                    <div className="w-16 h-16 bg-white rounded-full z-10 shadow-lg flex items-center justify-center">
+                        <div className="w-12 h-12 bg-gray-200 rounded-full"></div>
+                    </div>
                 </div>
             </div>
 
