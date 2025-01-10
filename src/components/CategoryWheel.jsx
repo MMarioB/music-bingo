@@ -111,8 +111,6 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
             const isSelected = category === finalSelectedCategory;
             const { Icon } = category;
 
-            const iconRotation = midAngle;
-
             return (
                 <g key={index}>
                     <path
@@ -124,27 +122,18 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
                             isHighlighted || isSelected ? 'opacity-100' : 'opacity-50'
                         }`}
                     />
-                    <foreignObject
-                        x={textX - 0.1}
-                        y={textY - 0.1}
-                        width="0.2"
-                        height="0.2"
-                        style={{
-                            transform: `rotate(${iconRotation}deg)`,
-                            transformOrigin: `${textX}px ${textY}px`
-                        }}
-                    >
-                        <div className="w-full h-full flex items-center justify-center">
-                            <Icon
-                                size={20}
-                                strokeWidth={1.5}
-                                className="text-gray-800"
-                                style={{
-                                    transform: `rotate(-${iconRotation}deg)`
-                                }}
-                            />
-                        </div>
-                    </foreignObject>
+                    <g transform={`translate(${textX}, ${textY})`}>
+                        <g transform={`rotate(${midAngle})`}>
+                            <g transform="scale(0.004)">
+                                <Icon 
+                                    size={24}
+                                    strokeWidth={2}
+                                    className="text-gray-800"
+                                    absoluteStrokeWidth
+                                />
+                            </g>
+                        </g>
+                    </g>
                 </g>
             );
         });
