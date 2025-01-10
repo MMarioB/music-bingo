@@ -1,5 +1,4 @@
-import { useState } from 'react';
-import { motion } from 'framer-motion';
+import { useState, useEffect } from 'react';
 import { Button } from './ui/button';
 import PropTypes from 'prop-types';
 
@@ -29,40 +28,66 @@ const CATEGORIES_B = [
 
 const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () => { } }) => {
     const [isSpinning, setIsSpinning] = useState(false);
-    const [rotation, setRotation] = useState(0);
+    const [highlightedIndex, setHighlightedIndex] = useState(-1);
+    const [intervalId, setIntervalId] = useState(null);
+
     const baseCategories = difficulty === 'principiante' ? CATEGORIES_A : CATEGORIES_B;
     const categories = [...baseCategories, ...baseCategories];
 
+    useEffect(() => {
+        return () => {
+            if (intervalId) {
+                clearInterval(intervalId);
+            }
+        };
+    }, [intervalId]);
+
     const spinWheel = () => {
         if (isSpinning) return;
-    
+
         setIsSpinning(true);
-        
-        // Hacemos girar la ruleta aleatoriamente
-        const spins = 5 + Math.random() * 3;
-        const totalRotation = spins * 360 + Math.random() * 360;
-        
-        setRotation(rotation + totalRotation);
-    
-        setTimeout(() => {
-            const finalRotation = ((rotation + totalRotation + 90) % 360);
-            const segmentIndex = Math.floor(finalRotation / 36);
-            
-            const invertedIndex = (10 - segmentIndex) % 10;
-            const baseIndex = invertedIndex >= 5 ? invertedIndex - 5 : invertedIndex;
-            
-            // Debug
-            console.log({
-                finalRotation,
-                segmentIndex,
-                invertedIndex,
-                baseIndex,
-                categoryName: baseCategories[baseIndex].name
-            });
-            
-            setIsSpinning(false);
-            onCategorySelected(baseCategories[baseIndex]);
-        }, 4000);
+        let currentIndex = 0;
+        let speed = 100;
+        let cycles = 0;
+        const maxCycles = 20;
+
+        const tick = () => {
+            setHighlightedIndex(currentIndex);
+            currentIndex = (currentIndex + 1) % categories.length;
+            cycles++;
+
+            if (cycles > maxCycles) {
+                speed *= 1.2;
+                if (speed > 500) {
+                    clearInterval(intervalId);
+                    setIntervalId(null);
+                    setIsSpinning(false);
+
+                    const finalIndex = currentIndex - 1;
+                    const baseIndex = finalIndex >= 5 ? finalIndex - 5 : finalIndex;
+                    
+                    // Debug para verificar la selección
+                    console.log({
+                        finalIndex,
+                        baseIndex,
+                        categoryName: baseCategories[baseIndex].name
+                    });
+                    
+                    onCategorySelected(baseCategories[baseIndex]);
+
+                    setTimeout(() => {
+                        setHighlightedIndex(-1);
+                    }, 2000);
+                    
+                    return;
+                }
+                clearInterval(intervalId);
+                setIntervalId(setInterval(tick, Math.floor(speed)));
+            }
+        };
+
+        const interval = setInterval(tick, speed);
+        setIntervalId(interval);
     };
 
     const generateWheelSegments = () => {
@@ -86,6 +111,8 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
                             A 1 1 0 ${largeArcFlag} 1 ${endX} ${endY} 
                             Z`;
 
+            const isHighlighted = index === highlightedIndex;
+
             return (
                 <g key={index}>
                     <path
@@ -93,6 +120,9 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
                         fill={category.color}
                         stroke="white"
                         strokeWidth="0.01"
+                        className={`transition-opacity duration-100 ${
+                            isHighlighted ? 'opacity-100' : 'opacity-50'
+                        }`}
                     />
                     <text
                         x={textX}
@@ -102,6 +132,9 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
                         fill="black"
                         fontSize="0.15"
                         transform={`rotate(${midAngle}, ${textX}, ${textY})`}
+                        className={`transition-transform duration-100 ${
+                            isHighlighted ? 'scale-110' : 'scale-100'
+                        }`}
                     >
                         {category.icon}
                     </text>
@@ -124,16 +157,7 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
                     className="w-full h-full"
                     style={{ transform: 'rotate(-90deg)' }}
                 >
-                    <motion.g
-                        animate={{ rotate: rotation }}
-                        transition={{
-                            duration: 4,
-                            ease: [0.2, 0.85, 0.3, 1],
-                        }}
-                        style={{ transformOrigin: 'center' }}
-                    >
-                        {generateWheelSegments()}
-                    </motion.g>
+                    {generateWheelSegments()}
                     {/* Centro de la ruleta */}
                     <circle r="0.15" fill="white" />
                 </svg>
