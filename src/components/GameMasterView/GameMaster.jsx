@@ -134,19 +134,18 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
             <Button
               onClick={handleMarkingControl}
               disabled={markingEnabledThisRound && !isMarkingEnabled}
-              className={`w-full ${
-                isMarkingEnabled
+              className={`w-full ${isMarkingEnabled
                   ? 'bg-yellow-500 hover:bg-yellow-600'
                   : markingEnabledThisRound && !isMarkingEnabled
-                  ? 'bg-gray-400 cursor-not-allowed'
-                  : 'bg-green-500 hover:bg-green-600'
-              }`}
+                    ? 'bg-gray-400 cursor-not-allowed'
+                    : 'bg-green-500 hover:bg-green-600'
+                }`}
             >
-              {isMarkingEnabled 
-                ? 'Deshabilitar Marcado' 
-                : markingEnabledThisRound 
-                ? 'Marcado Ya Utilizado' 
-                : 'Habilitar Marcado'
+              {isMarkingEnabled
+                ? 'Deshabilitar Marcado'
+                : markingEnabledThisRound
+                  ? 'Marcado Ya Utilizado'
+                  : 'Habilitar Marcado'
               }
             </Button>
 
@@ -228,31 +227,56 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
                 exit={{ opacity: 0, scale: 0.8 }}
                 className="py-2"
               >
-                <CategoryWheel
-                  difficulty={difficulty}
-                  onCategorySelected={handleCategorySelected}
-                />
+                <div className="flex flex-col items-center">
+                  <div className="flex items-center justify-between w-full mb-2">
+                    <div className="flex-1">
+                      <Select
+                        value={difficulty}
+                        onValueChange={handleDifficultyChange}
+                      >
+                        <SelectTrigger className="w-40 bg-white/90">
+                          <SelectValue placeholder="Nivel de juego" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="principiante">🟢 Principiante</SelectItem>
+                          <SelectItem value="experto">🔥 Experto</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
 
-                {connectedPlayers.length > 0 && (
-                  <div className="mt-6">
-                    <h3 className="text-lg font-semibold mb-3">Jugadores Conectados:</h3>
-                    <div className="bg-white/50 rounded-lg divide-y divide-gray-200">
-                      {connectedPlayers.map((player) => (
-                        <div
-                          key={player.id}
-                          className="flex items-center justify-between p-3"
-                        >
-                          <span className="font-medium">{player.name}</span>
-                          {player.isHost && (
-                            <span className="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded-full">
-                              Game Master
-                            </span>
-                          )}
-                        </div>
-                      ))}
+                    <div className="flex items-center gap-2 text-gray-600 bg-white/50 px-3 py-1 rounded-full">
+                      <Users className="w-4 h-4" />
+                      <span>{connectedPlayers.length} jugadores</span>
+                      <span className="text-sm ml-2">Sala: {roomCode}</span>
                     </div>
                   </div>
-                )}
+
+                  <CategoryWheel
+                    difficulty={difficulty}
+                    onCategorySelected={handleCategorySelected}
+                  />
+
+                  {connectedPlayers.length > 0 && (
+                    <div className="mt-4 w-full">
+                      <h3 className="text-lg font-semibold mb-2">Jugadores Conectados:</h3>
+                      <div className="bg-white/50 rounded-lg divide-y divide-gray-200">
+                        {connectedPlayers.map((player) => (
+                          <div
+                            key={player.id}
+                            className="flex items-center justify-between p-2"
+                          >
+                            <span className="font-medium">{player.name}</span>
+                            {player.isHost && (
+                              <span className="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded-full">
+                                Game Master
+                              </span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
               </motion.div>
             ) : (
               <motion.div
