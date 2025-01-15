@@ -14,8 +14,12 @@ import {
 import CategoryWheel from '../CategoryWheel';
 import PropTypes from 'prop-types';
 import { useGameMasterLogic } from './GameMasterLogic';
+import { useState, useEffect } from 'react';
 
 const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
+  // Nuevo estado para trackear si ya se habilitó el marcado en esta ronda
+  const [markingEnabledThisRound, setMarkingEnabledThisRound] = useState(false);
+
   const {
     loggedIn,
     login,
@@ -34,6 +38,31 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
     handleMarkingToggle,
     startNewRound
   } = useGameMasterLogic({ roomCode, initialDifficulty });
+
+  // Función modificada para manejar el marcado
+  const handleMarkingControl = () => {
+    if (!isMarkingEnabled) {
+      if (markingEnabledThisRound) {
+        // Si ya se habilitó el marcado en esta ronda, no permitimos habilitarlo de nuevo
+        return;
+      }
+      setMarkingEnabledThisRound(true);
+    }
+    handleMarkingToggle();
+  };
+
+  // Función modificada para iniciar nueva ronda
+  const handleNewRound = () => {
+    setMarkingEnabledThisRound(false);
+    startNewRound();
+  };
+
+  // Reset cuando se genera una nueva tarjeta
+  useEffect(() => {
+    if (!currentCard) {
+      setMarkingEnabledThisRound(false);
+    }
+  }, [currentCard]);
 
   if (!loggedIn) {
     return (
@@ -103,17 +132,26 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
         ) : (
           <div className="space-y-2">
             <Button
-              onClick={handleMarkingToggle}
-              className={`w-full ${isMarkingEnabled
-                ? 'bg-yellow-500 hover:bg-yellow-600'
-                : 'bg-green-500 hover:bg-green-600'
-                }`}
+              onClick={handleMarkingControl}
+              disabled={markingEnabledThisRound && !isMarkingEnabled}
+              className={`w-full ${
+                isMarkingEnabled
+                  ? 'bg-yellow-500 hover:bg-yellow-600'
+                  : markingEnabledThisRound && !isMarkingEnabled
+                  ? 'bg-gray-400 cursor-not-allowed'
+                  : 'bg-green-500 hover:bg-green-600'
+              }`}
             >
-              {isMarkingEnabled ? 'Deshabilitar Marcado' : 'Habilitar Marcado'}
+              {isMarkingEnabled 
+                ? 'Deshabilitar Marcado' 
+                : markingEnabledThisRound 
+                ? 'Marcado Ya Utilizado' 
+                : 'Habilitar Marcado'
+              }
             </Button>
 
             <Button
-              onClick={startNewRound}
+              onClick={handleNewRound}
               variant="outline"
               className="w-full"
             >
@@ -171,7 +209,7 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
 
             {gameStep !== 'wheel' && (
               <Button
-                onClick={startNewRound}
+                onClick={handleNewRound}
                 variant="outline"
                 className="flex-shrink-0"
               >

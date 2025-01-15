@@ -34,7 +34,7 @@ class GameWebSocket {
         }
   
         console.log('Intentando conectar al servidor...');
-        this.socket = io('http://localhost:3001', {
+        this.socket = io(import.meta.env.VITE_WS_URL, {
           reconnection: true,
           reconnectionAttempts: 5,
           reconnectionDelay: 1000,
@@ -77,7 +77,7 @@ class GameWebSocket {
           });
   
           this.socket.once('connect_error', (error) => {
-            console.log(`Error de conexión en intento ${attemptCount + 1}:`, error);
+            console.error(`Error de conexión en intento ${attemptCount + 1}:`, error);
             clearTimeout(timeout);
             this.socket.disconnect();
             attemptCount++;
@@ -183,7 +183,7 @@ class GameWebSocket {
       this.socket.once('gameStarted', handleGameStarted);
       this.socket.once('error', handleError);
     });
-}
+  }
 
   async selectCategory(data) {
     await this.ensureConnection();

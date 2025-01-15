@@ -8,25 +8,55 @@ import {
   InfoIcon
 } from 'lucide-react';
 import PropTypes from 'prop-types';
-import { useMusicBingoLogic } from './MusicBingoGameLogic';
+import { useState, useEffect } from 'react';
+import { useMusicBingoLogic } from '../PlayerView/MusicBingoGameLogic';
 
 const MusicBingoGame = ({ playerName, roomCode, difficulty }) => {
+  // Estado para trackear la última casilla marcada
+  const [lastMarkedIndex, setLastMarkedIndex] = useState(null);
+  // Estado para trackear si ya hemos marcado en esta ronda
+  const [hasMarkedThisRound, setHasMarkedThisRound] = useState(false);
+
   const {
     board,
     connectedPlayers,
     currentCategory,
-    canMark,
+    canMark: originalCanMark,
     hasWinner,
     connectionError,
     handleCellClick
   } = useMusicBingoLogic({ playerName, roomCode, difficulty });
 
-  const handleMarkCell = (index) => {
-    if (!canMark || board[index].marked) return;
+  // Computamos si realmente se puede marcar
+  const canMark = originalCanMark && (!hasMarkedThisRound || lastMarkedIndex !== null);
 
-    // Llama a la lógica original
-    handleCellClick(index);
+  const handleMarkCell = (index) => {
+    if (!originalCanMark) return;
+    
+    if (lastMarkedIndex === index) {
+      // Si hacemos click en la misma casilla, la desmarcamos
+      handleCellClick(index, true); // Añadimos un parámetro para indicar que es un desmarcar
+      setLastMarkedIndex(null);
+      setHasMarkedThisRound(false);
+    } else if (lastMarkedIndex !== null) {
+      // Si ya hay una casilla marcada, primero desmarcamos la anterior
+      handleCellClick(lastMarkedIndex, true);
+      // Y luego marcamos la nueva
+      handleCellClick(index);
+      setLastMarkedIndex(index);
+    } else if (!hasMarkedThisRound) {
+      // Si no hay ninguna casilla marcada y no hemos marcado en esta ronda
+      handleCellClick(index);
+      setLastMarkedIndex(index);
+      setHasMarkedThisRound(true);
+    }
   };
+
+  // Reset cuando cambia la categoría o empieza una nueva ronda
+  useEffect(() => {
+    setLastMarkedIndex(null);
+    setHasMarkedThisRound(false);
+  }, [currentCategory]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-100 via-purple-100 to-pink-100 p-3 md:p-6 flex flex-col items-center justify-center">
@@ -89,13 +119,22 @@ const MusicBingoGame = ({ playerName, roomCode, difficulty }) => {
           {/* Estado de marcado */}
           {currentCategory && (
             <Alert className={canMark ? "bg-green-100" : "bg-blue-100"}>
-              {canMark ? (
-                <>
-                  <CheckCircleIcon className="h-5 w-5 text-green-600 mr-2" />
-                  <AlertDescription className="text-green-800">
-                    ¡Puedes marcar una casilla de &quot;{currentCategory.name}&quot; ahora!
-                  </AlertDescription>
-                </>
+              {originalCanMark ? (
+                lastMarkedIndex !== null ? (
+                  <>
+                    <InfoIcon className="h-5 w-5 text-blue-600 mr-2" />
+                    <AlertDescription className="text-blue-800">
+                      Puedes desmarcar la casilla seleccionada para elegir otra
+                    </AlertDescription>
+                  </>
+                ) : (
+                  <>
+                    <CheckCircleIcon className="h-5 w-5 text-green-600 mr-2" />
+                    <AlertDescription className="text-green-800">
+                      ¡Puedes marcar una casilla de &quot;{currentCategory.name}&quot; ahora!
+                    </AlertDescription>
+                  </>
+                )
               ) : (
                 <>
                   <InfoIcon className="h-5 w-5 text-blue-600 mr-2" />
@@ -112,9 +151,10 @@ const MusicBingoGame = ({ playerName, roomCode, difficulty }) => {
             <div className="grid grid-cols-5 gap-1 md:gap-3">
               {board.map((category, index) => {
                 const Icon = category.icon;
-                const isMarkable = canMark && 
+                const isSelected = index === lastMarkedIndex;
+                const isMarkable = originalCanMark && 
                                  category.name === currentCategory?.name &&
-                                 !category.marked;
+                                 (!hasMarkedThisRound || isSelected);
 
                 return (
                   <motion.button
@@ -135,6 +175,7 @@ const MusicBingoGame = ({ playerName, roomCode, difficulty }) => {
                       duration-200
                       ${isMarkable ? 'cursor-pointer hover:ring-2 hover:ring-purple-400' : 'cursor-default'}
                       ${category.marked ? 'scale-95 shadow-inner' : 'shadow hover:shadow-md'}
+                      ${isSelected ? 'ring-2 ring-purple-600' : ''}
                     `}
                     onClick={() => handleMarkCell(index)}
                     disabled={!isMarkable}
