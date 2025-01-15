@@ -15,7 +15,7 @@ const CategoryWheel = ({ difficulty, onCategorySelected }) => {
     if (isSpinning) return;
 
     setIsSpinning(true);
-    const spins = 8; // Número de vueltas completas
+    const spins = 5; // Número de vueltas completas
     const extraDegrees = Math.random() * 360; // Grados adicionales aleatorios
     const totalRotation = spins * 360 + extraDegrees;
     
@@ -31,8 +31,8 @@ const CategoryWheel = ({ difficulty, onCategorySelected }) => {
   };
 
   return (
-    <div className="flex flex-col items-center space-y-6">
-      <div className="relative w-64 h-64">
+    <div className="mt-2 flex flex-col items-center">
+      <div className="relative w-[280px] h-[280px]">
         <motion.div
           animate={{ rotate: rotation }}
           transition={{ duration: 3, ease: "easeOut" }}
@@ -41,49 +41,37 @@ const CategoryWheel = ({ difficulty, onCategorySelected }) => {
           {categories.map((category, index) => {
             const Icon = category.icon;
             const angle = (index * sliceAngle);
-            const sliceRotation = angle + sliceAngle / 2;
-            
+            const rotate = angle + sliceAngle / 2;
+
             return (
               <div
                 key={category.name}
-                className="absolute w-full h-full"
-                style={{
-                  transform: `rotate(${angle}deg)`,
-                  transformOrigin: '50% 50%',
-                }}
+                className="absolute w-full h-full origin-center"
+                style={{ transform: `rotate(${angle}deg)` }}
               >
-                {/* Slice background */}
-                <div
-                  className={`absolute w-1/2 h-full origin-right ${category.color}`}
-                  style={{
-                    clipPath: 'polygon(0 0, 100% 0, 100% 100%, 0 100%)',
-                  }}
+                <div 
+                  className={`absolute left-1/2 w-1/2 h-full ${category.color}`}
+                  style={{ transformOrigin: 'left' }}
                 />
-
-                {/* Icon container */}
                 <div
-                  className="absolute flex items-center justify-center"
+                  className="absolute"
                   style={{
-                    width: '32px',
-                    height: '32px',
                     left: '50%',
                     top: '50%',
-                    transform: `rotate(${sliceRotation}deg) translate(70px, -16px)`,
+                    transform: `rotate(${rotate}deg) translate(90px, -12px)`,
                   }}
                 >
                   <Icon
-                    size={24}
                     className="text-gray-700"
                     style={{
-                      filter: 'drop-shadow(0 0 1px rgba(0,0,0,0.5))',
-                      transform: `rotate(-${sliceRotation}deg)`,
+                      transform: `rotate(-${rotate}deg)`,
                     }}
+                    {...category.iconProps}
                   />
                 </div>
               </div>
             );
           })}
-          {/* Center circle */}
           <div className="absolute top-1/2 left-1/2 w-4 h-4 -mt-2 -ml-2 bg-white rounded-full shadow-md" />
         </motion.div>
       </div>
@@ -92,7 +80,7 @@ const CategoryWheel = ({ difficulty, onCategorySelected }) => {
         onClick={handleSpin}
         disabled={isSpinning}
         className={`
-          px-6 py-2 rounded-full text-white font-semibold
+          mt-6 px-6 py-2 rounded-full text-white font-semibold
           transition-all duration-200
           ${isSpinning 
             ? 'bg-purple-400 cursor-not-allowed' 
