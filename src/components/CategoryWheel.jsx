@@ -108,7 +108,7 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
     };
 
     return (
-        <div className="flex flex-col items-center justify-center min-h-screen p-4">
+        <div className="flex flex-col items-center justify-center min-h-screen p-2">
             <div className="relative w-full max-w-xl aspect-square">
                 <svg
                     viewBox="-1.1 -1.1 2.2 2.2"

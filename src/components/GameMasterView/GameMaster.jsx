@@ -179,7 +179,7 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
           </Alert>
         )}
 
-        <div className="p-4 space-y-4">
+        <div className="p-4 space-y-1">
           <div className="flex items-center justify-between gap-4">
             <div className="flex-1">
               <Select
