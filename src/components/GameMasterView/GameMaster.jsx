@@ -180,14 +180,14 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
           </Alert>
         )}
 
-        <div className="p-4 space-y-4">
-          <div className="flex items-center justify-between gap-4">
+        <div className="p-4 space-y-3">
+          <div className="flex items-center justify-between gap-2">
             <div className="flex-1">
               <Select
                 value={difficulty}
                 onValueChange={handleDifficultyChange}
               >
-                <SelectTrigger className="w-full bg-white/90">
+                <SelectTrigger className="w-40 bg-white/90">
                   <SelectValue placeholder="Nivel de juego" />
                 </SelectTrigger>
                 <SelectContent>
@@ -226,7 +226,7 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.8 }}
-                className="py-4"
+                className="py-2"
               >
                 <CategoryWheel
                   difficulty={difficulty}
