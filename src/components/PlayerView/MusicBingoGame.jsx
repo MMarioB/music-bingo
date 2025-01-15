@@ -1,24 +1,19 @@
 import { Card } from '../ui/card';
 import { Alert, AlertDescription } from '../ui/alert';
-import { Button } from '../ui/button';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   CheckCircleIcon,
   AlertCircle,
   Users,
-  InfoIcon,
-  Loader2
+  InfoIcon
 } from 'lucide-react';
 import PropTypes from 'prop-types';
 import { useState, useEffect } from 'react';
 import { useMusicBingoLogic } from '../PlayerView/MusicBingoGameLogic';
-import { gameSocket } from '../../services/socketService';
 
 const MusicBingoGame = ({ playerName, roomCode, difficulty }) => {
   const [lastMarkedIndex, setLastMarkedIndex] = useState(null);
   const [hasMarkedThisRound, setHasMarkedThisRound] = useState(false);
-  const [isReady, setIsReady] = useState(false);
-  const [isSettingReady, setIsSettingReady] = useState(false);
 
   const {
     board,
@@ -32,18 +27,6 @@ const MusicBingoGame = ({ playerName, roomCode, difficulty }) => {
   } = useMusicBingoLogic({ playerName, roomCode, difficulty });
 
   const canMark = originalCanMark && (!hasMarkedThisRound || lastMarkedIndex !== null);
-
-  const handleSetReady = async () => {
-    try {
-      setIsSettingReady(true);
-      await gameSocket.setPlayerReady(roomCode);
-      setIsReady(true);
-    } catch (error) {
-      console.error('Error al marcar como listo:', error);
-    } finally {
-      setIsSettingReady(false);
-    }
-  };
 
   const handleMarkCell = (index) => {
     if (!originalCanMark) return;
@@ -67,41 +50,6 @@ const MusicBingoGame = ({ playerName, roomCode, difficulty }) => {
     setLastMarkedIndex(null);
     setHasMarkedThisRound(false);
   }, [currentCategory]);
-
-  // Reset ready state when game starts
-  useEffect(() => {
-    if (gamePhase === 'playing') {
-      setIsReady(true);
-    }
-  }, [gamePhase]);
-
-  const renderWaitingRoom = () => (
-    <div className="space-y-4">
-      <Alert className="bg-blue-100">
-        <InfoIcon className="h-5 w-5 text-blue-600 mr-2" />
-        <AlertDescription className="text-blue-800">
-          Esperando a que el Game Master inicie la partida
-        </AlertDescription>
-      </Alert>
-
-      {!isReady && (
-        <Button
-          onClick={handleSetReady}
-          disabled={isSettingReady}
-          className="w-full bg-green-500 hover:bg-green-600 text-white"
-        >
-          {isSettingReady ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Preparando...
-            </>
-          ) : (
-            '¡Estoy listo!'
-          )}
-        </Button>
-      )}
-    </div>
-  );
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-100 via-purple-100 to-pink-100 p-3 md:p-6 flex flex-col items-center justify-center">
@@ -133,8 +81,6 @@ const MusicBingoGame = ({ playerName, roomCode, difficulty }) => {
               </p>
             </div>
           </div>
-
-          {gamePhase === 'waiting' && renderWaitingRoom()}
 
           <AnimatePresence>
             {hasWinner && (
@@ -252,15 +198,10 @@ const MusicBingoGame = ({ playerName, roomCode, difficulty }) => {
                   key={player.id}
                   className="flex items-center justify-between p-2"
                 >
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium">
-                      {player.name}
-                      {player.isHost && " (Game Master)"}
-                    </span>
-                    {player.ready && !player.isHost && (
-                      <CheckCircleIcon className="h-4 w-4 text-green-500" />
-                    )}
-                  </div>
+                  <span className="font-medium">
+                    {player.name}
+                    {player.isHost && " (Game Master)"}
+                  </span>
                   {player.name === playerName && (
                     <span className="text-xs text-purple-600 font-medium">(Tú)</span>
                   )}
