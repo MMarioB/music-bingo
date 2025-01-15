@@ -24,7 +24,7 @@ const GameRoom = ({ roomCode, playerName, isHost, onStartGame }) => {
 
       await gameSocket.connect();
       console.log('Conectado al servidor');
-      
+
       if (isHost) {
         console.log('Creando sala como anfitrión');
         await gameSocket.createRoom({
@@ -39,7 +39,7 @@ const GameRoom = ({ roomCode, playerName, isHost, onStartGame }) => {
           difficulty: selectedDifficulty
         });
       }
-      
+
       setIsJoining(false);
     } catch (error) {
       console.error('Error al unirse/crear sala:', error);
@@ -117,8 +117,8 @@ const GameRoom = ({ roomCode, playerName, isHost, onStartGame }) => {
   }, [handleJoinRoom, onStartGame, playerName]);
 
   const handleStartGame = async () => {
-    if (!isHost) return;
-    
+    if (!isHost || players.length < 2) return;
+
     // Verificar que todos los jugadores estén listos
     const allPlayersReady = players.every(player => player.isHost || player.ready);
     if (!allPlayersReady) {
@@ -126,13 +126,12 @@ const GameRoom = ({ roomCode, playerName, isHost, onStartGame }) => {
       return;
     }
 
-    if (players.length < 2) {
-      setConnectionError('Se necesitan al menos 2 jugadores');
-      return;
-    }
-    
     try {
-      console.log('Iniciando juego...');
+      setConnectionError(null); // Limpiar errores previos
+      console.log('Iniciando juego...', {
+        roomCode,
+        difficulty: selectedDifficulty
+      });
       await gameSocket.startGame({
         roomCode,
         difficulty: selectedDifficulty
@@ -145,7 +144,7 @@ const GameRoom = ({ roomCode, playerName, isHost, onStartGame }) => {
 
   const handleDifficultyChange = async (newDifficulty) => {
     if (!isHost) return;
-    
+
     try {
       setSelectedDifficulty(newDifficulty);
       await gameSocket.updateRoom({
@@ -221,8 +220,8 @@ const GameRoom = ({ roomCode, playerName, isHost, onStartGame }) => {
               </RadioGroup>
               <Button
                 onClick={handleStartGame}
-                className={`w-full ${allPlayersReady 
-                  ? 'bg-gradient-to-r from-green-600 to-emerald-600' 
+                className={`w-full ${allPlayersReady
+                  ? 'bg-gradient-to-r from-green-600 to-emerald-600'
                   : 'bg-gray-400'}`}
                 disabled={!allPlayersReady || players.length < 2 || isJoining}
               >
