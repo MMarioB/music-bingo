@@ -4,7 +4,7 @@ import { Card } from '../components/ui/card';
 import { Alert, AlertDescription } from '../components/ui/alert';
 import { RadioGroup, RadioGroupItem } from '../components/ui/radio-group';
 import { Label } from '../components/ui/label';
-import { AlertCircle, Users } from 'lucide-react';
+import { AlertCircle, Users, CheckCircle, Loader2 } from 'lucide-react';
 import { gameSocket } from '../services/socketService';
 import { motion } from 'framer-motion';
 import PropTypes from 'prop-types';
@@ -14,6 +14,8 @@ const GameRoom = ({ roomCode, playerName, isHost, onStartGame }) => {
   const [selectedDifficulty, setSelectedDifficulty] = useState('principiante');
   const [isJoining, setIsJoining] = useState(true);
   const [connectionError, setConnectionError] = useState(null);
+  const [isReady, setIsReady] = useState(false);
+  const [isSettingReady, setIsSettingReady] = useState(false);
 
   const handleJoinRoom = useCallback(async () => {
     try {
@@ -28,7 +30,7 @@ const GameRoom = ({ roomCode, playerName, isHost, onStartGame }) => {
         await gameSocket.createRoom({
           roomCode,
           difficulty: selectedDifficulty,
-          maxPlayers: 8
+          maxPlayers: 12
         });
       } else {
         console.log('Uniéndose a sala como jugador');
@@ -46,17 +48,39 @@ const GameRoom = ({ roomCode, playerName, isHost, onStartGame }) => {
     }
   }, [roomCode, playerName, isHost, selectedDifficulty]);
 
+  const handleSetReady = async () => {
+    try {
+      setIsSettingReady(true);
+      await gameSocket.setPlayerReady(roomCode);
+      setIsReady(true);
+    } catch (error) {
+      console.error('Error al marcar como listo:', error);
+      setConnectionError(error.message);
+    } finally {
+      setIsSettingReady(false);
+    }
+  };
+
   useEffect(() => {
     const handlers = {
       playersUpdate: ({ players }) => {
         console.log('Actualización de jugadores:', players);
         setPlayers(players);
+        // Actualizar el estado ready si es el jugador actual
+        const currentPlayer = players.find(p => p.name === playerName);
+        if (currentPlayer) {
+          setIsReady(currentPlayer.ready || false);
+        }
       },
       gameStarted: ({ difficulty }) => {
         console.log('Juego iniciado con dificultad:', difficulty);
         onStartGame({
           difficulty
         });
+      },
+      gameStartFailed: (error) => {
+        console.error('Error al iniciar el juego:', error);
+        setConnectionError(error.message || 'No se pudo iniciar el juego');
       },
       error: (error) => {
         console.error('Error recibido:', error);
@@ -90,10 +114,22 @@ const GameRoom = ({ roomCode, playerName, isHost, onStartGame }) => {
       });
       gameSocket.disconnect();
     };
-  }, [handleJoinRoom, onStartGame]);
+  }, [handleJoinRoom, onStartGame, playerName]);
 
   const handleStartGame = async () => {
-    if (!isHost || players.length < 2) return;
+    if (!isHost) return;
+    
+    // Verificar que todos los jugadores estén listos
+    const allPlayersReady = players.every(player => player.isHost || player.ready);
+    if (!allPlayersReady) {
+      setConnectionError('No todos los jugadores están listos');
+      return;
+    }
+
+    if (players.length < 2) {
+      setConnectionError('Se necesitan al menos 2 jugadores');
+      return;
+    }
     
     try {
       console.log('Iniciando juego...');
@@ -122,6 +158,8 @@ const GameRoom = ({ roomCode, playerName, isHost, onStartGame }) => {
     }
   };
 
+  const allPlayersReady = players.every(player => player.isHost || player.ready);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-100 via-purple-100 to-pink-100 p-3 md:p-6 flex flex-col items-center justify-center">
       <motion.div
@@ -139,7 +177,6 @@ const GameRoom = ({ roomCode, playerName, isHost, onStartGame }) => {
           </p>
         </div>
 
-        {/* Error de conexión */}
         {connectionError && (
           <Alert variant="destructive" className="m-4">
             <AlertCircle className="h-4 w-4" />
@@ -148,7 +185,23 @@ const GameRoom = ({ roomCode, playerName, isHost, onStartGame }) => {
         )}
 
         <div className="p-4 md:p-6 space-y-6">
-          {/* Configuración del anfitrión */}
+          {!isHost && !isReady && (
+            <Button
+              onClick={handleSetReady}
+              disabled={isSettingReady}
+              className="w-full bg-green-500 hover:bg-green-600"
+            >
+              {isSettingReady ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Preparando...
+                </>
+              ) : (
+                '¡Estoy listo!'
+              )}
+            </Button>
+          )}
+
           {isHost && (
             <Card className="p-4 space-y-4">
               <h3 className="font-semibold text-lg">Configuración de la Partida</h3>
@@ -168,8 +221,10 @@ const GameRoom = ({ roomCode, playerName, isHost, onStartGame }) => {
               </RadioGroup>
               <Button
                 onClick={handleStartGame}
-                className="w-full bg-gradient-to-r from-green-600 to-emerald-600"
-                disabled={players.length < 2 || isJoining}
+                className={`w-full ${allPlayersReady 
+                  ? 'bg-gradient-to-r from-green-600 to-emerald-600' 
+                  : 'bg-gray-400'}`}
+                disabled={!allPlayersReady || players.length < 2 || isJoining}
               >
                 {isJoining ? 'Conectando...' : 'Comenzar Partida'}
               </Button>
@@ -178,10 +233,14 @@ const GameRoom = ({ roomCode, playerName, isHost, onStartGame }) => {
                   Se necesitan al menos 2 jugadores para comenzar
                 </p>
               )}
+              {!allPlayersReady && players.length >= 2 && (
+                <p className="text-sm text-gray-500 text-center">
+                  Esperando a que todos los jugadores estén listos
+                </p>
+              )}
             </Card>
           )}
 
-          {/* Lista de jugadores */}
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="font-semibold text-lg">
@@ -199,10 +258,15 @@ const GameRoom = ({ roomCode, playerName, isHost, onStartGame }) => {
                     key={player.id}
                     className="flex items-center justify-between p-3"
                   >
-                    <span className="font-medium">
-                      {player.name}
-                      {player.name === playerName && " (Tú)"}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">
+                        {player.name}
+                        {player.name === playerName && " (Tú)"}
+                      </span>
+                      {(player.ready || player.isHost) && (
+                        <CheckCircle className="h-4 w-4 text-green-500" />
+                      )}
+                    </div>
                     {player.isHost && (
                       <span className="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded-full">
                         Anfitrión
