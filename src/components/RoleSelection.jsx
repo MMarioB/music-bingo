@@ -5,7 +5,7 @@ import { GamepadIcon, UsersIcon } from 'lucide-react';
 
 const RoleSelection = ({ onSelectRole }) => {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-100 via-purple-100 to-pink-100 flex flex-col items-center justify-center p-4 sm:p-6">
+    <div className="w-full flex flex-col items-center justify-center p-4 sm:p-6">
       <motion.div 
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}

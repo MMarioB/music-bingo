@@ -1,92 +1,7 @@
 import { useState } from 'react';
 import { Button } from './ui/button';
 import PropTypes from 'prop-types';
-import { 
-    Users,
-    Clock,
-    Target,
-    Calendar,
-    Music,
-    Mic2
-} from 'lucide-react';
-
-const WHEEL_COLORS = {
-    blue: '#BFDBFE',
-    purple: '#E9D5FF',
-    pink: '#FBCFE8',
-    yellow: '#FEF08A',
-    green: '#BBF7D0'
-};
-
-const Number2Icon = (props) => (
-    <svg
-        xmlns="http://www.w3.org/2000/svg"
-        width="24"
-        height="24"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        {...props}
-    >
-        <path d="M8 7a4 4 0 0 1 8 0v1a4 4 0 0 1-4 4H8" />
-        <line x1="8" y1="16" x2="16" y2="16" />
-    </svg>
-);
-
-const Number3Icon = (props) => (
-    <svg
-        xmlns="http://www.w3.org/2000/svg"
-        width="24"
-        height="24"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        {...props}
-    >
-        <path d="M8 7a4 4 0 0 1 8 0v10a4 4 0 0 1-8 0" />
-        <line x1="8" y1="12" x2="16" y2="12" />
-    </svg>
-);
-
-const Number4Icon = (props) => (
-    <svg
-        xmlns="http://www.w3.org/2000/svg"
-        width="24"
-        height="24"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        {...props}
-    >
-        <path d="M8 4v8h8" />
-        <line x1="16" y1="4" x2="16" y2="20" />
-    </svg>
-);
-
-const CATEGORIES_A = [
-    { name: 'Grupo o solista', color: WHEEL_COLORS.green, Icon: Users },
-    { name: '¿Anterior al 2000?', color: WHEEL_COLORS.pink, Icon: Clock },
-    { name: '4 años arriba o abajo', color: WHEEL_COLORS.yellow, Icon: Number4Icon },
-    { name: 'Década', color: WHEEL_COLORS.purple, Icon: Calendar },
-    { name: '2 años arriba o abajo', color: WHEEL_COLORS.blue, Icon: Number2Icon }
-];
-
-const CATEGORIES_B = [
-    { name: 'Título de la canción', color: WHEEL_COLORS.green, Icon: Music },
-    { name: 'Año exacto', color: WHEEL_COLORS.pink, Icon: Target },
-    { name: 'Nombre del grupo o solista', color: WHEEL_COLORS.yellow, Icon: Mic2 },
-    { name: 'Década', color: WHEEL_COLORS.purple, Icon: Calendar },
-    { name: '3 años arriba o abajo', color: WHEEL_COLORS.blue, Icon: Number3Icon }
-];
+import { CATEGORIES_A, CATEGORIES_B } from './constants';
 
 const easeOutQuad = (t) => t * (2 - t);
 
@@ -161,13 +76,13 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
 
             const isHighlighted = index === highlightedIndex;
             const isSelected = category === finalSelectedCategory;
-            const { Icon } = category;
+            const Icon = category.icon;
 
             return (
                 <g key={index}>
                     <path
                         d={pathData}
-                        fill={category.color}
+                        fill={category.wheelColor}
                         stroke="white"
                         strokeWidth="0.01"
                         className={`transition-opacity duration-300 ${
@@ -178,12 +93,11 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
                         <g transform={`rotate(${midAngle})`}>
                             <g transform="scale(0.007)">
                                 <Icon 
-                                    size={24}
-                                    className="text-gray-800"
+                                    {...category.iconProps}
                                     style={{
-                                        filter: 'drop-shadow(0 0 1px rgba(0,0,0,0.5))'
+                                        ...category.iconProps.style,
+                                        strokeWidth: '2.5'
                                     }}
-                                    absoluteStrokeWidth
                                 />
                             </g>
                         </g>

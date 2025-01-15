@@ -1,152 +1,39 @@
-import { useState, useCallback } from 'react';
 import { Button } from '../ui/button';
 import { Card } from '../ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
-import { useSpotify } from '../../hooks/useSpotify';
-import { ExternalLinkIcon, MusicIcon, CalendarIcon, MicIcon, RefreshCwIcon } from 'lucide-react';
+import { Alert, AlertDescription } from '../ui/alert';
 import { motion, AnimatePresence } from 'framer-motion';
+import {
+  ExternalLinkIcon,
+  MusicIcon,
+  CalendarIcon,
+  RefreshCwIcon,
+  Users,
+  AlertCircle
+} from 'lucide-react';
 import CategoryWheel from '../CategoryWheel';
+import PropTypes from 'prop-types';
+import { useGameMasterLogic } from './GameMasterLogic';
 
-const ARTISTS = {
-  tradicional: [
-    'Raphael', 'Julio Iglesias', 'Rocío Jurado', 'Isabel Pantoja', 'Camilo Sesto',
-    'José Luis Perales', 'Manolo Escobar', 'Massiel', 'Miguel Ríos', 'Nuestro Small',
-    'Lola Flores', 'Antonio Machín', 'Marifé de Triana', 'Juanito Valderrama',
-    'Los Chunguitos', 'Paso Doble', 'Dúo Dinámico', 'Juan Pardo', 'Mari Trini',
-    'Imanol', 'Los Diablos', 'Roberto Carlos', 'Sandro', 'Peret'
-  ],
-  rockEspanol: [
-    'Joaquín Sabina', 'Alaska', 'Hombres G', 'Mecano', 'Los Rodriguez',
-    'La Unión', 'Duncan Dhu', 'Radio Futura', 'Loquillo', 'Los Secretos',
-    'Heroes del Silencio', 'Barricada', 'Tequila', 'Burning', 'Leño',
-    'Triana', 'Más Birras', 'Eskorbuto', 'La Polla Records', 'Extremoduro',
-    'Rosendo', 'Barón Rojo', 'Asfalto', 'Alerta Roja', 'Los Nikis'
-  ],
-  popNacional: [
-    'Alejandro Sanz', 'David Bustamante', 'Chenoa', 'Rosa López', 'David Bisbal',
-    'Operación Triunfo Artists', 'Melendi', 'Pablo Alborán', 'Beret', 'Antonio José',
-    'Ana Torroja', 'Conchita', 'Marta Sánchez', 'Sergio Dalma', 'Miguel Bosé',
-    'Juan Luis Guerra', 'Elsa Pataky', 'Emma García', 'Pastora Soler', 'Soraya',
-    'David DeMaría', 'Tamara', 'Malú', 'Carlos Baute', 'Edurne'
-  ],
-  popRockIndie: [
-    'La Oreja de Van Gogh', 'Amaral', 'Vetusta Morla', 'Izal', 'Sidecars',
-    'León Benavente', 'Fito & Fitipaldis', 'Leiva', 'Dani Martín', 'Supersubmarina',
-    'M Clan', 'Pereza', 'Luz Casal', 'La Casa Azul', 'Dorian',
-    'Second', 'Depedro', 'Antonio Vega', 'Los Piratas', 'Jarabe de Palo'
-  ],
-  musicaUrbana: [
-    'C. Tangana', 'Rosalía', 'Bad Bunny', 'Rauw Alejandro', 'Aitana',
-    'Alfred García', 'Ana Guerra', 'Lola Índigo', 'Rels B', 'Cruje',
-    'Daddy Yankee', 'J Balvin', 'Maluma', 'Ozuna', 'Nicky Jam'
-  ],
-  internacional: [
-    'Queen', 'Michael Jackson', 'Madonna', 'The Beatles', 'Coldplay',
-    'Bruno Mars', 'Taylor Swift', 'Ed Sheeran', 'Lady Gaga', 'The Weeknd',
-    'Adele', 'Beyoncé', 'Rihanna', 'Justin Bieber', 'Katy Perry',
-    'Ariana Grande', 'Drake', 'Post Malone', 'The Killers', 'Maroon 5'
-  ]
-};
-
-const MUSIC_CATEGORIES = Object.keys(ARTISTS);
-
-const GameMaster = () => {
-  const { spotify, loggedIn, login } = useSpotify();
-  const [currentCard, setCurrentCard] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [difficulty, setDifficulty] = useState('principiante');
-  const [selectedCategory, setSelectedCategory] = useState(null);
-  const [gameStep, setGameStep] = useState('wheel');
-
-  const handleCategorySelected = useCallback((category) => {
-    setSelectedCategory(category);
-    setGameStep('card');
-  }, []);
-
-  const generateNewCard = useCallback(async () => {
-    if (!loggedIn || !selectedCategory) return;
-
-    setIsLoading(true);
-    try {
-      const randomMusicCategory = MUSIC_CATEGORIES[Math.floor(Math.random() * MUSIC_CATEGORIES.length)];
-      const artistsInCategory = ARTISTS[randomMusicCategory];
-      const randomArtist = artistsInCategory[Math.floor(Math.random() * artistsInCategory.length)];
-
-      const response = await spotify.searchTracks(`artist:"${randomArtist}"`, {
-        limit: 50,
-        market: 'ES'
-      });
-
-      const tracks = response.tracks.items;
-      const randomTrack = tracks[Math.floor(Math.random() * tracks.length)];
-      const year = parseInt(randomTrack.album.release_date.split('-')[0]);
-
-      const categoryInfo = {};
-      switch (selectedCategory.name) {
-        case 'Grupo o solista': {
-          categoryInfo.respuesta = randomTrack.artists[0].name.includes('Los ') ||
-            randomTrack.artists[0].name.includes('Las ') ?
-            'Grupo' : 'Solista';
-          break;
-        }
-        case '¿Anterior al 2000?': {
-          categoryInfo.respuesta = year < 2000 ? 'Sí' : 'No';
-          break;
-        }
-        case '4 años arriba o abajo': {
-          categoryInfo.respuesta = `${year - 4} - ${year + 4}`;
-          break;
-        }
-        case '2 años arriba o abajo': {
-          categoryInfo.respuesta = `${year - 2} - ${year + 2}`;
-          break;
-        }
-        case '3 años arriba o abajo': {
-          categoryInfo.respuesta = `${year - 3} - ${year + 3}`;
-          break;
-        }
-        case 'Década': {
-          const decade = Math.floor(year / 10) * 10;
-          categoryInfo.respuesta = `${decade}s`;
-          break;
-        }
-        case 'Título de la canción': {
-          categoryInfo.respuesta = randomTrack.name;
-          break;
-        }
-        case 'Año exacto': {
-          categoryInfo.respuesta = year.toString();
-          break;
-        }
-        case 'Nombre del grupo o solista': {
-          categoryInfo.respuesta = randomTrack.artists[0].name;
-          break;
-        }
-      }
-
-      setCurrentCard({
-        title: randomTrack.name,
-        artist: randomTrack.artists[0].name,
-        year: year,
-        spotifyUrl: randomTrack.external_urls.spotify,
-        musicCategory: randomMusicCategory,
-        gameCategory: selectedCategory,
-        categoryInfo: categoryInfo,
-        revealed: false
-      });
-    } catch (error) {
-      console.error("Error generando tarjeta:", error);
-      alert('No se pudo generar una tarjeta. Inténtalo de nuevo.');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [loggedIn, spotify, selectedCategory]);
-
-  const startOver = () => {
-    setCurrentCard(null);
-    setSelectedCategory(null);
-    setGameStep('wheel');
-  };
+const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
+  const {
+    loggedIn,
+    login,
+    currentCard,
+    isLoading,
+    selectedCategory,
+    gameStep,
+    connectedPlayers,
+    difficulty,
+    connectionError,
+    isMarkingEnabled,
+    handleDifficultyChange,
+    handleCategorySelected,
+    generateNewCard,
+    handleRevealSong,
+    handleMarkingToggle,
+    startNewRound
+  } = useGameMasterLogic({ roomCode, initialDifficulty });
 
   if (!loggedIn) {
     return (
@@ -163,6 +50,82 @@ const GameMaster = () => {
     );
   }
 
+  const renderCardContent = () => {
+    if (!currentCard) return null;
+
+    return (
+      <div className="space-y-4">
+        <div className={`transition-all duration-500 ${currentCard.revealed ? '' : 'blur-md'}`}>
+          <div className="text-center">
+            <h2 className="text-xl font-bold text-gray-800 mb-2">
+              {currentCard.title}
+            </h2>
+            <div className="flex justify-center items-center space-x-2 text-gray-600">
+              <MusicIcon className="w-4 h-4" />
+              <span className="text-base">{currentCard.artist}</span>
+            </div>
+          </div>
+
+          <div className="flex justify-between items-center bg-white/60 rounded-lg p-3 mt-3">
+            <div className="flex items-center space-x-2">
+              <CalendarIcon className="w-5 h-5 text-purple-600" />
+              <span className="text-2xl font-bold text-gray-800">
+                {currentCard.year}
+              </span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <MusicIcon className="w-5 h-5 text-indigo-600" />
+              <span className="text-sm text-gray-700">
+                {currentCard.musicCategory}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {!currentCard.revealed ? (
+          <div className="space-y-2">
+            <Button
+              onClick={handleRevealSong}
+              className="w-full bg-gradient-to-r from-purple-600 to-indigo-600"
+            >
+              <ExternalLinkIcon className="mr-2 h-4 w-4" />
+              Revelar Canción
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full border-purple-400 text-purple-700"
+              onClick={() => window.open(currentCard.spotifyUrl, '_blank')}
+            >
+              <ExternalLinkIcon className="mr-2 h-4 w-4" />
+              Abrir en Spotify
+            </Button>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <Button
+              onClick={handleMarkingToggle}
+              className={`w-full ${isMarkingEnabled
+                ? 'bg-yellow-500 hover:bg-yellow-600'
+                : 'bg-green-500 hover:bg-green-600'
+                }`}
+            >
+              {isMarkingEnabled ? 'Deshabilitar Marcado' : 'Habilitar Marcado'}
+            </Button>
+
+            <Button
+              onClick={startNewRound}
+              variant="outline"
+              className="w-full"
+            >
+              <RefreshCwIcon className="w-4 h-4 mr-2" />
+              Nueva Ronda
+            </Button>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-100 via-purple-100 to-pink-100 p-4">
       <div className="w-full max-w-4xl mx-auto bg-white/80 backdrop-blur-lg rounded-xl shadow-xl overflow-hidden">
@@ -172,13 +135,20 @@ const GameMaster = () => {
           </h1>
         </div>
 
+        {connectionError && (
+          <Alert variant="destructive" className="m-4">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>{connectionError}</AlertDescription>
+          </Alert>
+        )}
+
         <div className="p-4 space-y-4">
           <div className="flex items-center justify-between gap-4">
             <div className="flex-1">
-              <Select value={difficulty} onValueChange={(value) => {
-                setDifficulty(value);
-                startOver();
-              }}>
+              <Select
+                value={difficulty}
+                onValueChange={handleDifficultyChange}
+              >
                 <SelectTrigger className="w-full bg-white/90">
                   <SelectValue placeholder="Nivel de juego" />
                 </SelectTrigger>
@@ -188,9 +158,20 @@ const GameMaster = () => {
                 </SelectContent>
               </Select>
             </div>
-            {gameStep === 'card' && (
+
+            <div className="flex flex-col items-end gap-1">
+              <div className="flex items-center gap-2 text-gray-600 bg-white/50 px-4 py-2 rounded-lg">
+                <Users className="w-4 h-4" />
+                <span>{connectedPlayers.length} jugadores</span>
+              </div>
+              <div className="text-sm text-gray-500">
+                Sala: {roomCode}
+              </div>
+            </div>
+
+            {gameStep !== 'wheel' && (
               <Button
-                onClick={startOver}
+                onClick={startNewRound}
                 variant="outline"
                 className="flex-shrink-0"
               >
@@ -213,6 +194,27 @@ const GameMaster = () => {
                   difficulty={difficulty}
                   onCategorySelected={handleCategorySelected}
                 />
+
+                {connectedPlayers.length > 0 && (
+                  <div className="mt-6">
+                    <h3 className="text-lg font-semibold mb-3">Jugadores Conectados:</h3>
+                    <div className="bg-white/50 rounded-lg divide-y divide-gray-200">
+                      {connectedPlayers.map((player) => (
+                        <div
+                          key={player.id}
+                          className="flex items-center justify-between p-3"
+                        >
+                          <span className="font-medium">{player.name}</span>
+                          {player.isHost && (
+                            <span className="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded-full">
+                              Game Master
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </motion.div>
             ) : (
               <motion.div
@@ -248,68 +250,7 @@ const GameMaster = () => {
                   </Button>
                 ) : (
                   <Card className="overflow-hidden border-purple-200 p-4">
-                    <div className="space-y-3">
-                      <div className={`transition-all duration-500 ${currentCard.revealed ? '' : 'blur-md'}`}>
-                        <div className="text-center">
-                          <h2 className="text-xl font-bold text-gray-800 mb-2">
-                            {currentCard.title}
-                          </h2>
-                          <div className="flex justify-center items-center space-x-2 text-gray-600">
-                            <MusicIcon className="w-4 h-4" />
-                            <span className="text-base">{currentCard.artist}</span>
-                          </div>
-                        </div>
-
-                        <div className="flex justify-between items-center bg-white/60 rounded-lg p-3 mt-3">
-                          <div className="flex items-center space-x-2">
-                            <CalendarIcon className="w-5 h-5 text-purple-600" />
-                            <span className="text-2xl font-bold text-gray-800">
-                              {currentCard.year}
-                            </span>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <MicIcon className="w-5 h-5 text-indigo-600" />
-                            <span className="text-sm text-gray-700">
-                              {currentCard.musicCategory}
-                            </span>
-                          </div>
-                        </div>
-
-                        {currentCard.categoryInfo && (
-                          <div className="bg-purple-50 rounded-lg p-3 mt-3">
-                            <div className="flex justify-between items-center">
-                              <span className="text-sm font-medium text-purple-700">
-                                Respuesta para {selectedCategory.name}:
-                              </span>
-                              <span className="text-lg font-bold text-purple-900">
-                                {currentCard.categoryInfo.respuesta}
-                              </span>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-
-                      {currentCard.spotifyUrl && (
-                        <Button
-                          variant="outline"
-                          className="w-full border-purple-400 text-purple-700"
-                          onClick={() => {
-                            window.open(currentCard.spotifyUrl, '_blank');
-                            setCurrentCard({ ...currentCard, revealed: true });
-                          }}
-                        >
-                          <ExternalLinkIcon className="mr-2 h-4 w-4" />
-                          {currentCard.revealed ? 'Abrir en Spotify' : 'Revelar Canción'}
-                        </Button>
-                      )}
-
-                      <Button
-                        onClick={() => setCurrentCard(null)}
-                        className="w-full bg-gradient-to-r from-purple-600 to-indigo-600"
-                      >
-                        Generar Nueva Tarjeta
-                      </Button>
-                    </div>
+                    {renderCardContent()}
                   </Card>
                 )}
               </motion.div>
@@ -319,6 +260,11 @@ const GameMaster = () => {
       </div>
     </div>
   );
+};
+
+GameMaster.propTypes = {
+  roomCode: PropTypes.string.isRequired,
+  difficulty: PropTypes.oneOf(['principiante', 'experto']).isRequired
 };
 
 export default GameMaster;
