@@ -128,6 +128,7 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
   const [canMark, setCanMark] = useState(false);
   const [hasWinner, setHasWinner] = useState(false);
   const [connectionError, setConnectionError] = useState(null);
+  const [gamePhase, setGamePhase] = useState('waiting');
 
   // Función para validar la distribución de categorías
   const validateLine = useCallback((line) => {
@@ -215,6 +216,9 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
       if (joinResponse?.players) {
         setConnectedPlayers(joinResponse.players);
       }
+      if (joinResponse?.phase) {
+        setGamePhase(joinResponse.phase);
+      }
     } catch (error) {
       console.error('Error uniéndose al juego:', error);
       setConnectionError(error.message);
@@ -274,6 +278,14 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
         console.log('Marcado deshabilitado');
         setCanMark(false);
       },
+      gameStarted: () => {
+        console.log('Juego iniciado');
+        setGamePhase('playing');
+      },
+      gameStartFailed: () => {
+        console.log('Inicio de juego fallido');
+        setGamePhase('waiting');
+      },
       error: (error) => {
         console.error('Error en socket:', error);
         setConnectionError(error.message);
@@ -305,6 +317,7 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
     canMark,
     hasWinner,
     connectionError,
+    gamePhase,
     handleCellClick
   };
 };

@@ -1,21 +1,24 @@
 import { Card } from '../ui/card';
 import { Alert, AlertDescription } from '../ui/alert';
+import { Button } from '../ui/button';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   CheckCircleIcon,
   AlertCircle,
   Users,
-  InfoIcon
+  InfoIcon,
+  Loader2
 } from 'lucide-react';
 import PropTypes from 'prop-types';
 import { useState, useEffect } from 'react';
 import { useMusicBingoLogic } from '../PlayerView/MusicBingoGameLogic';
+import { gameSocket } from '../../services/socketService';
 
 const MusicBingoGame = ({ playerName, roomCode, difficulty }) => {
-  // Estado para trackear la última casilla marcada
   const [lastMarkedIndex, setLastMarkedIndex] = useState(null);
-  // Estado para trackear si ya hemos marcado en esta ronda
   const [hasMarkedThisRound, setHasMarkedThisRound] = useState(false);
+  const [isReady, setIsReady] = useState(false);
+  const [isSettingReady, setIsSettingReady] = useState(false);
 
   const {
     board,
@@ -24,39 +27,81 @@ const MusicBingoGame = ({ playerName, roomCode, difficulty }) => {
     canMark: originalCanMark,
     hasWinner,
     connectionError,
-    handleCellClick
+    handleCellClick,
+    gamePhase
   } = useMusicBingoLogic({ playerName, roomCode, difficulty });
 
-  // Computamos si realmente se puede marcar
   const canMark = originalCanMark && (!hasMarkedThisRound || lastMarkedIndex !== null);
+
+  const handleSetReady = async () => {
+    try {
+      setIsSettingReady(true);
+      await gameSocket.setPlayerReady(roomCode);
+      setIsReady(true);
+    } catch (error) {
+      console.error('Error al marcar como listo:', error);
+    } finally {
+      setIsSettingReady(false);
+    }
+  };
 
   const handleMarkCell = (index) => {
     if (!originalCanMark) return;
     
     if (lastMarkedIndex === index) {
-      // Si hacemos click en la misma casilla, la desmarcamos
-      handleCellClick(index, true); // Añadimos un parámetro para indicar que es un desmarcar
+      handleCellClick(index, true);
       setLastMarkedIndex(null);
       setHasMarkedThisRound(false);
     } else if (lastMarkedIndex !== null) {
-      // Si ya hay una casilla marcada, primero desmarcamos la anterior
       handleCellClick(lastMarkedIndex, true);
-      // Y luego marcamos la nueva
       handleCellClick(index);
       setLastMarkedIndex(index);
     } else if (!hasMarkedThisRound) {
-      // Si no hay ninguna casilla marcada y no hemos marcado en esta ronda
       handleCellClick(index);
       setLastMarkedIndex(index);
       setHasMarkedThisRound(true);
     }
   };
 
-  // Reset cuando cambia la categoría o empieza una nueva ronda
   useEffect(() => {
     setLastMarkedIndex(null);
     setHasMarkedThisRound(false);
   }, [currentCategory]);
+
+  // Reset ready state when game starts
+  useEffect(() => {
+    if (gamePhase === 'playing') {
+      setIsReady(true);
+    }
+  }, [gamePhase]);
+
+  const renderWaitingRoom = () => (
+    <div className="space-y-4">
+      <Alert className="bg-blue-100">
+        <InfoIcon className="h-5 w-5 text-blue-600 mr-2" />
+        <AlertDescription className="text-blue-800">
+          Esperando a que el Game Master inicie la partida
+        </AlertDescription>
+      </Alert>
+
+      {!isReady && (
+        <Button
+          onClick={handleSetReady}
+          disabled={isSettingReady}
+          className="w-full bg-green-500 hover:bg-green-600 text-white"
+        >
+          {isSettingReady ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Preparando...
+            </>
+          ) : (
+            '¡Estoy listo!'
+          )}
+        </Button>
+      )}
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-100 via-purple-100 to-pink-100 p-3 md:p-6 flex flex-col items-center justify-center">
@@ -73,7 +118,6 @@ const MusicBingoGame = ({ playerName, roomCode, difficulty }) => {
         </div>
 
         <div className="p-4 md:p-6 space-y-4 md:space-y-6">
-          {/* Error de conexión */}
           {connectionError && (
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
@@ -81,7 +125,6 @@ const MusicBingoGame = ({ playerName, roomCode, difficulty }) => {
             </Alert>
           )}
 
-          {/* Header con información */}
           <div className="flex justify-between items-center">
             <div>
               <h2 className="text-lg font-bold">{playerName}</h2>
@@ -91,7 +134,8 @@ const MusicBingoGame = ({ playerName, roomCode, difficulty }) => {
             </div>
           </div>
 
-          {/* Mensaje de victoria */}
+          {gamePhase === 'waiting' && renderWaitingRoom()}
+
           <AnimatePresence>
             {hasWinner && (
               <motion.div
@@ -109,14 +153,12 @@ const MusicBingoGame = ({ playerName, roomCode, difficulty }) => {
             )}
           </AnimatePresence>
 
-          {/* Información de la ronda actual */}
           {currentCategory && (
             <div className={`${currentCategory.color} p-4 rounded-lg text-center`}>
               <h3 className="font-semibold text-lg">{currentCategory.name}</h3>
             </div>
           )}
 
-          {/* Estado de marcado */}
           {currentCategory && (
             <Alert className={canMark ? "bg-green-100" : "bg-blue-100"}>
               {originalCanMark ? (
@@ -146,54 +188,54 @@ const MusicBingoGame = ({ playerName, roomCode, difficulty }) => {
             </Alert>
           )}
 
-          {/* Tablero */}
-          <Card className="p-2 md:p-4 shadow-lg">
-            <div className="grid grid-cols-5 gap-1 md:gap-3">
-              {board.map((category, index) => {
-                const Icon = category.icon;
-                const isSelected = index === lastMarkedIndex;
-                const isMarkable = originalCanMark && 
-                                 category.name === currentCategory?.name &&
-                                 (!hasMarkedThisRound || isSelected);
+          {gamePhase !== 'waiting' && (
+            <Card className="p-2 md:p-4 shadow-lg">
+              <div className="grid grid-cols-5 gap-1 md:gap-3">
+                {board.map((category, index) => {
+                  const Icon = category.icon;
+                  const isSelected = index === lastMarkedIndex;
+                  const isMarkable = originalCanMark && 
+                                   category.name === currentCategory?.name &&
+                                   (!hasMarkedThisRound || isSelected);
 
-                return (
-                  <motion.button
-                    key={index}
-                    whileHover={{ scale: isMarkable ? 1.05 : 1 }}
-                    whileTap={{ scale: isMarkable ? 0.95 : 1 }}
-                    className={`
-                      ${category.color} 
-                      aspect-square 
-                      rounded-lg
-                      flex 
-                      items-center 
-                      justify-center 
-                      p-1 md:p-2
-                      text-center 
-                      relative 
-                      transition-all 
-                      duration-200
-                      ${isMarkable ? 'cursor-pointer hover:ring-2 hover:ring-purple-400' : 'cursor-default'}
-                      ${category.marked ? 'scale-95 shadow-inner' : 'shadow hover:shadow-md'}
-                      ${isSelected ? 'ring-2 ring-purple-600' : ''}
-                    `}
-                    onClick={() => handleMarkCell(index)}
-                    disabled={!isMarkable}
-                    aria-label={`Casilla ${category.name}`}
-                  >
-                    <Icon {...category.iconProps} />
-                    {category.marked && (
-                      <div className="absolute inset-0 flex items-center justify-center bg-black/10">
-                        <CheckCircleIcon className="text-green-500 w-6 md:w-10 h-6 md:h-10" />
-                      </div>
-                    )}
-                  </motion.button>
-                );
-              })}
-            </div>
-          </Card>
+                  return (
+                    <motion.button
+                      key={index}
+                      whileHover={{ scale: isMarkable ? 1.05 : 1 }}
+                      whileTap={{ scale: isMarkable ? 0.95 : 1 }}
+                      className={`
+                        ${category.color} 
+                        aspect-square 
+                        rounded-lg
+                        flex 
+                        items-center 
+                        justify-center 
+                        p-1 md:p-2
+                        text-center 
+                        relative 
+                        transition-all 
+                        duration-200
+                        ${isMarkable ? 'cursor-pointer hover:ring-2 hover:ring-purple-400' : 'cursor-default'}
+                        ${category.marked ? 'scale-95 shadow-inner' : 'shadow hover:shadow-md'}
+                        ${isSelected ? 'ring-2 ring-purple-600' : ''}
+                      `}
+                      onClick={() => handleMarkCell(index)}
+                      disabled={!isMarkable}
+                      aria-label={`Casilla ${category.name}`}
+                    >
+                      <Icon {...category.iconProps} />
+                      {category.marked && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/10">
+                          <CheckCircleIcon className="text-green-500 w-6 md:w-10 h-6 md:h-10" />
+                        </div>
+                      )}
+                    </motion.button>
+                  );
+                })}
+              </div>
+            </Card>
+          )}
 
-          {/* Lista de jugadores conectados */}
           <div className="mt-4">
             <div className="flex items-center justify-between mb-2">
               <h3 className="text-base md:text-lg font-semibold">
@@ -210,10 +252,15 @@ const MusicBingoGame = ({ playerName, roomCode, difficulty }) => {
                   key={player.id}
                   className="flex items-center justify-between p-2"
                 >
-                  <span className="font-medium">
-                    {player.name}
-                    {player.isHost && " (Game Master)"}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium">
+                      {player.name}
+                      {player.isHost && " (Game Master)"}
+                    </span>
+                    {player.ready && !player.isHost && (
+                      <CheckCircleIcon className="h-4 w-4 text-green-500" />
+                    )}
+                  </div>
                   {player.name === playerName && (
                     <span className="text-xs text-purple-600 font-medium">(Tú)</span>
                   )}
