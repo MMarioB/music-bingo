@@ -13,6 +13,7 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
   const [difficulty, setDifficulty] = useState(initialDifficulty);
   const [connectionError, setConnectionError] = useState(null);
   const [isMarkingEnabled, setIsMarkingEnabled] = useState(false);
+  const [allPlayersReady, setAllPlayersReady] = useState(false);
 
   // Inicializar sala
   const initializeRoom = useCallback(async () => {
@@ -30,6 +31,7 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
       if (roomResponse?.players) {
         console.log('Jugadores iniciales:', roomResponse.players);
         setConnectedPlayers(roomResponse.players);
+        checkAllPlayersReady(roomResponse.players);
       }
     } catch (error) {
       console.error('Error inicializando sala:', error);
@@ -37,12 +39,24 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
     }
   }, [roomCode, difficulty]);
 
+  // Función para verificar si todos los jugadores están listos
+  const checkAllPlayersReady = useCallback((players) => {
+    const ready = players.every(player => player.ready || player.isHost);
+    setAllPlayersReady(ready);
+  }, []);
+
   // Efecto para eventos del socket
   useEffect(() => {
     const handlers = {
       playersUpdate: ({ players }) => {
         console.log('Actualización de jugadores:', players);
         setConnectedPlayers(players);
+        checkAllPlayersReady(players);
+      },
+      gameStartFailed: (error) => {
+        console.error('Error al iniciar juego:', error);
+        setConnectionError(error.message);
+        setGameStep('wheel');
       },
       error: (error) => {
         console.error('Error en socket:', error);
@@ -200,6 +214,7 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
     difficulty,
     connectionError,
     isMarkingEnabled,
+    allPlayersReady,
     handleDifficultyChange,
     handleCategorySelected,
     generateNewCard,

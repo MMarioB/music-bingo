@@ -142,6 +142,12 @@ class GameWebSocket {
       const handleRoomJoined = (roomInfo) => {
         clearTimeout(timeout);
         this.socket.off('error', handleError);
+        
+        // Si es una reconexión y el juego está en curso, marcar como ready
+        if (roomInfo.isReconnecting && roomInfo.phase === 'playing') {
+          this.setPlayerReady(roomCode).catch(console.error);
+        }
+        
         resolve(roomInfo);
       };
 
@@ -158,29 +164,65 @@ class GameWebSocket {
     });
   }
 
+  async setPlayerReady(roomCode) {
+    await this.ensureConnection();
+    
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        reject(new Error('Timeout setting player ready'));
+      }, 5000);
+
+      const handlePlayersUpdate = (data) => {
+        clearTimeout(timeout);
+        this.socket.off('error', handleError);
+        resolve(data);
+      };
+
+      const handleError = (error) => {
+        clearTimeout(timeout);
+        this.socket.off('playersUpdate', handlePlayersUpdate);
+        reject(error);
+      };
+
+      this.socket.emit('playerReady', { roomCode });
+      this.socket.once('playersUpdate', handlePlayersUpdate);
+      this.socket.once('error', handleError);
+    });
+  }
+
   async startGame(data) {
     await this.ensureConnection();
     
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
         reject(new Error('Timeout starting game'));
-      }, 10000);
+      }, 15000); // Aumentado a 15 segundos para dar tiempo a las confirmaciones
 
       const handleGameStarted = (gameInfo) => {
         clearTimeout(timeout);
         this.socket.off('error', handleError);
+        this.socket.off('gameStartFailed', handleStartFailed);
         resolve(gameInfo);
+      };
+
+      const handleStartFailed = (error) => {
+        clearTimeout(timeout);
+        this.socket.off('gameStarted', handleGameStarted);
+        this.socket.off('error', handleError);
+        reject(new Error(error.message));
       };
 
       const handleError = (error) => {
         clearTimeout(timeout);
         this.socket.off('gameStarted', handleGameStarted);
+        this.socket.off('gameStartFailed', handleStartFailed);
         reject(error);
       };
 
       console.log('Iniciando juego:', data);
       this.socket.emit('startGame', data);
       this.socket.once('gameStarted', handleGameStarted);
+      this.socket.once('gameStartFailed', handleStartFailed);
       this.socket.once('error', handleError);
     });
   }
