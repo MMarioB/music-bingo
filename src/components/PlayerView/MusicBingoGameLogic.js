@@ -219,15 +219,20 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
       if (joinResponse?.phase) {
         setGamePhase(joinResponse.phase);
       }
+      if (joinResponse?.currentCategory) {
+        setCurrentCategory(joinResponse.currentCategory);
+        setGamePhase('playing');
+        setBoard(generateValidBoard());
+      }
     } catch (error) {
       console.error('Error uniéndose al juego:', error);
       setConnectionError(error.message);
     }
-  }, [roomCode, playerName, difficulty]);
+  }, [roomCode, playerName, difficulty, generateValidBoard]);
 
   // Manejo de click en casillas
-  const handleCellClick = useCallback((index) => {
-    if (!canMark) return;
+  const handleCellClick = useCallback((index, isUnmarking = false) => {
+    if (!canMark && !isUnmarking) return;
 
     setBoard(prev => {
       const newBoard = [...prev];
@@ -248,11 +253,6 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
     });
   }, [canMark, currentCategory, checkWinner, roomCode, playerName]);
 
-  // Efecto para inicializar el tablero
-  useEffect(() => {
-    setBoard(generateValidBoard());
-  }, [generateValidBoard]);
-
   // Efecto para eventos del socket
   useEffect(() => {
     const handlers = {
@@ -265,6 +265,7 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
         setCurrentCategory(category);
         setCurrentSong(null);
         setCanMark(false);
+        setGamePhase('playing');
       },
       songRevealed: (songData) => {
         console.log('Canción revelada:', songData);
@@ -281,6 +282,7 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
       gameStarted: () => {
         console.log('Juego iniciado');
         setGamePhase('playing');
+        setBoard(generateValidBoard());
       },
       gameStartFailed: () => {
         console.log('Inicio de juego fallido');
@@ -307,7 +309,14 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
       });
       gameSocket.disconnect();
     };
-  }, [joinGame]);
+  }, [joinGame, generateValidBoard]);
+
+  // Efecto para generar tablero cuando sea necesario
+  useEffect(() => {
+    if (gamePhase === 'playing' && board.length === 0) {
+      setBoard(generateValidBoard());
+    }
+  }, [gamePhase, generateValidBoard, board.length]);
 
   return {
     board,

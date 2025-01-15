@@ -30,7 +30,7 @@ const MusicBingoGame = ({ playerName, roomCode, difficulty }) => {
 
   const handleMarkCell = (index) => {
     if (!originalCanMark) return;
-    
+
     if (lastMarkedIndex === index) {
       handleCellClick(index, true);
       setLastMarkedIndex(null);
@@ -134,15 +134,15 @@ const MusicBingoGame = ({ playerName, roomCode, difficulty }) => {
             </Alert>
           )}
 
-          {gamePhase !== 'waiting' && (
+          {(gamePhase === 'playing' || currentCategory) && (
             <Card className="p-2 md:p-4 shadow-lg">
               <div className="grid grid-cols-5 gap-1 md:gap-3">
                 {board.map((category, index) => {
                   const Icon = category.icon;
                   const isSelected = index === lastMarkedIndex;
-                  const isMarkable = originalCanMark && 
-                                   category.name === currentCategory?.name &&
-                                   (!hasMarkedThisRound || isSelected);
+                  const isMarkable = originalCanMark &&
+                    category.name === currentCategory?.name &&
+                    (!hasMarkedThisRound || isSelected);
 
                   return (
                     <motion.button
