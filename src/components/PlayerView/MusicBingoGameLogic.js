@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useSpotify } from '../../hooks/useSpotify';
 import { gameSocket } from '../../services/socketService';
-import { ARTISTS } from './constants';
+import { ARTISTS } from '../constants';
 
 export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
   const { spotify, loggedIn, login } = useSpotify();
