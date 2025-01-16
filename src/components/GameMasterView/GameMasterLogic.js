@@ -14,52 +14,57 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
   const [connectionError, setConnectionError] = useState(null);
   const [isMarkingEnabled, setIsMarkingEnabled] = useState(false);
   const [allPlayersReady, setAllPlayersReady] = useState(false);
+  const [isReconnecting, setIsReconnecting] = useState(false);
 
   // Función para verificar si todos los jugadores están listos
   const checkAllPlayersReady = useCallback((players) => {
+    if (!players?.length) return;
     const ready = players.every(player => player.ready || player.isHost);
     setAllPlayersReady(ready);
   }, []);
 
-  // Función para manejar errores
+  // Función para manejar errores mejorada
   const handleError = useCallback((error, customMessage) => {
     console.error(customMessage, error);
     setConnectionError(error.message || customMessage);
+    
+    if (error?.type === 'CONNECTION_ERROR') {
+      setCurrentCard(null);
+      setIsMarkingEnabled(false);
+      setGameStep('wheel');
+    }
   }, []);
 
-  // Habilitar/Deshabilitar marcado
+  // Habilitar/Deshabilitar marcado mejorado
   const handleMarkingToggle = useCallback(async () => {
     try {
       if (isMarkingEnabled) {
-        await gameSocket.disableMarking({ roomCode });
+        await gameSocket.disableMarking({ roomCode, timestamp: Date.now() });
         setIsMarkingEnabled(false);
       } else {
-        await gameSocket.enableMarking({ roomCode });
+        await gameSocket.enableMarking({ roomCode, timestamp: Date.now() });
         setIsMarkingEnabled(true);
       }
     } catch (error) {
       handleError(error, 'Error al cambiar estado de marcado');
+      // Revertir el estado en caso de error
+      setIsMarkingEnabled(prev => !prev);
     }
   }, [isMarkingEnabled, roomCode, handleError]);
 
-  // Iniciar sala
+  // Iniciar sala mejorado
   const initializeRoom = useCallback(async () => {
     try {
       console.log('Iniciando sala:', roomCode);
       
-      // Primero nos aseguramos de que no haya conexión previa
       await gameSocket.disconnect();
-      
-      // Conectamos
-      await gameSocket.connect();
-      
-      // Esperamos un momento para asegurar la conexión
       await new Promise(resolve => setTimeout(resolve, 100));
+      await gameSocket.connect();
       
       const roomResponse = await gameSocket.createRoom({
         roomCode,
         difficulty,
-        maxPlayers: 8,
+        maxPlayers: 12,
         host: true,
         isHost: true
       });
@@ -76,45 +81,48 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
         checkAllPlayersReady(roomResponse.players);
       }
 
-      // Emitimos evento de sala creada
-      await gameSocket.emit('roomCreated', { roomCode });
-
     } catch (error) {
       console.error('Error inicializando sala:', error);
       handleError(error, 'Error inicializando sala');
     }
   }, [roomCode, difficulty, checkAllPlayersReady, handleError]);
 
-  // Manejar cambio de dificultad
+  // Manejar cambio de dificultad mejorado
   const handleDifficultyChange = useCallback(async (newDifficulty) => {
     try {
       setDifficulty(newDifficulty);
       await gameSocket.updateRoom({
         roomCode,
-        difficulty: newDifficulty
+        difficulty: newDifficulty,
+        timestamp: Date.now()
       });
     } catch (error) {
       handleError(error, 'Error al cambiar dificultad');
+      setDifficulty(prev => prev); // Revertir en caso de error
     }
   }, [roomCode, handleError]);
 
-  // Manejar selección de categoría
+  // Manejar selección de categoría mejorado
   const handleCategorySelected = useCallback(async (category) => {
     try {
-      await gameSocket.selectCategory({
-        roomCode,
-        category
-      });
       setSelectedCategory(category);
       setGameStep('card');
       setIsMarkingEnabled(false);
       setCurrentCard(null);
+
+      await gameSocket.selectCategory({
+        roomCode,
+        category,
+        timestamp: Date.now()
+      });
     } catch (error) {
+      setSelectedCategory(null);
+      setGameStep('wheel');
       handleError(error, 'Error al seleccionar categoría');
     }
   }, [roomCode, handleError]);
 
-  // Generar nueva carta
+  // Generar nueva carta mejorado
   const generateNewCard = useCallback(async () => {
     if (!loggedIn || !selectedCategory || !spotify) return;
 
@@ -129,12 +137,11 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
         market: 'ES'
       });
 
-      const tracks = response.tracks.items;
-      if (!tracks.length) {
+      if (!response?.tracks?.items?.length) {
         throw new Error('No se encontraron canciones');
       }
 
-      const randomTrack = tracks[Math.floor(Math.random() * tracks.length)];
+      const randomTrack = response.tracks.items[Math.floor(Math.random() * response.tracks.items.length)];
       const year = parseInt(randomTrack.album.release_date.split('-')[0]);
 
       const newCard = {
@@ -154,28 +161,37 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
     }
   }, [loggedIn, selectedCategory, spotify, handleError]);
 
-  // Revelar canción
+  // Revelar canción mejorado
   const handleRevealSong = useCallback(async () => {
     if (!currentCard) return;
     try {
+      const songData = {
+        title: currentCard.title,
+        artist: currentCard.artist,
+        year: currentCard.year,
+        timestamp: Date.now()
+      };
+
       await gameSocket.revealSong({
         roomCode,
-        songData: {
-          title: currentCard.title,
-          artist: currentCard.artist,
-          year: currentCard.year
-        }
+        songData
       });
+      
       setCurrentCard(prev => ({ ...prev, revealed: true }));
     } catch (error) {
       handleError(error, 'Error al revelar la canción');
+      // No revertimos el estado porque podría causar desincronización
     }
   }, [currentCard, roomCode, handleError]);
 
-  // Iniciar nueva ronda
+  // Iniciar nueva ronda mejorado
   const startNewRound = useCallback(async () => {
     try {
-      await gameSocket.disableMarking({ roomCode });
+      await gameSocket.disableMarking({ 
+        roomCode,
+        timestamp: Date.now()
+      });
+      
       setCurrentCard(null);
       setSelectedCategory(null);
       setGameStep('wheel');
@@ -185,7 +201,7 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
     }
   }, [roomCode, handleError]);
 
-  // Efecto para eventos del socket
+  // Efecto para eventos del socket mejorado
   useEffect(() => {
     const handlers = {
       playersUpdate: ({ players }) => {
@@ -208,9 +224,33 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
       error: (error) => {
         handleError(error, 'Error en socket');
       },
-      disconnect: () => {
-        console.log('Desconectado del servidor');
-        handleError(new Error('Desconectado del servidor'), 'Error de conexión');
+      disconnect: (reason) => {
+        console.log('Desconectado del servidor:', reason);
+        setIsReconnecting(true);
+        handleError({ 
+          message: 'Desconectado del servidor', 
+          type: 'CONNECTION_ERROR' 
+        }, 'Error de conexión');
+      },
+      reconnect: (attemptNumber) => {
+        console.log('Reconectando... intento:', attemptNumber);
+        setIsReconnecting(true);
+      },
+      reconnect_error: (error) => {
+        handleError(error, 'Error al reconectar');
+      },
+      reconnect_failed: () => {
+        setIsReconnecting(false);
+        handleError(new Error('Falló la reconexión'), 'Error de conexión');
+      },
+      connect: () => {
+        if (isReconnecting) {
+          console.log('Reconectado exitosamente');
+          setIsReconnecting(false);
+          setConnectionError(null);
+          // Intentar reiniciar la sala
+          initializeRoom().catch(console.error);
+        }
       }
     };
 
@@ -220,8 +260,10 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
     });
 
     // Solo inicializar si tenemos roomCode y no hay error
-    if (roomCode && !connectionError) {
-      initializeRoom();
+    if (roomCode && !connectionError && !isReconnecting) {
+      initializeRoom().catch(error => 
+        handleError(error, 'Error en la inicialización de la sala')
+      );
     }
 
     return () => {
@@ -230,7 +272,16 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
       });
       gameSocket.disconnect();
     };
-  }, [initializeRoom, checkAllPlayersReady, roomCode, handleError, connectionError]);
+  }, [initializeRoom, checkAllPlayersReady, roomCode, handleError, connectionError, isReconnecting]);
+
+  // Efecto para limpiar estados cuando hay error
+  useEffect(() => {
+    if (connectionError) {
+      setCurrentCard(null);
+      setIsMarkingEnabled(false);
+      setGameStep('wheel');
+    }
+  }, [connectionError]);
 
   return {
     loggedIn,
