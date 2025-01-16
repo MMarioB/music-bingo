@@ -37,7 +37,7 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
       console.error('Error inicializando sala:', error);
       setConnectionError(error.message);
     }
-  }, [roomCode, difficulty]);
+  }, [roomCode, difficulty, checkAllPlayersReady]);
 
   // Función para verificar si todos los jugadores están listos
   const checkAllPlayersReady = useCallback((players) => {
@@ -79,7 +79,7 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
       });
       gameSocket.disconnect();
     };
-  }, [initializeRoom]);
+  }, [initializeRoom, checkAllPlayersReady]);
 
   // Manejar cambio de dificultad
   const handleDifficultyChange = useCallback(async (newDifficulty) => {
@@ -152,7 +152,7 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
     } finally {
       setIsLoading(false);
     }
-  }, [loggedIn, selectedCategory, spotify, roomCode]);
+  }, [loggedIn, selectedCategory, spotify]);
 
   // Revelar canción
   const handleRevealSong = useCallback(async () => {

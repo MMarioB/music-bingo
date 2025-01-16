@@ -56,8 +56,6 @@ const MusicBingoGame = ({ playerName, roomCode, difficulty }) => {
     let timer;
     if (connectionError) {
       timer = setTimeout(() => {
-        // Asumimos que hay una función setConnectionError disponible en useMusicBingoLogic
-        // Si no está disponible, necesitarás modificar la lógica del juego para incluirla
         setConnectionError(null);
       }, 4000);
     }
@@ -65,20 +63,35 @@ const MusicBingoGame = ({ playerName, roomCode, difficulty }) => {
   }, [connectionError, setConnectionError]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-100 via-purple-100 to-pink-100 p-3 md:p-6 flex flex-col items-center justify-center">
+    <div className="min-h-screen bg-[#1a0133] flex flex-col items-center justify-center relative overflow-hidden">
+      {/* Fondo con cuadrícula tipo disco */}
+      <div
+        className="absolute inset-0 opacity-10"
+        style={{
+          backgroundImage: `
+            linear-gradient(to right, #ff00ee 1px, transparent 1px),
+            linear-gradient(to bottom, #ff00ee 1px, transparent 1px)
+          `,
+          backgroundSize: '40px 40px',
+          transform: 'perspective(500px) rotateX(60deg)',
+          transformOrigin: 'bottom'
+        }}
+      />
+
       <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.5 }}
-        className="w-full max-w-3xl bg-white/80 backdrop-blur-lg rounded-xl shadow-xl overflow-hidden"
+        className="w-[95%] max-w-xl bg-black/40 backdrop-blur-lg rounded-xl shadow-xl overflow-hidden border border-white/10"
       >
-        <div className="bg-gradient-to-r from-purple-600 to-indigo-600 p-4 md:p-6">
-          <h1 className="text-xl md:text-3xl font-bold text-center text-white drop-shadow-md">
+        <div className="bg-black/60 p-4">
+          <h1 className="text-xl md:text-3xl font-bold text-center text-white"
+            style={{ textShadow: '0 0 10px rgba(255,255,255,0.8)' }}>
             Music Bingo
           </h1>
         </div>
 
-        <div className="p-4 md:p-6 space-y-4 md:space-y-6">
+        <div className="p-4 space-y-4">
           {connectionError && (
             <AnimatePresence>
               <motion.div
@@ -86,9 +99,9 @@ const MusicBingoGame = ({ playerName, roomCode, difficulty }) => {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
               >
-                <Alert variant="destructive">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>{connectionError}</AlertDescription>
+                <Alert variant="destructive" className="bg-red-500/20 border border-red-500/50">
+                  <AlertCircle className="h-4 w-4 text-white" />
+                  <AlertDescription className="text-white">{connectionError}</AlertDescription>
                 </Alert>
               </motion.div>
             </AnimatePresence>
@@ -96,8 +109,8 @@ const MusicBingoGame = ({ playerName, roomCode, difficulty }) => {
 
           <div className="flex justify-between items-center">
             <div>
-              <h2 className="text-lg font-bold">{playerName}</h2>
-              <p className="text-sm text-gray-500">
+              <h2 className="text-lg font-bold text-white">{playerName}</h2>
+              <p className="text-sm text-purple-300">
                 Sala: {roomCode} - {connectedPlayers.length} jugadores
               </p>
             </div>
@@ -110,9 +123,9 @@ const MusicBingoGame = ({ playerName, roomCode, difficulty }) => {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
               >
-                <Alert className="bg-green-100 border-green-300">
-                  <CheckCircleIcon className="h-5 w-5 text-green-600 mr-2" />
-                  <AlertDescription className="text-green-800 font-semibold text-sm md:text-base">
+                <Alert className="bg-green-500/20 border border-green-500/50">
+                  <CheckCircleIcon className="h-5 w-5 text-green-400 mr-2" />
+                  <AlertDescription className="text-green-300 font-semibold text-sm md:text-base">
                     ¡BINGO! ¡Has completado una línea!
                   </AlertDescription>
                 </Alert>
@@ -121,33 +134,39 @@ const MusicBingoGame = ({ playerName, roomCode, difficulty }) => {
           </AnimatePresence>
 
           {currentCategory && (
-            <div className={`${currentCategory.color} p-4 rounded-lg text-center`}>
+            <div
+              className={`${currentCategory.color} p-4 rounded-lg text-center border border-white/20`}
+              style={{ boxShadow: '0 0 15px rgba(255,255,255,0.1)' }}
+            >
               <h3 className="font-semibold text-lg">{currentCategory.name}</h3>
             </div>
           )}
 
           {currentCategory && (
-            <Alert className={canMark ? "bg-green-100" : "bg-blue-100"}>
+            <Alert className={canMark
+              ? "bg-green-500/20 border border-green-400/50"
+              : "bg-blue-500/20 border border-blue-400/50"
+            }>
               {originalCanMark ? (
                 lastMarkedIndex !== null ? (
                   <>
-                    <InfoIcon className="h-5 w-5 text-blue-600 mr-2" />
-                    <AlertDescription className="text-blue-800">
+                    <InfoIcon className="h-5 w-5 text-blue-400 mr-2" />
+                    <AlertDescription className="text-blue-300">
                       Puedes desmarcar la casilla seleccionada para elegir otra
                     </AlertDescription>
                   </>
                 ) : (
                   <>
-                    <CheckCircleIcon className="h-5 w-5 text-green-600 mr-2" />
-                    <AlertDescription className="text-green-800">
+                    <CheckCircleIcon className="h-5 w-5 text-green-400 mr-2" />
+                    <AlertDescription className="text-green-300">
                       ¡Puedes marcar una casilla de &quot;{currentCategory.name}&quot; ahora!
                     </AlertDescription>
                   </>
                 )
               ) : (
                 <>
-                  <InfoIcon className="h-5 w-5 text-blue-600 mr-2" />
-                  <AlertDescription className="text-blue-800">
+                  <InfoIcon className="h-5 w-5 text-blue-400 mr-2" />
+                  <AlertDescription className="text-blue-300">
                     Espera a que el Game Master habilite el marcado
                   </AlertDescription>
                 </>
@@ -156,7 +175,7 @@ const MusicBingoGame = ({ playerName, roomCode, difficulty }) => {
           )}
 
           {(gamePhase === 'playing' || currentCategory) && (
-            <Card className="p-2 md:p-4 shadow-lg">
+            <Card className="p-2 md:p-4 bg-black/30 border border-white/20">
               <div className="grid grid-cols-5 gap-1 md:gap-3">
                 {board.map((category, index) => {
                   const Icon = category.icon;
@@ -182,18 +201,22 @@ const MusicBingoGame = ({ playerName, roomCode, difficulty }) => {
                         relative 
                         transition-all 
                         duration-200
+                        border border-white/20
                         ${isMarkable ? 'cursor-pointer hover:ring-2 hover:ring-purple-400' : 'cursor-default'}
                         ${category.marked ? 'scale-95 shadow-inner' : 'shadow hover:shadow-md'}
-                        ${isSelected ? 'ring-2 ring-purple-600' : ''}
+                        ${isSelected ? 'ring-2 ring-purple-400' : ''}
                       `}
+                      style={isSelected ? { boxShadow: '0 0 15px rgba(168,85,247,0.4)' } : {}}
                       onClick={() => handleMarkCell(index)}
                       disabled={!isMarkable}
                       aria-label={`Casilla ${category.name}`}
                     >
-                      <Icon {...category.iconProps} />
+                      <Icon className="text-gray-800" {...category.iconProps} />
                       {category.marked && (
-                        <div className="absolute inset-0 flex items-center justify-center bg-black/10">
-                          <CheckCircleIcon className="text-green-500 w-6 md:w-10 h-6 md:h-10" />
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/20 backdrop-blur-sm rounded-lg">
+                          <CheckCircleIcon className="text-green-400 w-6 md:w-10 h-6 md:h-10"
+                            style={{ filter: 'drop-shadow(0 0 8px rgb(74 222 128 / 0.5))' }}
+                          />
                         </div>
                       )}
                     </motion.button>
@@ -205,26 +228,26 @@ const MusicBingoGame = ({ playerName, roomCode, difficulty }) => {
 
           <div className="mt-4">
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-base md:text-lg font-semibold">
+              <h3 className="text-lg font-semibold text-white">
                 Jugadores Conectados
               </h3>
-              <div className="flex items-center gap-2 text-gray-600 bg-white/50 px-3 py-1 rounded-full">
+              <div className="flex items-center gap-2 text-white/80 bg-white/10 backdrop-blur-sm px-3 py-1 rounded-full border border-white/20">
                 <Users className="w-4 h-4" />
                 <span>{connectedPlayers.length}</span>
               </div>
             </div>
-            <div className="bg-white/50 rounded-lg divide-y divide-gray-200">
+            <div className="bg-black/30 rounded-lg divide-y divide-white/10 border border-white/20">
               {connectedPlayers.map((player) => (
                 <div
                   key={player.id}
-                  className="flex items-center justify-between p-2"
+                  className="flex items-center justify-between p-3"
                 >
-                  <span className="font-medium">
+                  <span className="font-medium text-white">
                     {player.name}
                     {player.isHost && " (Game Master)"}
                   </span>
                   {player.name === playerName && (
-                    <span className="text-xs text-purple-600 font-medium">(Tú)</span>
+                    <span className="text-xs text-purple-300 font-medium">(Tú)</span>
                   )}
                 </div>
               ))}

@@ -160,9 +160,9 @@ const GameRoom = ({ roomCode, playerName, isHost, onStartGame }) => {
   const allPlayersReady = players.every(player => player.isHost || player.ready);
 
   return (
-    <div className="min-h-screen bg-[#1a0133] p-4 relative overflow-hidden">
+    <div className="min-h-screen bg-[#1a0133] flex flex-col items-center justify-center relative overflow-hidden">
       {/* Fondo con cuadrícula tipo disco */}
-      <div
+      <div 
         className="absolute inset-0 opacity-10"
         style={{
           backgroundImage: `
@@ -179,14 +179,14 @@ const GameRoom = ({ roomCode, playerName, isHost, onStartGame }) => {
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.5 }}
-        className="w-full max-w-md mx-auto bg-black/40 backdrop-blur-lg rounded-xl shadow-xl overflow-hidden border border-white/10"
+        className="w-[90%] max-w-sm mx-auto bg-black/40 backdrop-blur-lg rounded-xl shadow-xl overflow-hidden border border-white/10"
       >
         <div className="bg-black/60 p-4">
           <h1 className="text-2xl font-bold text-center mb-1"
-            style={{
-              color: '#fff',
-              textShadow: '0 0 10px rgba(255,255,255,0.8)'
-            }}>
+              style={{
+                color: '#fff',
+                textShadow: '0 0 10px rgba(255,255,255,0.8)'
+              }}>
             Sala de Music Bingo
           </h1>
           <p className="text-center text-purple-300 font-mono">
@@ -195,18 +195,18 @@ const GameRoom = ({ roomCode, playerName, isHost, onStartGame }) => {
         </div>
 
         {connectionError && (
-          <Alert variant="destructive" className="m-4 bg-red-500/20 border border-red-500/50">
+          <Alert variant="destructive" className="mx-4 mt-4 bg-red-500/20 border border-red-500/50">
             <AlertCircle className="h-4 w-4" />
             <AlertDescription className="text-white">{connectionError}</AlertDescription>
           </Alert>
         )}
 
-        <div className="p-4 space-y-6">
+        <div className="p-4 space-y-4">
           {!isHost && !isReady && (
             <Button
               onClick={handleSetReady}
               disabled={isSettingReady}
-              className="w-full bg-green-500/80 hover:bg-green-500 backdrop-blur-sm border border-green-400 transition-all duration-300"
+              className="w-full h-12 bg-green-500/80 hover:bg-green-500 backdrop-blur-sm border border-green-400 transition-all duration-300"
               style={{ boxShadow: '0 0 15px rgba(0,255,0,0.3)' }}
             >
               {isSettingReady ? (
@@ -255,10 +255,11 @@ const GameRoom = ({ roomCode, playerName, isHost, onStartGame }) => {
 
               <Button
                 onClick={handleStartGame}
-                className={`w-full transition-all duration-300 ${allPlayersReady && players.length >= 2
+                className={`w-full h-12 transition-all duration-300 ${
+                  allPlayersReady && players.length >= 2
                     ? 'bg-gradient-to-r from-green-500/80 to-emerald-500/80 hover:from-green-500 hover:to-emerald-500 border border-green-400'
                     : 'bg-gray-500/50 border border-gray-400'
-                  }`}
+                }`}
                 style={
                   allPlayersReady && players.length >= 2
                     ? { boxShadow: '0 0 15px rgba(0,255,0,0.3)' }
@@ -282,7 +283,7 @@ const GameRoom = ({ roomCode, playerName, isHost, onStartGame }) => {
             </Card>
           )}
 
-          <div className="space-y-4">
+          <div className="space-y-3">
             <div className="flex items-center justify-between">
               <h3 className="font-semibold text-lg text-white">
                 Jugadores en la Sala
