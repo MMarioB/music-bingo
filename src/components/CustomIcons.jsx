@@ -1,4 +1,4 @@
-export const Number2Icon = (props) => (
+export const YearRangeIcon = (props) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     width="24"
@@ -11,12 +11,13 @@ export const Number2Icon = (props) => (
     strokeLinejoin="round"
     {...props}
   >
-    <path d="M8 7a4 4 0 1 0 8 0 4 4 0 1 0-8 0" />
-    <path d="M6 21v-2a4 4 0 0 1 4-4" />
+    <path d="M12 8v4l2 2" />
+    <path d="M4 4h2a2 2 0 0 1 2 2v12" />
+    <path d="M20 4h-2a2 2 0 0 0-2 2v12" />
   </svg>
 );
 
-export const Number3Icon = (props) => (
+export const ExactYearIcon = (props) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     width="24"
@@ -29,13 +30,16 @@ export const Number3Icon = (props) => (
     strokeLinejoin="round"
     {...props}
   >
-    <path d="M8 7a4 4 0 1 0 8 0 4 4 0 1 0-8 0" />
-    <path d="M8 15h8" />
-    <path d="M8 19h8" />
+    <circle cx="12" cy="12" r="8" />
+    <circle cx="12" cy="12" r="3" />
+    <line x1="12" y1="4" x2="12" y2="8" />
+    <line x1="12" y1="16" x2="12" y2="20" />
+    <line x1="4" y1="12" x2="8" y2="12" />
+    <line x1="16" y1="12" x2="20" y2="12" />
   </svg>
 );
 
-export const Number4Icon = (props) => (
+export const DecadeIcon = (props) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     width="24"
@@ -48,7 +52,9 @@ export const Number4Icon = (props) => (
     strokeLinejoin="round"
     {...props}
   >
-    <path d="M8 7a4 4 0 1 0 8 0 4 4 0 1 0-8 0" />
-    <path d="M16 21v-8l4 8v-8" />
+    <rect x="2" y="4" width="20" height="16" rx="2" />
+    <path d="M8 10h8" />
+    <path d="M8 14h4" />
+    <path d="M16 14h.01" />
   </svg>
 );
