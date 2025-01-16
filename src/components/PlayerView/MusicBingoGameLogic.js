@@ -6,7 +6,7 @@ import {
   MIN_DIFFERENT_CATEGORIES,
   CATEGORIES_A,
   CATEGORIES_B 
-} from './constants';
+} from '../constants';
 
 export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
   // Estados del juego
