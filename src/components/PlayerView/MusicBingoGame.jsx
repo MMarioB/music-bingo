@@ -22,6 +22,7 @@ const MusicBingoGame = ({ playerName, roomCode, difficulty }) => {
     canMark: originalCanMark,
     hasWinner,
     connectionError,
+    setConnectionError,
     handleCellClick,
     gamePhase
   } = useMusicBingoLogic({ playerName, roomCode, difficulty });
@@ -51,6 +52,18 @@ const MusicBingoGame = ({ playerName, roomCode, difficulty }) => {
     setHasMarkedThisRound(false);
   }, [currentCategory]);
 
+  useEffect(() => {
+    let timer;
+    if (connectionError) {
+      timer = setTimeout(() => {
+        // Asumimos que hay una función setConnectionError disponible en useMusicBingoLogic
+        // Si no está disponible, necesitarás modificar la lógica del juego para incluirla
+        setConnectionError(null);
+      }, 4000);
+    }
+    return () => clearTimeout(timer);
+  }, [connectionError, setConnectionError]);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-100 via-purple-100 to-pink-100 p-3 md:p-6 flex flex-col items-center justify-center">
       <motion.div
@@ -67,10 +80,18 @@ const MusicBingoGame = ({ playerName, roomCode, difficulty }) => {
 
         <div className="p-4 md:p-6 space-y-4 md:space-y-6">
           {connectionError && (
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{connectionError}</AlertDescription>
-            </Alert>
+            <AnimatePresence>
+              <motion.div
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+              >
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>{connectionError}</AlertDescription>
+                </Alert>
+              </motion.div>
+            </AnimatePresence>
           )}
 
           <div className="flex justify-between items-center">
