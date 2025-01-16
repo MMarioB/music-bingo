@@ -46,21 +46,41 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
   const initializeRoom = useCallback(async () => {
     try {
       console.log('Iniciando sala:', roomCode);
+      
+      // Primero nos aseguramos de que no haya conexión previa
+      await gameSocket.disconnect();
+      
+      // Conectamos
       await gameSocket.connect();
+      
+      // Esperamos un momento para asegurar la conexión
+      await new Promise(resolve => setTimeout(resolve, 100));
       
       const roomResponse = await gameSocket.createRoom({
         roomCode,
         difficulty,
         maxPlayers: 8,
-        host: true
+        host: true,
+        isHost: true
       });
+
+      console.log('Respuesta de creación de sala:', roomResponse);
+
+      if (!roomResponse) {
+        throw new Error('No se pudo crear la sala');
+      }
 
       if (roomResponse?.players) {
         console.log('Jugadores iniciales:', roomResponse.players);
         setConnectedPlayers(roomResponse.players);
         checkAllPlayersReady(roomResponse.players);
       }
+
+      // Emitimos evento de sala creada
+      await gameSocket.emit('roomCreated', { roomCode });
+
     } catch (error) {
+      console.error('Error inicializando sala:', error);
       handleError(error, 'Error inicializando sala');
     }
   }, [roomCode, difficulty, checkAllPlayersReady, handleError]);
@@ -177,8 +197,20 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
         handleError(error, 'Error al iniciar juego');
         setGameStep('wheel');
       },
+      playerJoinedRoom: (player) => {
+        console.log('Jugador unido:', player);
+        setConnectedPlayers(prev => [...prev, player]);
+      },
+      playerLeftRoom: (playerId) => {
+        console.log('Jugador abandonó:', playerId);
+        setConnectedPlayers(prev => prev.filter(p => p.id !== playerId));
+      },
       error: (error) => {
         handleError(error, 'Error en socket');
+      },
+      disconnect: () => {
+        console.log('Desconectado del servidor');
+        handleError(new Error('Desconectado del servidor'), 'Error de conexión');
       }
     };
 
@@ -187,19 +219,18 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
       gameSocket.on(event, handler);
     });
 
-    // Inicializar sala solo si tenemos un roomCode válido
-    if (roomCode) {
+    // Solo inicializar si tenemos roomCode y no hay error
+    if (roomCode && !connectionError) {
       initializeRoom();
     }
 
-    // Limpieza
     return () => {
       Object.keys(handlers).forEach(event => {
         gameSocket.off(event);
       });
       gameSocket.disconnect();
     };
-  }, [initializeRoom, checkAllPlayersReady, roomCode, handleError]);
+  }, [initializeRoom, checkAllPlayersReady, roomCode, handleError, connectionError]);
 
   return {
     loggedIn,
@@ -211,6 +242,7 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
     connectedPlayers,
     difficulty,
     connectionError,
+    setConnectionError,
     isMarkingEnabled,
     allPlayersReady,
     handleDifficultyChange,
