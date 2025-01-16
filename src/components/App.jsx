@@ -1,5 +1,11 @@
 import { useState, useCallback } from "react";
+import { Audiowide } from 'next/font/google';
 import MusicBingoGame from "../components/PlayerView/MusicBingoGame";
+
+const audiowide = Audiowide({
+  weight: '400',
+  subsets: ['latin'],
+});
 import GameMaster from "../components/GameMasterView/GameMaster";
 import GameRoom from "../components/GameRoom";
 import { Card } from "../components/ui/card";
@@ -206,7 +212,7 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#1a0133] p-4 relative overflow-hidden">
+    <div className={`min-h-screen bg-[#1a0133] p-4 relative overflow-hidden ${audiowide.className}`}>
       {/* Fondo con cuadrícula tipo disco */}
       <div
         className="absolute inset-0 opacity-20"
@@ -252,7 +258,7 @@ function App() {
                   0 0 92px #ff00ee
                 `
             }}>
-            TEMACOS
+            HITSTER
           </h1>
           <h2 className="text-4xl md:text-5xl font-bold relative"
             style={{
@@ -278,9 +284,9 @@ function App() {
                 <div className="grid gap-6">
                   <Button
                     onClick={() => handleRoleSelect('master')}
-                    className="h-auto py-8 bg-transparent border-2 border-[#00ff00] hover:bg-[#00ff00]/20 transform transition-all hover:scale-105 group"
+                    className="h-auto py-8 bg-black/30 border-2 border-[#00ff00] hover:bg-[#00ff00]/20 transform transition-all hover:scale-105 group text-white/90"
                     style={{
-                      boxShadow: '0 0 10px #00ff00',
+                      boxShadow: '0 0 10px #00ff00, inset 0 0 20px rgba(0, 255, 0, 0.2)',
                     }}
                   >
                     <div className="flex items-center justify-center gap-3">
@@ -291,9 +297,9 @@ function App() {
 
                   <Button
                     onClick={() => handleRoleSelect('player')}
-                    className="h-auto py-8 bg-transparent border-2 border-[#ff00ee] hover:bg-[#ff00ee]/20 transform transition-all hover:scale-105 group"
+                    className="h-auto py-8 bg-black/30 border-2 border-[#ff00ee] hover:bg-[#ff00ee]/20 transform transition-all hover:scale-105 group text-white/90"
                     style={{
-                      boxShadow: '0 0 10px #ff00ee',
+                      boxShadow: '0 0 10px #ff00ee, inset 0 0 20px rgba(255, 0, 238, 0.2)',
                     }}
                   >
                     <div className="flex items-center justify-center gap-3">
@@ -304,7 +310,7 @@ function App() {
                 </div>
 
                 <p className="text-white/60 text-center mt-6 text-sm">
-                  El bingo de las awelas
+                  El bingo de las abuelas
                 </p>
               </Card>
             </motion.div>
