@@ -206,9 +206,9 @@ function App() {
   };
 
   return (
-    <div className={`min-h-screen bg-[#1a0133] p-4 relative overflow-hidden`}>
+    <div className="min-h-screen bg-[#1a0133] p-4 relative overflow-hidden font-audiowide">
       {/* Fondo con cuadrícula tipo disco */}
-      <div
+      <div 
         className="absolute inset-0 opacity-20"
         style={{
           backgroundImage: `
@@ -241,9 +241,9 @@ function App() {
           className="text-center mb-12 relative"
         >
           <h1 className="text-6xl md:text-7xl font-bold mb-4 tracking-wider"
-            style={{
-              color: '#fff',
-              textShadow: `
+              style={{
+                color: '#fff',
+                textShadow: `
                   0 0 7px #fff,
                   0 0 10px #fff,
                   0 0 21px #fff,
@@ -251,16 +251,16 @@ function App() {
                   0 0 82px #ff00ee,
                   0 0 92px #ff00ee
                 `
-            }}>
+              }}>
             HITSTER
           </h1>
           <h2 className="text-4xl md:text-5xl font-bold relative"
-            style={{
-              background: 'linear-gradient(to right, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #4b0082, #8b00ff)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              textShadow: '0 0 20px rgba(255,255,255,0.5)'
-            }}>
+              style={{
+                background: 'linear-gradient(to right, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #4b0082, #8b00ff)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                textShadow: '0 0 20px rgba(255,255,255,0.5)'
+              }}>
             Music BINGO
           </h2>
         </motion.div>
@@ -288,7 +288,7 @@ function App() {
                       <span className="text-xl font-bold tracking-wide">Game Master</span>
                     </div>
                   </Button>
-
+                  
                   <Button
                     onClick={() => handleRoleSelect('player')}
                     className="h-auto py-8 bg-black/30 border-2 border-[#ff00ee] hover:bg-[#ff00ee]/20 transform transition-all hover:scale-105 group text-white/90"
@@ -309,7 +309,7 @@ function App() {
               </Card>
             </motion.div>
           )}
-
+          
           {gameState.phase === 'name-input' && renderNameInput()}
           {gameState.phase === 'room-selection' && renderRoomSelection()}
           {gameState.phase === 'waiting-room' && (
