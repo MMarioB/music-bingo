@@ -1,5 +1,3 @@
-// src/components/GameMasterView/constants.js
-
 export const ARTISTS = {
     tradicional: [
         'Raphael', 'Julio Iglesias', 'Rocío Jurado', 'Isabel Pantoja', 'Camilo Sesto',

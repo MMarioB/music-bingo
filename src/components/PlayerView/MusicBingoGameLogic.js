@@ -1,243 +1,226 @@
 import { useState, useCallback, useEffect } from 'react';
-import { useSpotify } from '../../hooks/useSpotify';
 import { gameSocket } from '../../services/socketService';
-import { ARTISTS } from '../constants';
+import {
+  BOARD_SIZE,
+  MAX_PER_CATEGORY,
+  MIN_DIFFERENT_CATEGORIES,
+  CATEGORIES_A,
+  CATEGORIES_B
+} from '../constants';
 
-export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
-  const { spotify, loggedIn, login } = useSpotify();
-  const [currentCard, setCurrentCard] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState(null);
-  const [gameStep, setGameStep] = useState('wheel');
+export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
+  // Estados del juego
+  const [board, setBoard] = useState([]);
   const [connectedPlayers, setConnectedPlayers] = useState([]);
-  const [difficulty, setDifficulty] = useState(initialDifficulty);
+  const [currentCategory, setCurrentCategory] = useState(null);
+  const [currentSong, setCurrentSong] = useState(null);
+  const [canMark, setCanMark] = useState(false);
+  const [hasWinner, setHasWinner] = useState(false);
   const [connectionError, setConnectionError] = useState(null);
-  const [isMarkingEnabled, setIsMarkingEnabled] = useState(false);
-  const [allPlayersReady, setAllPlayersReady] = useState(false);
+  const [gamePhase, setGamePhase] = useState('waiting');
 
-  // Manejo centralizado de errores
-  const handleError = useCallback((error, customMessage) => {
-    const errorMessage = error?.message || customMessage;
-    console.error(customMessage, error);
-    setConnectionError(errorMessage);
-    
-    // Reiniciar estados si es necesario
-    if (error?.type === 'CONNECTION_ERROR') {
-      setGameStep('wheel');
-      setCurrentCard(null);
-      setIsMarkingEnabled(false);
+  // Validación de línea mejorada
+  const validateLine = useCallback((line) => {
+    if (!line || line.length !== BOARD_SIZE) return false;
+
+    const categoryCounts = {};
+    let markedCount = 0;
+
+    line.forEach(cell => {
+      if (cell?.marked) {
+        categoryCounts[cell.name] = (categoryCounts[cell.name] || 0) + 1;
+        markedCount++;
+      }
+    });
+
+    if (markedCount !== BOARD_SIZE) return false;
+
+    const hasMoreThanTwoRepeats = Object.values(categoryCounts)
+      .some(count => count > MAX_PER_CATEGORY);
+    const differentCategories = Object.keys(categoryCounts).length;
+
+    return !hasMoreThanTwoRepeats && differentCategories >= MIN_DIFFERENT_CATEGORIES;
+  }, []);
+
+  // Verificación de victoria mejorada
+  const checkWinner = useCallback((newBoard) => {
+    if (!newBoard || newBoard.length !== BOARD_SIZE * BOARD_SIZE) return false;
+
+    // Verificar filas
+    for (let i = 0; i < BOARD_SIZE; i++) {
+      const row = newBoard.slice(i * BOARD_SIZE, (i + 1) * BOARD_SIZE);
+      if (validateLine(row)) return true;
     }
-  }, []);
 
-  // Verificación de jugadores listos
-  const checkAllPlayersReady = useCallback((players) => {
-    if (!players?.length) return false;
-    const ready = players.every(player => player.ready || player.isHost);
-    setAllPlayersReady(ready);
-    return ready;
-  }, []);
+    // Verificar columnas
+    for (let i = 0; i < BOARD_SIZE; i++) {
+      const column = Array(BOARD_SIZE).fill(0).map((_, j) => newBoard[j * BOARD_SIZE + i]);
+      if (validateLine(column)) return true;
+    }
 
-  // Inicialización de sala mejorada
-  const initializeRoom = useCallback(async () => {
+    // Verificar diagonales
+    const diagonal1 = Array(BOARD_SIZE).fill(0).map((_, i) => newBoard[i * BOARD_SIZE + i]);
+    const diagonal2 = Array(BOARD_SIZE).fill(0)
+      .map((_, i) => newBoard[i * BOARD_SIZE + (BOARD_SIZE - 1 - i)]);
+
+    return validateLine(diagonal1) || validateLine(diagonal2);
+  }, [validateLine]);
+
+  // Generación de tablero mejorada
+  const generateValidBoard = useCallback(() => {
+    const categories = difficulty === 'experto' ? CATEGORIES_B : CATEGORIES_A;
+    let attempts = 0;
+    const MAX_ATTEMPTS = 1000;
+
+    const validateBoard = (board) => {
+      const categoryCounts = {};
+      board.forEach(cell => {
+        categoryCounts[cell.name] = (categoryCounts[cell.name] || 0) + 1;
+      });
+      return Object.values(categoryCounts).every(count => count >= 2);
+    };
+
+    while (attempts < MAX_ATTEMPTS) {
+      attempts++;
+      const newBoard = Array(BOARD_SIZE * BOARD_SIZE).fill(null).map(() => ({
+        ...categories[Math.floor(Math.random() * categories.length)],
+        marked: false
+      }));
+
+      if (validateBoard(newBoard)) {
+        return newBoard;
+      }
+    }
+
+    console.warn('No se pudo generar un tablero óptimo después de', MAX_ATTEMPTS, 'intentos');
+    return Array(BOARD_SIZE * BOARD_SIZE).fill(null).map(() => ({
+      ...categories[Math.floor(Math.random() * categories.length)],
+      marked: false
+    }));
+  }, [difficulty]);
+
+  // Unirse al juego mejorado
+  const joinGame = useCallback(async () => {
     try {
-      console.log('Iniciando sala:', roomCode);
+      console.log('Intentando conectar al juego:', { roomCode, playerName });
+
+      // Asegurarse de que no hay conexión previa
       await gameSocket.disconnect();
       await new Promise(resolve => setTimeout(resolve, 100));
+
       await gameSocket.connect();
-      
-      const roomResponse = await gameSocket.createRoom({
-        roomCode,
+
+      const joinResponse = await gameSocket.joinRoom(roomCode, {
+        name: playerName,
         difficulty,
-        maxPlayers: 8,
-        host: true,
-        isHost: true,
-        isGameMaster: true
+        isHost: false
       });
 
-      console.log('Respuesta de creación de sala:', roomResponse);
+      console.log('Respuesta de unión:', joinResponse);
 
-      if (!roomResponse) {
-        throw new Error('No se pudo crear la sala');
+      if (!joinResponse) {
+        throw new Error('No se recibió respuesta del servidor');
       }
 
-      if (roomResponse?.players) {
-        console.log('Jugadores iniciales:', roomResponse.players);
-        setConnectedPlayers(roomResponse.players);
-        checkAllPlayersReady(roomResponse.players);
+      if (joinResponse.players) {
+        setConnectedPlayers(joinResponse.players);
       }
 
-    } catch (error) {
-      console.error('Error inicializando sala:', error);
-      handleError(error, 'Error inicializando sala');
-    }
-  }, [roomCode, difficulty, checkAllPlayersReady, handleError]);
-
-  // Manejo de dificultad mejorado
-  const handleDifficultyChange = useCallback(async (newDifficulty) => {
-    try {
-      setDifficulty(newDifficulty);
-      await gameSocket.updateRoom({
-        roomCode,
-        difficulty: newDifficulty,
-        updateType: 'difficulty'
-      });
-    } catch (error) {
-      handleError(error, 'Error al cambiar dificultad');
-    }
-  }, [roomCode, handleError]);
-
-  // Selección de categoría mejorada
-  const handleCategorySelected = useCallback(async (category) => {
-    try {
-      const response = await gameSocket.selectCategory({
-        roomCode,
-        category,
-        timestamp: Date.now()
-      });
-
-      if (!response) {
-        throw new Error('No se recibió respuesta al seleccionar categoría');
+      if (joinResponse.phase) {
+        setGamePhase(joinResponse.phase);
       }
 
-      setSelectedCategory(category);
-      setGameStep('card');
-      setIsMarkingEnabled(false);
-      setCurrentCard(null);
-    } catch (error) {
-      handleError(error, 'Error al seleccionar categoría');
-    }
-  }, [roomCode, handleError]);
-
-  // Generación de carta mejorada
-  const generateNewCard = useCallback(async () => {
-    if (!loggedIn || !selectedCategory || !spotify) {
-      console.log('No se cumplen las condiciones para generar carta');
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      const randomMusicCategory = Object.keys(ARTISTS)[Math.floor(Math.random() * Object.keys(ARTISTS).length)];
-      const artistsInCategory = ARTISTS[randomMusicCategory];
-      const randomArtist = artistsInCategory[Math.floor(Math.random() * artistsInCategory.length)];
-
-      const response = await spotify.searchTracks(`artist:"${randomArtist}"`, {
-        limit: 50,
-        market: 'ES'
-      });
-
-      const tracks = response.tracks.items;
-      if (!tracks?.length) {
-        throw new Error('No se encontraron canciones');
-      }
-
-      const randomTrack = tracks[Math.floor(Math.random() * tracks.length)];
-      const year = parseInt(randomTrack.album.release_date.split('-')[0]);
-
-      const newCard = {
-        title: randomTrack.name,
-        artist: randomTrack.artists[0].name,
-        year,
-        spotifyUrl: randomTrack.external_urls.spotify,
-        musicCategory: randomMusicCategory,
-        revealed: false
-      };
-
-      setCurrentCard(newCard);
-
-    } catch (error) {
-      handleError(error, 'Error al generar la tarjeta');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [loggedIn, selectedCategory, spotify, handleError]);
-
-  // Revelación de canción mejorada
-  const handleRevealSong = useCallback(async () => {
-    if (!currentCard) {
-      console.log('No hay carta para revelar');
-      return;
-    }
-
-    try {
-      await gameSocket.revealSong({
-        roomCode,
-        songData: {
-          title: currentCard.title,
-          artist: currentCard.artist,
-          year: currentCard.year,
-          timestamp: Date.now()
+      if (joinResponse.currentCategory) {
+        setCurrentCategory(joinResponse.currentCategory);
+        if (joinResponse.phase === 'playing') {
+          setBoard(generateValidBoard());
         }
-      });
-      
-      setCurrentCard(prev => ({ ...prev, revealed: true }));
-    } catch (error) {
-      handleError(error, 'Error al revelar la canción');
-    }
-  }, [currentCard, roomCode, handleError]);
-
-  // Control de marcado mejorado
-  const handleMarkingToggle = useCallback(async () => {
-    try {
-      if (isMarkingEnabled) {
-        await gameSocket.disableMarking({ roomCode });
-        setIsMarkingEnabled(false);
-      } else {
-        await gameSocket.enableMarking({ roomCode });
-        setIsMarkingEnabled(true);
       }
-    } catch (error) {
-      handleError(error, 'Error al cambiar estado de marcado');
-    }
-  }, [isMarkingEnabled, roomCode, handleError]);
 
-  // Nueva ronda mejorada
-  const startNewRound = useCallback(async () => {
-    try {
-      await gameSocket.disableMarking({ roomCode });
-      setCurrentCard(null);
-      setSelectedCategory(null);
-      setGameStep('wheel');
-      setIsMarkingEnabled(false);
     } catch (error) {
-      handleError(error, 'Error al iniciar nueva ronda');
+      console.error('Error uniéndose al juego:', error);
+      setConnectionError(error.message || 'Error al unirse al juego');
+      setGamePhase('waiting');
     }
-  }, [roomCode, handleError]);
+  }, [roomCode, playerName, difficulty, generateValidBoard]);
 
-  // Manejo de eventos del socket mejorado
+  // Manejo de click mejorado
+  const handleCellClick = useCallback((index, isUnmarking = false) => {
+    if (!canMark && !isUnmarking) {
+      console.log('No se puede marcar en este momento');
+      return;
+    }
+
+    setBoard(prev => {
+      if (!prev || !prev[index]) return prev;
+
+      const newBoard = [...prev];
+      const cell = newBoard[index];
+
+      if (currentCategory && cell.name === currentCategory.name) {
+        newBoard[index] = { ...cell, marked: !cell.marked };
+
+        // Verificar victoria después de marcar
+        if (checkWinner(newBoard)) {
+          setHasWinner(true);
+          gameSocket.winner({ roomCode, playerName })
+            .catch(error => console.error('Error al reportar victoria:', error));
+        }
+
+        return newBoard;
+      }
+      return prev;
+    });
+  }, [canMark, currentCategory, checkWinner, roomCode, playerName]);
+
+  // Efecto para eventos del socket mejorado
   useEffect(() => {
     const handlers = {
       playersUpdate: ({ players }) => {
         console.log('Actualización de jugadores:', players);
         setConnectedPlayers(players);
-        checkAllPlayersReady(players);
       },
-      gameStartFailed: (error) => {
-        handleError(error, 'Error al iniciar juego');
-        setGameStep('wheel');
+      categorySelected: ({ category }) => {
+        console.log('Categoría seleccionada:', category);
+        setCurrentCategory(category);
+        setCurrentSong(null);
+        setCanMark(false);
+        setGamePhase('playing');
       },
-      roomCreated: (response) => {
-        console.log('Sala creada exitosamente:', response);
+      songRevealed: (songData) => {
+        console.log('Canción revelada:', songData);
+        setCurrentSong(songData);
       },
-      roomError: (error) => {
-        handleError(error, 'Error en la sala');
+      markingEnabled: () => {
+        console.log('Marcado habilitado');
+        setCanMark(true);
       },
-      playerLeft: (playerId) => {
-        console.log('Jugador abandonó la sala:', playerId);
-        setConnectedPlayers(prev => prev.filter(p => p.id !== playerId));
+      markingDisabled: () => {
+        console.log('Marcado deshabilitado');
+        setCanMark(false);
+      },
+      gameStarted: () => {
+        console.log('Juego iniciado');
+        setGamePhase('playing');
+        setBoard(generateValidBoard());
+      },
+      gameStartFailed: () => {
+        console.log('Inicio de juego fallido');
+        setGamePhase('waiting');
+      },
+      roomNotFound: () => {
+        console.error('Sala no encontrada');
+        setConnectionError('Sala no encontrada o inaccesible');
+        setGamePhase('waiting');
       },
       error: (error) => {
-        handleError(error, 'Error en socket');
+        console.error('Error en socket:', error);
+        setConnectionError(error.message || 'Error de conexión');
       },
-      disconnect: (reason) => {
-        console.log('Desconectado:', reason);
-        handleError({ message: 'Desconectado del servidor', type: 'CONNECTION_ERROR' });
-      },
-      reconnect: (attemptNumber) => {
-        console.log('Reconectando... intento:', attemptNumber);
-      },
-      reconnect_error: (error) => {
-        handleError(error, 'Error al reconectar');
+      disconnect: () => {
+        console.log('Desconectado del servidor');
+        setGamePhase('waiting');
+        setConnectionError('Se perdió la conexión con el servidor');
       }
     };
 
@@ -246,40 +229,42 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
       gameSocket.on(event, handler);
     });
 
-    // Solo inicializar si tenemos roomCode y no hay error
-    if (roomCode && !connectionError) {
-      initializeRoom().catch(error => 
-        handleError(error, 'Error en la inicialización de la sala')
-      );
+    // Iniciar conexión
+    if (roomCode && playerName) {
+      joinGame().catch(error => {
+        console.error('Error en la conexión inicial:', error);
+        setConnectionError(error.message || 'Error al conectar');
+      });
     }
 
+    // Limpieza mejorada
     return () => {
+      console.log('Limpiando listeners y conexión');
       Object.keys(handlers).forEach(event => {
         gameSocket.off(event);
       });
       gameSocket.disconnect();
     };
-  }, [initializeRoom, checkAllPlayersReady, roomCode, handleError, connectionError]);
+  }, [joinGame, generateValidBoard, roomCode, playerName]);
+
+  // Efecto para generar tablero cuando sea necesario
+  useEffect(() => {
+    if (gamePhase === 'playing' && board.length === 0) {
+      console.log('Generando tablero inicial');
+      setBoard(generateValidBoard());
+    }
+  }, [gamePhase, generateValidBoard, board.length]);
 
   return {
-    loggedIn,
-    login,
-    currentCard,
-    isLoading,
-    selectedCategory,
-    gameStep,
+    board,
     connectedPlayers,
-    difficulty,
+    currentCategory,
+    currentSong,
+    canMark,
+    hasWinner,
     connectionError,
     setConnectionError,
-    isMarkingEnabled,
-    allPlayersReady,
-    handleDifficultyChange,
-    handleCategorySelected,
-    generateNewCard,
-    handleRevealSong,
-    handleMarkingToggle,
-    startNewRound,
-    setCurrentCard
+    gamePhase,
+    handleCellClick
   };
 };
