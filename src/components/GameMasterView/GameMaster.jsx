@@ -14,10 +14,9 @@ import {
 import CategoryWheel from '../CategoryWheel';
 import PropTypes from 'prop-types';
 import { useGameMasterLogic } from './GameMasterLogic';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
-  // Nuevo estado para trackear si ya se habilitó el marcado en esta ronda
   const [markingEnabledThisRound, setMarkingEnabledThisRound] = useState(false);
 
   const {
@@ -39,23 +38,24 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
     startNewRound
   } = useGameMasterLogic({ roomCode, initialDifficulty });
 
-  // Función modificada para manejar el marcado
-  const handleMarkingControl = () => {
+  useEffect(() => {
+    if (!currentCard) {
+      setMarkingEnabledThisRound(false);
+    }
+  }, [currentCard]);
+
+  const handleMarkingControl = useCallback(() => {
     if (!isMarkingEnabled) {
-      if (markingEnabledThisRound) {
-        // Si ya se habilitó el marcado en esta ronda, no permitimos habilitarlo de nuevo
-        return;
-      }
+      if (markingEnabledThisRound) return;
       setMarkingEnabledThisRound(true);
     }
     handleMarkingToggle();
-  };
+  }, [isMarkingEnabled, markingEnabledThisRound, handleMarkingToggle]);
 
-  // Función modificada para iniciar nueva ronda
-  const handleNewRound = () => {
+  const handleNewRound = useCallback(() => {
     setMarkingEnabledThisRound(false);
     startNewRound();
-  };
+  }, [startNewRound]);
 
   // Reset cuando se genera una nueva tarjeta
   useEffect(() => {
@@ -140,25 +140,25 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
       <div className="space-y-4">
         <div className={`transition-all duration-500 ${currentCard.revealed ? '' : 'blur-md'}`}>
           <div className="text-center">
-            <h2 className="text-xl font-bold text-gray-800 mb-2">
+            <h2 className="text-xl font-bold text-white mb-2">
               {currentCard.title}
             </h2>
-            <div className="flex justify-center items-center space-x-2 text-gray-600">
+            <div className="flex justify-center items-center space-x-2 text-purple-300">
               <MusicIcon className="w-4 h-4" />
               <span className="text-base">{currentCard.artist}</span>
             </div>
           </div>
 
-          <div className="flex justify-between items-center bg-white/60 rounded-lg p-3 mt-3">
+          <div className="flex justify-between items-center bg-white/10 backdrop-blur-sm rounded-lg p-3 mt-3 border border-white/20">
             <div className="flex items-center space-x-2">
-              <CalendarIcon className="w-5 h-5 text-purple-600" />
-              <span className="text-2xl font-bold text-gray-800">
+              <CalendarIcon className="w-5 h-5 text-purple-400" />
+              <span className="text-2xl font-bold text-white">
                 {currentCard.year}
               </span>
             </div>
             <div className="flex items-center space-x-2">
-              <MusicIcon className="w-5 h-5 text-indigo-600" />
-              <span className="text-sm text-gray-700">
+              <MusicIcon className="w-5 h-5 text-purple-400" />
+              <span className="text-sm text-purple-300">
                 {currentCard.musicCategory}
               </span>
             </div>
@@ -169,14 +169,15 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
           <div className="space-y-2">
             <Button
               onClick={handleRevealSong}
-              className="w-full bg-gradient-to-r from-purple-600 to-indigo-600"
+              className="w-full h-12 bg-gradient-to-r from-purple-600/80 to-indigo-600/80 hover:from-purple-600 hover:to-indigo-600 border border-purple-400/50"
+              style={{ boxShadow: '0 0 15px rgba(168,85,247,0.3)' }}
             >
               <ExternalLinkIcon className="mr-2 h-4 w-4" />
               Revelar Canción
             </Button>
             <Button
               variant="outline"
-              className="w-full border-purple-400 text-purple-700"
+              className="w-full h-12 border-purple-400/50 text-purple-300 hover:bg-purple-500/20"
               onClick={() => window.open(currentCard.spotifyUrl, '_blank')}
             >
               <ExternalLinkIcon className="mr-2 h-4 w-4" />
@@ -188,12 +189,17 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
             <Button
               onClick={handleMarkingControl}
               disabled={markingEnabledThisRound && !isMarkingEnabled}
-              className={`w-full ${isMarkingEnabled
-                ? 'bg-yellow-500 hover:bg-yellow-600'
-                : markingEnabledThisRound && !isMarkingEnabled
-                  ? 'bg-gray-400 cursor-not-allowed'
-                  : 'bg-green-500 hover:bg-green-600'
-                }`}
+              className={`w-full h-12 transition-all duration-300 ${isMarkingEnabled
+                  ? 'bg-yellow-500/80 hover:bg-yellow-500 border-yellow-400'
+                  : markingEnabledThisRound && !isMarkingEnabled
+                    ? 'bg-gray-500/50 border-gray-400 cursor-not-allowed'
+                    : 'bg-green-500/80 hover:bg-green-500 border-green-400'
+                } border`}
+              style={
+                !markingEnabledThisRound || isMarkingEnabled
+                  ? { boxShadow: '0 0 15px rgba(34,197,94,0.3)' }
+                  : {}
+              }
             >
               {isMarkingEnabled
                 ? 'Deshabilitar Marcado'
@@ -206,7 +212,7 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
             <Button
               onClick={handleNewRound}
               variant="outline"
-              className="w-full"
+              className="w-full h-12 border-white/20 text-white/80 hover:bg-white/10"
             >
               <RefreshCwIcon className="w-4 h-4 mr-2" />
               Nueva Ronda
@@ -218,29 +224,44 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-100 via-purple-100 to-pink-100 p-4">
-      <div className="w-full max-w-4xl mx-auto bg-white/80 backdrop-blur-lg rounded-xl shadow-xl overflow-hidden">
-        <div className="bg-gradient-to-r from-purple-600 to-indigo-600 p-4">
-          <h1 className="text-2xl md:text-3xl font-bold text-center text-white">
+    <div className="min-h-screen bg-[#1a0133] flex flex-col items-center justify-center relative overflow-hidden">
+      {/* Fondo con cuadrícula */}
+      <div
+        className="absolute inset-0 opacity-10"
+        style={{
+          backgroundImage: `
+            linear-gradient(to right, #ff00ee 1px, transparent 1px),
+            linear-gradient(to bottom, #ff00ee 1px, transparent 1px)
+          `,
+          backgroundSize: '40px 40px',
+          transform: 'perspective(500px) rotateX(60deg)',
+          transformOrigin: 'bottom'
+        }}
+      />
+
+      <div className="w-[95%] max-w-xl mx-auto bg-black/40 backdrop-blur-lg rounded-xl shadow-xl overflow-hidden border border-white/10">
+        <div className="bg-black/60 p-4">
+          <h1 className="text-2xl md:text-3xl font-bold text-center text-white"
+            style={{ textShadow: '0 0 10px rgba(255,255,255,0.8)' }}>
             Music Bingo
           </h1>
         </div>
 
         {connectionError && (
-          <Alert variant="destructive" className="m-4">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>{connectionError}</AlertDescription>
+          <Alert variant="destructive" className="m-4 bg-red-500/20 border border-red-500/50">
+            <AlertCircle className="h-4 w-4 text-white" />
+            <AlertDescription className="text-white">{connectionError}</AlertDescription>
           </Alert>
         )}
 
-        <div className="p-4 space-y-1">
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex-1">
+        <div className="p-4 space-y-4">
+          <div className="flex items-center justify-between gap-4 flex-wrap">
+            <div className="flex-1 min-w-[200px]">
               <Select
                 value={difficulty}
                 onValueChange={handleDifficultyChange}
               >
-                <SelectTrigger className="w-full bg-white/90">
+                <SelectTrigger className="w-full bg-black/30 border-white/20 text-white">
                   <SelectValue placeholder="Nivel de juego" />
                 </SelectTrigger>
                 <SelectContent>
@@ -251,11 +272,11 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
             </div>
 
             <div className="flex flex-col items-end gap-1">
-              <div className="flex items-center gap-2 text-gray-600 bg-white/50 px-4 py-2 rounded-lg">
+              <div className="flex items-center gap-2 text-white/80 bg-white/10 backdrop-blur-sm px-3 py-1 rounded-full border border-white/20">
                 <Users className="w-4 h-4" />
                 <span>{connectedPlayers.length} jugadores</span>
               </div>
-              <div className="text-sm text-gray-500">
+              <div className="text-sm text-purple-300">
                 Sala: {roomCode}
               </div>
             </div>
@@ -264,7 +285,7 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
               <Button
                 onClick={handleNewRound}
                 variant="outline"
-                className="flex-shrink-0"
+                className="flex-shrink-0 border-white/20 text-white hover:bg-white/10"
               >
                 <RefreshCwIcon className="w-4 h-4 mr-2" />
                 Nueva Categoría
@@ -285,27 +306,6 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
                   difficulty={difficulty}
                   onCategorySelected={handleCategorySelected}
                 />
-
-                {connectedPlayers.length > 0 && (
-                  <div className="mt-6">
-                    <h3 className="text-lg font-semibold mb-3">Jugadores Conectados:</h3>
-                    <div className="bg-white/50 rounded-lg divide-y divide-gray-200">
-                      {connectedPlayers.map((player) => (
-                        <div
-                          key={player.id}
-                          className="flex items-center justify-between p-3"
-                        >
-                          <span className="font-medium">{player.name}</span>
-                          {player.isHost && (
-                            <span className="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded-full">
-                              Game Master
-                            </span>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
               </motion.div>
             ) : (
               <motion.div
@@ -316,12 +316,15 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
                 className="space-y-4"
               >
                 {selectedCategory && (
-                  <div className={`${selectedCategory.color} p-4 rounded-lg flex items-center justify-center gap-3`}>
+                  <div
+                    className={`${selectedCategory.color} p-4 rounded-lg flex items-center justify-center gap-3 border border-white/20`}
+                    style={{ boxShadow: '0 0 15px rgba(255,255,255,0.1)' }}
+                  >
                     <div className="flex items-center gap-2">
                       {selectedCategory.icon && (
                         <selectedCategory.icon
                           size={24}
-                          className="text-gray-700"
+                          className="text-gray-800"
                         />
                       )}
                       <span className="text-base font-medium text-gray-800">
@@ -335,18 +338,42 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
                   <Button
                     onClick={generateNewCard}
                     disabled={isLoading}
-                    className="w-full py-4 bg-gradient-to-r from-purple-600 to-indigo-600"
+                    className="w-full h-12 bg-gradient-to-r from-purple-600/80 to-indigo-600/80 hover:from-purple-600 hover:to-indigo-600 border border-purple-400/50"
+                    style={{ boxShadow: '0 0 15px rgba(168,85,247,0.3)' }}
                   >
                     {isLoading ? 'Generando...' : 'Generar Tarjeta'}
                   </Button>
                 ) : (
-                  <Card className="overflow-hidden border-purple-200 p-4">
+                  <Card className="bg-black/30 border border-white/20 p-4">
                     {renderCardContent()}
                   </Card>
                 )}
               </motion.div>
             )}
           </AnimatePresence>
+
+          {connectedPlayers.length > 0 && (
+            <div className="mt-6">
+              <h3 className="font-semibold text-lg text-white mb-3">
+                Jugadores Conectados
+              </h3>
+              <div className="bg-black/30 rounded-lg divide-y divide-white/10 border border-white/20">
+                {connectedPlayers.map((player) => (
+                  <div
+                    key={player.id}
+                    className="flex items-center justify-between p-3"
+                  >
+                    <span className="font-medium text-white">{player.name}</span>
+                    {player.isHost && (
+                      <span className="text-xs bg-purple-500/30 text-purple-300 px-2 py-1 rounded-full border border-purple-400/50">
+                        Game Master
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
