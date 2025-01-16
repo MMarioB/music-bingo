@@ -1,11 +1,5 @@
 import { useState, useCallback } from "react";
-import { Audiowide } from 'next/font/google';
 import MusicBingoGame from "../components/PlayerView/MusicBingoGame";
-
-const audiowide = Audiowide({
-  weight: '400',
-  subsets: ['latin'],
-});
 import GameMaster from "../components/GameMasterView/GameMaster";
 import GameRoom from "../components/GameRoom";
 import { Card } from "../components/ui/card";
@@ -212,7 +206,7 @@ function App() {
   };
 
   return (
-    <div className={`min-h-screen bg-[#1a0133] p-4 relative overflow-hidden ${audiowide.className}`}>
+    <div className={`min-h-screen bg-[#1a0133] p-4 relative overflow-hidden`}>
       {/* Fondo con cuadrícula tipo disco */}
       <div
         className="absolute inset-0 opacity-20"
