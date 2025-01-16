@@ -113,8 +113,8 @@ function App() {
       exit={{ opacity: 0, y: -20 }}
       className="w-full max-w-md mx-auto"
     >
-      <Card className="p-6 space-y-4">
-        <h2 className="text-2xl font-bold text-center text-gray-800">
+      <Card className="p-8 bg-black/40 shadow-2xl backdrop-blur-sm border border-white/10">
+        <h2 className="text-2xl font-bold text-center text-white mb-6">
           {gameState.selectedRole === 'master' ? 'Crear sala' : 'Unirse a sala'}
         </h2>
         <Input
@@ -126,7 +126,7 @@ function App() {
             playerName: e.target.value,
             error: null
           }))}
-          className="w-full"
+          className="w-full bg-black/30 border-white/20 text-white placeholder:text-white/50 mb-4"
           maxLength={20}
         />
         {gameState.error && (
@@ -135,9 +135,9 @@ function App() {
             <AlertDescription>{gameState.error}</AlertDescription>
           </Alert>
         )}
-        <Button
+        <Button 
           onClick={handleNameSubmit}
-          className="w-full bg-gradient-to-r from-purple-600 to-indigo-600"
+          className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white hover:from-purple-700 hover:to-indigo-700 transition-all duration-300"
         >
           Continuar
         </Button>
@@ -152,8 +152,8 @@ function App() {
       exit={{ opacity: 0, y: -20 }}
       className="w-full max-w-md mx-auto"
     >
-      <Card className="p-6 space-y-4">
-        <h2 className="text-2xl font-bold text-center text-gray-800">
+      <Card className="p-8 bg-black/40 shadow-2xl backdrop-blur-sm border border-white/10">
+        <h2 className="text-2xl font-bold text-center text-white mb-6">
           Unirse a sala
         </h2>
         <Input
@@ -165,7 +165,7 @@ function App() {
             roomCode: e.target.value.toUpperCase(),
             error: null
           }))}
-          className="w-full"
+          className="w-full bg-black/30 border-white/20 text-white placeholder:text-white/50 mb-4"
           maxLength={6}
         />
         {gameState.error && (
@@ -174,9 +174,9 @@ function App() {
             <AlertDescription>{gameState.error}</AlertDescription>
           </Alert>
         )}
-        <Button
+        <Button 
           onClick={handleJoinRoom}
-          className="w-full bg-gradient-to-r from-purple-600 to-indigo-600"
+          className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white hover:from-purple-700 hover:to-indigo-700 transition-all duration-300"
         >
           Unirse
         </Button>
@@ -252,7 +252,7 @@ function App() {
                   0 0 92px #ff00ee
                 `
               }}>
-            HITSTER
+            DISCOHITS
           </h1>
           <h2 className="text-4xl md:text-5xl font-bold relative"
               style={{
