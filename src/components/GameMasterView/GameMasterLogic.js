@@ -15,7 +15,34 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
   const [isMarkingEnabled, setIsMarkingEnabled] = useState(false);
   const [allPlayersReady, setAllPlayersReady] = useState(false);
 
-  // Inicializar sala
+  // Función para verificar si todos los jugadores están listos
+  const checkAllPlayersReady = useCallback((players) => {
+    const ready = players.every(player => player.ready || player.isHost);
+    setAllPlayersReady(ready);
+  }, []);
+
+  // Función para manejar errores
+  const handleError = useCallback((error, customMessage) => {
+    console.error(customMessage, error);
+    setConnectionError(error.message || customMessage);
+  }, []);
+
+  // Habilitar/Deshabilitar marcado
+  const handleMarkingToggle = useCallback(async () => {
+    try {
+      if (isMarkingEnabled) {
+        await gameSocket.disableMarking({ roomCode });
+        setIsMarkingEnabled(false);
+      } else {
+        await gameSocket.enableMarking({ roomCode });
+        setIsMarkingEnabled(true);
+      }
+    } catch (error) {
+      handleError(error, 'Error al cambiar estado de marcado');
+    }
+  }, [isMarkingEnabled, roomCode, handleError]);
+
+  // Iniciar sala
   const initializeRoom = useCallback(async () => {
     try {
       console.log('Iniciando sala:', roomCode);
@@ -34,52 +61,9 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
         checkAllPlayersReady(roomResponse.players);
       }
     } catch (error) {
-      console.error('Error inicializando sala:', error);
-      setConnectionError(error.message);
+      handleError(error, 'Error inicializando sala');
     }
-  }, [roomCode, difficulty, checkAllPlayersReady]);
-
-  // Función para verificar si todos los jugadores están listos
-  const checkAllPlayersReady = useCallback((players) => {
-    const ready = players.every(player => player.ready || player.isHost);
-    setAllPlayersReady(ready);
-  }, []);
-
-  // Efecto para eventos del socket
-  useEffect(() => {
-    const handlers = {
-      playersUpdate: ({ players }) => {
-        console.log('Actualización de jugadores:', players);
-        setConnectedPlayers(players);
-        checkAllPlayersReady(players);
-      },
-      gameStartFailed: (error) => {
-        console.error('Error al iniciar juego:', error);
-        setConnectionError(error.message);
-        setGameStep('wheel');
-      },
-      error: (error) => {
-        console.error('Error en socket:', error);
-        setConnectionError(error.message);
-      }
-    };
-
-    // Registrar handlers
-    Object.entries(handlers).forEach(([event, handler]) => {
-      gameSocket.on(event, handler);
-    });
-
-    // Inicializar sala
-    initializeRoom();
-
-    // Limpieza
-    return () => {
-      Object.keys(handlers).forEach(event => {
-        gameSocket.off(event);
-      });
-      gameSocket.disconnect();
-    };
-  }, [initializeRoom, checkAllPlayersReady]);
+  }, [roomCode, difficulty, checkAllPlayersReady, handleError]);
 
   // Manejar cambio de dificultad
   const handleDifficultyChange = useCallback(async (newDifficulty) => {
@@ -90,10 +74,9 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
         difficulty: newDifficulty
       });
     } catch (error) {
-      console.error('Error al cambiar dificultad:', error);
-      setConnectionError(error.message);
+      handleError(error, 'Error al cambiar dificultad');
     }
-  }, [roomCode]);
+  }, [roomCode, handleError]);
 
   // Manejar selección de categoría
   const handleCategorySelected = useCallback(async (category) => {
@@ -107,10 +90,9 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
       setIsMarkingEnabled(false);
       setCurrentCard(null);
     } catch (error) {
-      console.error('Error al seleccionar categoría:', error);
-      setConnectionError(error.message);
+      handleError(error, 'Error al seleccionar categoría');
     }
-  }, [roomCode]);
+  }, [roomCode, handleError]);
 
   // Generar nueva carta
   const generateNewCard = useCallback(async () => {
@@ -145,14 +127,12 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
       };
 
       setCurrentCard(newCard);
-
     } catch (error) {
-      console.error("Error generando tarjeta:", error);
-      setConnectionError('Error al generar la tarjeta');
+      handleError(error, 'Error al generar la tarjeta');
     } finally {
       setIsLoading(false);
     }
-  }, [loggedIn, selectedCategory, spotify]);
+  }, [loggedIn, selectedCategory, spotify, handleError]);
 
   // Revelar canción
   const handleRevealSong = useCallback(async () => {
@@ -168,26 +148,9 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
       });
       setCurrentCard(prev => ({ ...prev, revealed: true }));
     } catch (error) {
-      console.error('Error al revelar canción:', error);
-      setConnectionError('Error al revelar la canción');
+      handleError(error, 'Error al revelar la canción');
     }
-  }, [currentCard, roomCode]);
-
-  // Habilitar/Deshabilitar marcado
-  const handleMarkingToggle = useCallback(async () => {
-    try {
-      if (isMarkingEnabled) {
-        await gameSocket.disableMarking({ roomCode });
-        setIsMarkingEnabled(false);
-      } else {
-        await gameSocket.enableMarking({ roomCode });
-        setIsMarkingEnabled(true);
-      }
-    } catch (error) {
-      console.error('Error al cambiar estado de marcado:', error);
-      setConnectionError('Error al cambiar estado de marcado');
-    }
-  }, [isMarkingEnabled, roomCode]);
+  }, [currentCard, roomCode, handleError]);
 
   // Iniciar nueva ronda
   const startNewRound = useCallback(async () => {
@@ -198,10 +161,45 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
       setGameStep('wheel');
       setIsMarkingEnabled(false);
     } catch (error) {
-      console.error('Error al iniciar nueva ronda:', error);
-      setConnectionError('Error al iniciar nueva ronda');
+      handleError(error, 'Error al iniciar nueva ronda');
     }
-  }, [roomCode]);
+  }, [roomCode, handleError]);
+
+  // Efecto para eventos del socket
+  useEffect(() => {
+    const handlers = {
+      playersUpdate: ({ players }) => {
+        console.log('Actualización de jugadores:', players);
+        setConnectedPlayers(players);
+        checkAllPlayersReady(players);
+      },
+      gameStartFailed: (error) => {
+        handleError(error, 'Error al iniciar juego');
+        setGameStep('wheel');
+      },
+      error: (error) => {
+        handleError(error, 'Error en socket');
+      }
+    };
+
+    // Registrar handlers
+    Object.entries(handlers).forEach(([event, handler]) => {
+      gameSocket.on(event, handler);
+    });
+
+    // Inicializar sala solo si tenemos un roomCode válido
+    if (roomCode) {
+      initializeRoom();
+    }
+
+    // Limpieza
+    return () => {
+      Object.keys(handlers).forEach(event => {
+        gameSocket.off(event);
+      });
+      gameSocket.disconnect();
+    };
+  }, [initializeRoom, checkAllPlayersReady, roomCode, handleError]);
 
   return {
     loggedIn,
