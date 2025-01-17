@@ -176,7 +176,7 @@ function App() {
         )}
         <Button 
           onClick={handleJoinRoom}
-          className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white hover:from-purple-700 hover:to-indigo-700 transition-all duration-300"
+          className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white hover:from-purple-700 hover:to-indigo-700 transition-all duration-300 mt-4"
         >
           Unirse
         </Button>
@@ -240,7 +240,7 @@ function App() {
           animate={{ opacity: 1, y: 0 }}
           className="text-center mb-12 relative"
         >
-          <h1 className="text-6xl md:text-4xl font-bold mb-4 tracking-wider"
+          <h1 className="text-6xl md:text-5xl md:m-3 font-bold mb-4 tracking-wider"
               style={{
                 color: '#fff',
                 textShadow: `

@@ -19,15 +19,13 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
   const [connectionError, setConnectionError] = useState(null);
   const [gamePhase, setGamePhase] = useState('waiting');
 
-  // Validación de línea mejorada
+  // Función para validar la distribución de categorías
   const validateLine = useCallback((line) => {
-    if (!line || line.length !== BOARD_SIZE) return false;
-
     const categoryCounts = {};
     let markedCount = 0;
-
+    
     line.forEach(cell => {
-      if (cell?.marked) {
+      if (cell.marked) {
         categoryCounts[cell.name] = (categoryCounts[cell.name] || 0) + 1;
         markedCount++;
       }
@@ -35,17 +33,14 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
 
     if (markedCount !== BOARD_SIZE) return false;
 
-    const hasMoreThanTwoRepeats = Object.values(categoryCounts)
-      .some(count => count > MAX_PER_CATEGORY);
+    const hasMoreThanTwoRepeats = Object.values(categoryCounts).some(count => count > MAX_PER_CATEGORY);
     const differentCategories = Object.keys(categoryCounts).length;
 
     return !hasMoreThanTwoRepeats && differentCategories >= MIN_DIFFERENT_CATEGORIES;
   }, []);
 
-  // Verificación de victoria mejorada
+  // Función para verificar victoria
   const checkWinner = useCallback((newBoard) => {
-    if (!newBoard || newBoard.length !== BOARD_SIZE * BOARD_SIZE) return false;
-
     // Verificar filas
     for (let i = 0; i < BOARD_SIZE; i++) {
       const row = newBoard.slice(i * BOARD_SIZE, (i + 1) * BOARD_SIZE);
@@ -60,100 +55,75 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
 
     // Verificar diagonales
     const diagonal1 = Array(BOARD_SIZE).fill(0).map((_, i) => newBoard[i * BOARD_SIZE + i]);
-    const diagonal2 = Array(BOARD_SIZE).fill(0)
-      .map((_, i) => newBoard[i * BOARD_SIZE + (BOARD_SIZE - 1 - i)]);
+    const diagonal2 = Array(BOARD_SIZE).fill(0).map((_, i) => newBoard[i * BOARD_SIZE + (BOARD_SIZE - 1 - i)]);
 
     return validateLine(diagonal1) || validateLine(diagonal2);
   }, [validateLine]);
 
-  // Generación de tablero mejorada
+  // Función para generar tablero válido
   const generateValidBoard = useCallback(() => {
     const categories = difficulty === 'experto' ? CATEGORIES_B : CATEGORIES_A;
     let attempts = 0;
     const MAX_ATTEMPTS = 1000;
 
-    const validateBoard = (board) => {
-      const categoryCounts = {};
-      board.forEach(cell => {
-        categoryCounts[cell.name] = (categoryCounts[cell.name] || 0) + 1;
-      });
-      return Object.values(categoryCounts).every(count => count >= 2);
-    };
-
     while (attempts < MAX_ATTEMPTS) {
       attempts++;
-      const newBoard = Array(BOARD_SIZE * BOARD_SIZE).fill(null).map(() => ({
+      const board = Array(BOARD_SIZE * BOARD_SIZE).fill(null).map(() => ({
         ...categories[Math.floor(Math.random() * categories.length)],
         marked: false
       }));
 
-      if (validateBoard(newBoard)) {
-        return newBoard;
+      // Verificar que hay suficientes casillas de cada categoría
+      const categoryCounts = {};
+      board.forEach(cell => {
+        categoryCounts[cell.name] = (categoryCounts[cell.name] || 0) + 1;
+      });
+
+      if (Object.values(categoryCounts).every(count => count >= 2)) {
+        return board;
       }
     }
 
-    console.warn('No se pudo generar un tablero óptimo después de', MAX_ATTEMPTS, 'intentos');
     return Array(BOARD_SIZE * BOARD_SIZE).fill(null).map(() => ({
       ...categories[Math.floor(Math.random() * categories.length)],
       marked: false
     }));
   }, [difficulty]);
 
-  // Unirse al juego mejorado
+  // Función para unirse a la sala
   const joinGame = useCallback(async () => {
     try {
       console.log('Intentando conectar al juego:', { roomCode, playerName });
-
-      // Asegurarse de que no hay conexión previa
-      await gameSocket.disconnect();
-      await new Promise(resolve => setTimeout(resolve, 100));
-
       await gameSocket.connect();
-
+      
       const joinResponse = await gameSocket.joinRoom(roomCode, {
         name: playerName,
-        difficulty,
-        isHost: false
+        difficulty
       });
 
       console.log('Respuesta de unión:', joinResponse);
-
-      if (!joinResponse) {
-        throw new Error('No se recibió respuesta del servidor');
-      }
-
-      if (joinResponse.players) {
+      if (joinResponse?.players) {
         setConnectedPlayers(joinResponse.players);
       }
-
-      if (joinResponse.phase) {
+      if (joinResponse?.phase) {
         setGamePhase(joinResponse.phase);
       }
-
-      if (joinResponse.currentCategory) {
+      if (joinResponse?.currentCategory) {
         setCurrentCategory(joinResponse.currentCategory);
-        if (joinResponse.phase === 'playing') {
-          setBoard(generateValidBoard());
-        }
+        setGamePhase('playing');
+        setBoard(generateValidBoard());
       }
-
     } catch (error) {
       console.error('Error uniéndose al juego:', error);
-      setConnectionError(error.message || 'Error al unirse al juego');
-      setGamePhase('waiting');
+      setConnectionError(error.message);
     }
   }, [roomCode, playerName, difficulty, generateValidBoard]);
 
-  // Manejo de click mejorado
+  // Manejo de click en casillas
   const handleCellClick = useCallback((index, isUnmarking = false) => {
-    if (!canMark && !isUnmarking) {
-      console.log('No se puede marcar en este momento');
-      return;
-    }
+    if (!canMark && !isUnmarking) return;
 
     setBoard(prev => {
-      if (!prev || !prev[index]) return prev;
-
       const newBoard = [...prev];
       const cell = newBoard[index];
 
@@ -163,8 +133,7 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
         // Verificar victoria después de marcar
         if (checkWinner(newBoard)) {
           setHasWinner(true);
-          gameSocket.winner({ roomCode, playerName })
-            .catch(error => console.error('Error al reportar victoria:', error));
+          gameSocket.winner({ roomCode, playerName });
         }
 
         return newBoard;
@@ -173,7 +142,7 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
     });
   }, [canMark, currentCategory, checkWinner, roomCode, playerName]);
 
-  // Efecto para eventos del socket mejorado
+  // Efecto para eventos del socket
   useEffect(() => {
     const handlers = {
       playersUpdate: ({ players }) => {
@@ -208,19 +177,9 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
         console.log('Inicio de juego fallido');
         setGamePhase('waiting');
       },
-      roomNotFound: () => {
-        console.error('Sala no encontrada');
-        setConnectionError('Sala no encontrada o inaccesible');
-        setGamePhase('waiting');
-      },
       error: (error) => {
         console.error('Error en socket:', error);
-        setConnectionError(error.message || 'Error de conexión');
-      },
-      disconnect: () => {
-        console.log('Desconectado del servidor');
-        setGamePhase('waiting');
-        setConnectionError('Se perdió la conexión con el servidor');
+        setConnectionError(error.message);
       }
     };
 
@@ -229,28 +188,21 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
       gameSocket.on(event, handler);
     });
 
-    // Iniciar conexión
-    if (roomCode && playerName) {
-      joinGame().catch(error => {
-        console.error('Error en la conexión inicial:', error);
-        setConnectionError(error.message || 'Error al conectar');
-      });
-    }
+    // Intentar unirse al juego
+    joinGame();
 
-    // Limpieza mejorada
+    // Limpieza
     return () => {
-      console.log('Limpiando listeners y conexión');
       Object.keys(handlers).forEach(event => {
         gameSocket.off(event);
       });
       gameSocket.disconnect();
     };
-  }, [joinGame, generateValidBoard, roomCode, playerName]);
+  }, [joinGame, generateValidBoard]);
 
   // Efecto para generar tablero cuando sea necesario
   useEffect(() => {
     if (gamePhase === 'playing' && board.length === 0) {
-      console.log('Generando tablero inicial');
       setBoard(generateValidBoard());
     }
   }, [gamePhase, generateValidBoard, board.length]);
@@ -263,7 +215,6 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
     canMark,
     hasWinner,
     connectionError,
-    setConnectionError,
     gamePhase,
     handleCellClick
   };
