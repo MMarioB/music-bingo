@@ -209,9 +209,6 @@ const MusicBingoGame = ({ playerName, roomCode, difficulty }) => {
                       disabled={!isMarkable}
                       aria-label={`Casilla ${category.name}`}
                     >
-                      <span className="text-gray-800 font-medium">
-                        {category.name}
-                      </span>
                       {category.marked && (
                         <div className="absolute inset-0 flex items-center justify-center bg-black/20 backdrop-blur-sm rounded-lg">
                           <CheckCircleIcon className="text-green-400 w-6 md:w-10 h-6 md:h-10"
