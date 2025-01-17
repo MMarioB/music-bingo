@@ -127,7 +127,7 @@ const GameRoom = ({ roomCode, playerName, isHost, onStartGame }) => {
     }
 
     try {
-      setConnectionError(null); // Limpiar errores previos
+      setConnectionError(null);
       console.log('Iniciando juego...', {
         roomCode,
         difficulty: selectedDifficulty
@@ -179,9 +179,9 @@ const GameRoom = ({ roomCode, playerName, isHost, onStartGame }) => {
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.5 }}
-        className="w-[90%] max-w-sm mx-auto bg-black/40 backdrop-blur-lg rounded-xl shadow-xl overflow-hidden border border-white/10"
+        className="w-[90%] max-w-sm mx-auto bg-black/10 backdrop-blur-sm rounded-xl shadow-xl overflow-hidden border border-white/10"
       >
-        <div className="bg-black/60 p-4">
+        <div className="bg-black/20 p-4">
           <h1 className="text-2xl font-bold text-center mb-1"
               style={{
                 color: '#fff',
@@ -195,7 +195,7 @@ const GameRoom = ({ roomCode, playerName, isHost, onStartGame }) => {
         </div>
 
         {connectionError && (
-          <Alert variant="destructive" className="mx-4 mt-4 bg-red-500/20 border border-red-500/50">
+          <Alert variant="destructive" className="mx-4 mt-4 bg-red-500/10 border border-red-500/50">
             <AlertCircle className="h-4 w-4" />
             <AlertDescription className="text-white">{connectionError}</AlertDescription>
           </Alert>
@@ -206,8 +206,8 @@ const GameRoom = ({ roomCode, playerName, isHost, onStartGame }) => {
             <Button
               onClick={handleSetReady}
               disabled={isSettingReady}
-              className="w-full h-12 bg-green-500/80 hover:bg-green-500 backdrop-blur-sm border border-green-400 transition-all duration-300"
-              style={{ boxShadow: '0 0 15px rgba(0,255,0,0.3)' }}
+              className="w-full h-12 bg-green-500/60 hover:bg-green-500/80 backdrop-blur-sm border border-green-400 transition-all duration-300"
+              style={{ boxShadow: '0 0 15px rgba(0,255,0,0.2)' }}
             >
               {isSettingReady ? (
                 <>
@@ -221,7 +221,7 @@ const GameRoom = ({ roomCode, playerName, isHost, onStartGame }) => {
           )}
 
           {isHost && (
-            <Card className="bg-black/30 border border-white/20 p-4 space-y-4">
+            <Card className="bg-black/20 border border-white/20 p-4 space-y-4">
               <h3 className="font-semibold text-lg text-white text-center">
                 Configuración de la Partida
               </h3>
@@ -257,12 +257,12 @@ const GameRoom = ({ roomCode, playerName, isHost, onStartGame }) => {
                 onClick={handleStartGame}
                 className={`w-full h-12 transition-all duration-300 ${
                   allPlayersReady && players.length >= 2
-                    ? 'bg-gradient-to-r from-green-500/80 to-emerald-500/80 hover:from-green-500 hover:to-emerald-500 border border-green-400'
-                    : 'bg-gray-500/50 border border-gray-400'
+                    ? 'bg-gradient-to-r from-green-500/60 to-emerald-500/60 hover:from-green-500/80 hover:to-emerald-500/80 border border-green-400'
+                    : 'bg-gray-500/30 border border-gray-400'
                 }`}
                 style={
                   allPlayersReady && players.length >= 2
-                    ? { boxShadow: '0 0 15px rgba(0,255,0,0.3)' }
+                    ? { boxShadow: '0 0 15px rgba(0,255,0,0.2)' }
                     : {}
                 }
                 disabled={!allPlayersReady || players.length < 2 || isJoining}
@@ -288,13 +288,13 @@ const GameRoom = ({ roomCode, playerName, isHost, onStartGame }) => {
               <h3 className="font-semibold text-lg text-white">
                 Jugadores en la Sala
               </h3>
-              <div className="flex items-center gap-2 text-white/80 bg-white/10 backdrop-blur-sm px-3 py-1 rounded-full border border-white/20">
+              <div className="flex items-center gap-2 text-white/80 bg-white/5 backdrop-blur-sm px-3 py-1 rounded-full border border-white/20">
                 <Users className="w-4 h-4" />
                 <span>{players.length}</span>
               </div>
             </div>
 
-            <div className="bg-black/30 rounded-lg divide-y divide-white/10 border border-white/20">
+            <div className="bg-black/20 rounded-lg divide-y divide-white/10 border border-white/20">
               {players.length > 0 ? (
                 players.map((player) => (
                   <div
@@ -313,7 +313,7 @@ const GameRoom = ({ roomCode, playerName, isHost, onStartGame }) => {
                       )}
                     </div>
                     {player.isHost && (
-                      <span className="text-xs bg-purple-500/30 text-purple-200 px-2 py-1 rounded-full border border-purple-400/50">
+                      <span className="text-xs bg-purple-500/20 text-purple-200 px-2 py-1 rounded-full border border-purple-400/50">
                         Anfitrión
                       </span>
                     )}
