@@ -2,14 +2,12 @@ import { useState, useCallback, useEffect } from 'react';
 import { gameSocket } from '../../services/socketService';
 import {
   BOARD_SIZE,
-  MAX_PER_CATEGORY,
   MIN_DIFFERENT_CATEGORIES,
   CATEGORIES_A,
   CATEGORIES_B
 } from '../constants';
 
 export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
-  // Estados del juego
   const [board, setBoard] = useState([]);
   const [connectedPlayers, setConnectedPlayers] = useState([]);
   const [currentCategory, setCurrentCategory] = useState(null);
@@ -33,11 +31,43 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
 
     if (markedCount !== BOARD_SIZE) return false;
 
-    const hasMoreThanTwoRepeats = Object.values(categoryCounts).some(count => count > MAX_PER_CATEGORY);
-    const differentCategories = Object.keys(categoryCounts).length;
+    // Verificar que no haya más de 2 casillas de la misma categoría
+    const hasMoreThanTwoOfSameCategory = Object.values(categoryCounts).some(count => count > 2);
+    if (hasMoreThanTwoOfSameCategory) return false;
 
-    return !hasMoreThanTwoRepeats && differentCategories >= MIN_DIFFERENT_CATEGORIES;
+    const differentCategories = Object.keys(categoryCounts).length;
+    return differentCategories >= MIN_DIFFERENT_CATEGORIES;
   }, []);
+
+  // Función auxiliar para validar una línea durante la generación
+  const validateGeneratedLine = useCallback((line) => {
+    const categoryCounts = {};
+    line.forEach(cell => {
+      categoryCounts[cell.name] = (categoryCounts[cell.name] || 0) + 1;
+    });
+    return !Object.values(categoryCounts).some(count => count > 2);
+  }, []);
+
+  // Función auxiliar para validar todo el tablero durante la generación
+  const validateGeneratedBoard = useCallback((board) => {
+    // Verificar filas
+    for (let i = 0; i < BOARD_SIZE; i++) {
+      const row = board.slice(i * BOARD_SIZE, (i + 1) * BOARD_SIZE);
+      if (!validateGeneratedLine(row)) return false;
+    }
+
+    // Verificar columnas
+    for (let i = 0; i < BOARD_SIZE; i++) {
+      const column = Array(BOARD_SIZE).fill(0).map((_, j) => board[j * BOARD_SIZE + i]);
+      if (!validateGeneratedLine(column)) return false;
+    }
+
+    // Verificar diagonales
+    const diagonal1 = Array(BOARD_SIZE).fill(0).map((_, i) => board[i * BOARD_SIZE + i]);
+    const diagonal2 = Array(BOARD_SIZE).fill(0).map((_, i) => board[i * BOARD_SIZE + (BOARD_SIZE - 1 - i)]);
+    
+    return validateGeneratedLine(diagonal1) && validateGeneratedLine(diagonal2);
+  }, [validateGeneratedLine]);
 
   // Función para verificar victoria
   const checkWinner = useCallback((newBoard) => {
@@ -60,35 +90,38 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
     return validateLine(diagonal1) || validateLine(diagonal2);
   }, [validateLine]);
 
-  // Función para generar tablero válido
+  // Función para generar tablero balanceado
   const generateValidBoard = useCallback(() => {
     const categories = difficulty === 'experto' ? CATEGORIES_B : CATEGORIES_A;
+    const MAX_ATTEMPTS = 100;
     let attempts = 0;
-    const MAX_ATTEMPTS = 1000;
-
+    let cells = [];
+    
     while (attempts < MAX_ATTEMPTS) {
       attempts++;
-      const board = Array(BOARD_SIZE * BOARD_SIZE).fill(null).map(() => ({
-        ...categories[Math.floor(Math.random() * categories.length)],
-        marked: false
-      }));
-
-      // Verificar que hay suficientes casillas de cada categoría
-      const categoryCounts = {};
-      board.forEach(cell => {
-        categoryCounts[cell.name] = (categoryCounts[cell.name] || 0) + 1;
+      
+      // Crear array con 5 instancias de cada categoría
+      cells = [];
+      categories.forEach(category => {
+        for (let i = 0; i < 5; i++) {
+          cells.push({ ...category, marked: false });
+        }
       });
-
-      if (Object.values(categoryCounts).every(count => count >= 2)) {
-        return board;
+      
+      // Mezclar el array usando Fisher-Yates shuffle
+      for (let i = cells.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [cells[i], cells[j]] = [cells[j], cells[i]];
+      }
+      
+      if (validateGeneratedBoard(cells)) {
+        return cells;
       }
     }
-
-    return Array(BOARD_SIZE * BOARD_SIZE).fill(null).map(() => ({
-      ...categories[Math.floor(Math.random() * categories.length)],
-      marked: false
-    }));
-  }, [difficulty]);
+    
+    console.warn('No se pudo generar un tablero perfectamente balanceado después de', MAX_ATTEMPTS, 'intentos');
+    return cells;
+  }, [difficulty, validateGeneratedBoard]);
 
   // Función para unirse a la sala
   const joinGame = useCallback(async () => {
@@ -101,7 +134,6 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
         difficulty
       });
 
-      console.log('Respuesta de unión:', joinResponse);
       if (joinResponse?.players) {
         setConnectedPlayers(joinResponse.players);
       }
@@ -130,7 +162,6 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
       if (currentCategory && cell.name === currentCategory.name) {
         newBoard[index] = { ...cell, marked: !cell.marked };
 
-        // Verificar victoria después de marcar
         if (checkWinner(newBoard)) {
           setHasWinner(true);
           gameSocket.winner({ roomCode, playerName });
@@ -216,6 +247,7 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
     hasWinner,
     connectionError,
     gamePhase,
-    handleCellClick
+    handleCellClick,
+    setConnectionError
   };
 };

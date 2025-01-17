@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import PropTypes from 'prop-types';
 import { useState, useEffect } from 'react';
-import { useMusicBingoLogic } from '../PlayerView/MusicBingoGameLogic';
+import { useMusicBingoLogic } from './MusicBingoGameLogic';
 
 const MusicBingoGame = ({ playerName, roomCode, difficulty }) => {
   const [lastMarkedIndex, setLastMarkedIndex] = useState(null);
@@ -64,7 +64,6 @@ const MusicBingoGame = ({ playerName, roomCode, difficulty }) => {
 
   return (
     <div className="min-h-screen bg-[#1a0133] flex flex-col items-center justify-center relative overflow-hidden">
-      {/* Fondo con cuadrícula tipo disco */}
       <div
         className="absolute inset-0 opacity-10"
         style={{
@@ -138,7 +137,7 @@ const MusicBingoGame = ({ playerName, roomCode, difficulty }) => {
               className={`${currentCategory.color} p-4 rounded-lg text-center border border-white/20`}
               style={{ boxShadow: '0 0 15px rgba(255,255,255,0.1)' }}
             >
-              <h3 className="font-semibold text-lg">{currentCategory.name}</h3>
+              <h3 className="font-semibold text-lg text-gray-800">{currentCategory.name}</h3>
             </div>
           )}
 
@@ -178,7 +177,6 @@ const MusicBingoGame = ({ playerName, roomCode, difficulty }) => {
             <Card className="p-2 md:p-4 bg-black/30 border border-white/20">
               <div className="grid grid-cols-5 gap-1 md:gap-3">
                 {board.map((category, index) => {
-                  const Icon = category.icon;
                   const isSelected = index === lastMarkedIndex;
                   const isMarkable = originalCanMark &&
                     category.name === currentCategory?.name &&
@@ -211,7 +209,9 @@ const MusicBingoGame = ({ playerName, roomCode, difficulty }) => {
                       disabled={!isMarkable}
                       aria-label={`Casilla ${category.name}`}
                     >
-                      <Icon className="text-gray-800" {...category.iconProps} />
+                      <span className="text-gray-800 font-medium">
+                        {category.name}
+                      </span>
                       {category.marked && (
                         <div className="absolute inset-0 flex items-center justify-center bg-black/20 backdrop-blur-sm rounded-lg">
                           <CheckCircleIcon className="text-green-400 w-6 md:w-10 h-6 md:h-10"
