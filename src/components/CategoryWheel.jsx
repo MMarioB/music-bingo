@@ -84,40 +84,38 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
             const startAngle = index * (360 / categories.length);
             const endAngle = startAngle + (360 / categories.length);
             const midAngle = startAngle + (180 / categories.length);
-
-            const startX = Math.cos((startAngle - 90) * Math.PI / 180);
-            const startY = Math.sin((startAngle - 90) * Math.PI / 180);
-            const endX = Math.cos((endAngle - 90) * Math.PI / 180);
-            const endY = Math.sin((endAngle - 90) * Math.PI / 180);
-
-            const squarePosition = 0.55; // Posición del cuadrado desde el centro
-            const squareSize = 0.25; // Tamaño del cuadrado
+    
+            const radius = 0.85;
+            const startX = Math.cos((startAngle - 90) * Math.PI / 180) * radius;
+            const startY = Math.sin((startAngle - 90) * Math.PI / 180) * radius;
+            const endX = Math.cos((endAngle - 90) * Math.PI / 180) * radius;
+            const endY = Math.sin((endAngle - 90) * Math.PI / 180) * radius;
+    
+            const squarePosition = 0.55;
+            const squareSize = 0.25;
             const textX = Math.cos((midAngle - 90) * Math.PI / 180) * squarePosition;
             const textY = Math.sin((midAngle - 90) * Math.PI / 180) * squarePosition;
-
+    
             const largeArcFlag = "0";
-            const pathData = `M 0 0 L ${startX} ${startY} A 1 1 0 ${largeArcFlag} 1 ${endX} ${endY} Z`;
-
+            const pathData = `M 0 0 L ${startX} ${startY} A ${radius} ${radius} 0 ${largeArcFlag} 1 ${endX} ${endY} Z`;
+    
             const isHighlighted = index === highlightedIndex;
             const isSelected = category === finalSelectedCategory;
             const Icon = category.icon;
-
+    
             return (
                 <g key={index} className="transition-all duration-300">
-                    {/* Segmento base con borde neón */}
                     <path
                         d={pathData}
                         fill="transparent"
                         stroke={category.neonColor}
-                        strokeWidth="0.003"
+                        strokeWidth="0.005"
                         className={`transition-opacity duration-300 ${
                             isHighlighted || isSelected ? 'opacity-100' : 'opacity-50'
                         }`}
                     />
-
-                    {/* Cuadrado con icono */}
+    
                     <g transform={`translate(${textX}, ${textY})`}>
-                        {/* Fondo del cuadrado */}
                         <rect
                             x={-squareSize/2}
                             y={-squareSize/2}
@@ -136,17 +134,21 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
                             }}
                         />
                         
-                        {/* Icono centrado */}
-                        <g transform="scale(0.008)">
-                            <g transform={`translate(-16, -16)`}>
-                                <Icon 
-                                    {...category.iconProps}
-                                    style={{
-                                        ...category.iconProps.style,
-                                        strokeWidth: '2.5',
-                                    }}
-                                />
-                            </g>
+                        <g 
+                            transform={`translate(${-squareSize/4}, ${-squareSize/4}) scale(0.01)`}
+                            style={{
+                                transformBox: 'fill-box',
+                                transformOrigin: 'center'
+                            }}
+                        >
+                            <Icon 
+                                size={48}
+                                {...category.iconProps}
+                                style={{
+                                    ...category.iconProps.style,
+                                    strokeWidth: '2',
+                                }}
+                            />
                         </g>
                     </g>
                 </g>
