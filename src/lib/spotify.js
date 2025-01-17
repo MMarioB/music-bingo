@@ -1,5 +1,5 @@
 const SPOTIFY_CLIENT_ID = '277eea2816be4656a4612eae1b3ca65e';
-const REDIRECT_URI = 'https://music-bingo-swart.vercel.app';
+const REDIRECT_URI = 'https://www.discohitsbingo.com';
 
 const SCOPES = [
     'streaming',                    // Para reproducir audio
