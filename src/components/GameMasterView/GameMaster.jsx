@@ -138,10 +138,10 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
               onClick={handleMarkingControl}
               disabled={markingEnabledThisRound && !isMarkingEnabled}
               className={`w-full h-12 transition-all duration-300 ${isMarkingEnabled
-                  ? 'bg-yellow-500/80 hover:bg-yellow-500 border-yellow-400'
-                  : markingEnabledThisRound && !isMarkingEnabled
-                    ? 'bg-gray-500/50 border-gray-400 cursor-not-allowed'
-                    : 'bg-green-500/80 hover:bg-green-500 border-green-400'
+                ? 'bg-yellow-500/80 hover:bg-yellow-500 border-yellow-400'
+                : markingEnabledThisRound && !isMarkingEnabled
+                  ? 'bg-gray-500/50 border-gray-400 cursor-not-allowed'
+                  : 'bg-green-500/80 hover:bg-green-500 border-green-400'
                 } border`}
               style={
                 !markingEnabledThisRound || isMarkingEnabled
@@ -315,7 +315,7 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.8 }}
-                className="py-4"
+                className="py-1"
               >
                 <CategoryWheel
                   difficulty={difficulty}
