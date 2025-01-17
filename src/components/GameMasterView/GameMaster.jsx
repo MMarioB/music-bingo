@@ -138,10 +138,10 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
               onClick={handleMarkingControl}
               disabled={markingEnabledThisRound && !isMarkingEnabled}
               className={`w-full h-12 transition-all duration-300 ${isMarkingEnabled
-                ? 'bg-yellow-500/80 hover:bg-yellow-500 border-yellow-400'
-                : markingEnabledThisRound && !isMarkingEnabled
-                  ? 'bg-gray-500/50 border-gray-400 cursor-not-allowed'
-                  : 'bg-green-500/80 hover:bg-green-500 border-green-400'
+                  ? 'bg-yellow-500/80 hover:bg-yellow-500 border-yellow-400'
+                  : markingEnabledThisRound && !isMarkingEnabled
+                    ? 'bg-gray-500/50 border-gray-400 cursor-not-allowed'
+                    : 'bg-green-500/80 hover:bg-green-500 border-green-400'
                 } border`}
               style={
                 !markingEnabledThisRound || isMarkingEnabled
@@ -235,7 +235,6 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
       </div>
     );
   }
-
   // Pantalla principal
   return (
     <div className="min-h-screen bg-[#1a0133] flex flex-col items-center justify-center relative overflow-hidden">
@@ -268,59 +267,50 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
           </Alert>
         )}
 
-        <div className="px-3 pb-3 space-y-0.5">
-          <div className="flex items-center justify-between gap-2 flex-wrap">
-            <div className="flex-1 min-w-[200px]">
-              <Select
-                value={difficulty}
-                onValueChange={handleDifficultyChange}
-              >
-                <SelectTrigger className="w-full h-9 bg-black/30 border-white/20 text-white">
-                  <SelectValue placeholder="Nivel de juego" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="principiante">🟢 Principiante</SelectItem>
-                  <SelectItem value="experto">🔥 Experto</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="flex flex-col items-end gap-0.5">
-              <div className="flex items-center gap-2 text-white/80 bg-white/10 backdrop-blur-sm px-3 py-1 rounded-full border border-white/20">
-                <Users className="w-4 h-4" />
-                <span>{connectedPlayers.length - 1} jugadores</span>
-              </div>
-              <div className="text-sm text-purple-300">
-                Sala: {roomCode}
-              </div>
-            </div>
-
-            {gameStep !== 'wheel' && (
-              <Button
-                onClick={handleNewRound}
-                variant="outline"
-                className="flex-shrink-0 border-white/20 text-white hover:bg-white/10"
-              >
-                <RefreshCwIcon className="w-4 h-4 mr-2" />
-                Nueva Categoría
-              </Button>
-            )}
-          </div>
-
+        <div className="px-3 pb-3">
           <AnimatePresence mode="wait">
             {gameStep === 'wheel' ? (
-              <motion.div
-                key="wheel"
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.8 }}
-                className="mt-0"
-              >
-                <CategoryWheel
-                  difficulty={difficulty}
-                  onCategorySelected={handleCategorySelected}
-                />
-              </motion.div>
+              <>
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <div className="flex-1 min-w-[200px]">
+                    <Select
+                      value={difficulty}
+                      onValueChange={handleDifficultyChange}
+                    >
+                      <SelectTrigger className="w-full bg-black/30 border-white/20 text-white">
+                        <SelectValue placeholder="Nivel de juego" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="principiante">🟢 Principiante</SelectItem>
+                        <SelectItem value="experto">🔥 Experto</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="flex flex-col items-end gap-1">
+                    <div className="flex items-center gap-2 text-white/80 bg-white/10 backdrop-blur-sm px-3 py-1 rounded-full border border-white/20">
+                      <Users className="w-4 h-4" />
+                      <span>{connectedPlayers.length} jugadores</span>
+                    </div>
+                    <div className="text-sm text-purple-300">
+                      Sala: {roomCode}
+                    </div>
+                  </div>
+                </div>
+
+                <motion.div
+                  key="wheel"
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.8 }}
+                  className="-mt-2"
+                >
+                  <CategoryWheel
+                    difficulty={difficulty}
+                    onCategorySelected={handleCategorySelected}
+                  />
+                </motion.div>
+              </>
             ) : (
               <motion.div
                 key="card-section"
