@@ -12,26 +12,26 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
 
     const categories = difficulty === 'principiante' ? CATEGORIES_A : CATEGORIES_B;
 
-    // Función para generar el efecto de neón
     const createNeonFilter = () => (
         <defs>
             {/* Filtro para el efecto de resplandor neón */}
             <filter id="neonGlow" x="-50%" y="-50%" width="200%" height="200%">
-                <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+                <feFlood result="floodBlur" floodOpacity="0.5" floodColor="white"/>
+                <feComposite in="floodBlur" in2="SourceAlpha" operator="in" result="compositeBlur"/>
+                <feGaussianBlur in="compositeBlur" stdDeviation="3" result="blur"/>
                 <feMerge>
-                    <feMergeNode in="coloredBlur"/>
+                    <feMergeNode in="blur"/>
+                    <feMergeNode in="blur"/>
+                    <feMergeNode in="blur"/>
                     <feMergeNode in="SourceGraphic"/>
                 </feMerge>
             </filter>
+
             {/* Gradiente radial para el fondo de los segmentos */}
             <radialGradient id="segmentGradient">
-                <stop offset="0%" stopColor="rgba(255,255,255,0.2)"/>
+                <stop offset="0%" stopColor="rgba(255,255,255,0.1)"/>
                 <stop offset="100%" stopColor="rgba(0,0,0,0)"/>
             </radialGradient>
-            {/* Definir patrones para la textura */}
-            <pattern id="gridPattern" patternUnits="userSpaceOnUse" width="10" height="10">
-                <path d="M 10 0 L 0 0 0 10" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="0.5"/>
-            </pattern>
         </defs>
     );
 
@@ -90,9 +90,10 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
             const endX = Math.cos((endAngle - 90) * Math.PI / 180);
             const endY = Math.sin((endAngle - 90) * Math.PI / 180);
 
-            const radius = 0.85; // Aumentado para hacer los segmentos más grandes
-            const textX = Math.cos((midAngle - 90) * Math.PI / 180) * (radius * 0.6);
-            const textY = Math.sin((midAngle - 90) * Math.PI / 180) * (radius * 0.6);
+            const squarePosition = 0.55; // Posición del cuadrado desde el centro
+            const squareSize = 0.25; // Tamaño del cuadrado
+            const textX = Math.cos((midAngle - 90) * Math.PI / 180) * squarePosition;
+            const textY = Math.sin((midAngle - 90) * Math.PI / 180) * squarePosition;
 
             const largeArcFlag = "0";
             const pathData = `M 0 0 L ${startX} ${startY} A 1 1 0 ${largeArcFlag} 1 ${endX} ${endY} Z`;
@@ -101,51 +102,48 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
             const isSelected = category === finalSelectedCategory;
             const Icon = category.icon;
 
-            // Calcular el color de neón basado en la categoría
-            const neonColor = category.neonColor || '#fff';
-            
             return (
                 <g key={index} className="transition-all duration-300">
-                    {/* Segmento base con gradiente */}
+                    {/* Segmento base con borde neón */}
                     <path
                         d={pathData}
-                        fill={`url(#segmentGradient)`}
-                        stroke={neonColor}
-                        strokeWidth="0.01"
-                        style={{
-                            filter: isHighlighted || isSelected ? 'url(#neonGlow)' : 'none',
-                            opacity: isHighlighted || isSelected ? 1 : 0.7
-                        }}
+                        fill="transparent"
+                        stroke={category.neonColor}
+                        strokeWidth="0.003"
+                        className={`transition-opacity duration-300 ${
+                            isHighlighted || isSelected ? 'opacity-100' : 'opacity-50'
+                        }`}
                     />
-                    {/* Patrón de cuadrícula sobre el segmento */}
-                    <path
-                        d={pathData}
-                        fill="url(#gridPattern)"
-                        style={{ opacity: 0.3 }}
-                    />
-                    {/* Cuadrado neón para el ícono */}
+
+                    {/* Cuadrado con icono */}
                     <g transform={`translate(${textX}, ${textY})`}>
+                        {/* Fondo del cuadrado */}
                         <rect
-                            x="-0.15"
-                            y="-0.15"
-                            width="0.3"
-                            height="0.3"
-                            fill={isHighlighted || isSelected ? category.color : 'rgba(255,255,255,0.1)'}
-                            stroke={neonColor}
-                            strokeWidth="0.01"
+                            x={-squareSize/2}
+                            y={-squareSize/2}
+                            width={squareSize}
+                            height={squareSize}
+                            fill={category.wheelColor}
+                            stroke={category.neonColor}
+                            strokeWidth="0.005"
+                            rx="0.02"
+                            ry="0.02"
+                            className={`transition-all duration-300 ${
+                                isHighlighted || isSelected ? 'opacity-100' : 'opacity-70'
+                            }`}
                             style={{
                                 filter: isHighlighted || isSelected ? 'url(#neonGlow)' : 'none'
                             }}
                         />
-                        {/* Ícono */}
-                        <g transform={`rotate(${midAngle})`}>
-                            <g transform="scale(0.007)">
+                        
+                        {/* Icono centrado */}
+                        <g transform="scale(0.008)">
+                            <g transform={`translate(-16, -16)`}>
                                 <Icon 
                                     {...category.iconProps}
                                     style={{
                                         ...category.iconProps.style,
                                         strokeWidth: '2.5',
-                                        filter: isHighlighted || isSelected ? 'url(#neonGlow)' : 'none'
                                     }}
                                 />
                             </g>
@@ -157,14 +155,11 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
     };
 
     return (
-        <div className="flex flex-col items-center justify-center min-h-screen p-2 bg-[#1a0133]">
+        <div className="flex flex-col items-center justify-center min-h-screen p-2">
             <div className="relative w-full max-w-xl aspect-square">
                 <svg
                     viewBox="-1.1 -1.1 2.2 2.2"
                     className="w-full h-full"
-                    style={{
-                        filter: 'drop-shadow(0 0 10px rgba(255,255,255,0.2))'
-                    }}
                 >
                     {createNeonFilter()}
                     {generateWheelSegments()}
