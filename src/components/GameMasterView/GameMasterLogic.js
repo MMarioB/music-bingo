@@ -24,7 +24,7 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
       const roomResponse = await gameSocket.createRoom({
         roomCode,
         difficulty,
-        maxPlayers: 8,
+        maxPlayers: 12,
         host: true
       });
 
