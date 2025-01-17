@@ -170,7 +170,6 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
       </div>
     );
   };
-
   // Pantalla de login
   if (!loggedIn) {
     return (
@@ -255,7 +254,7 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
       />
 
       <div className="w-[95%] max-w-xl mx-auto bg-black/40 backdrop-blur-lg rounded-xl shadow-xl overflow-hidden border border-white/10">
-        <div className="bg-black/60 p-4">
+        <div className="bg-black/60 p-3">
           <h1 className="text-2xl md:text-3xl font-bold text-center text-white"
             style={{ textShadow: '0 0 10px rgba(255,255,255,0.8)' }}>
             Music Bingo
@@ -263,14 +262,14 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
         </div>
 
         {connectionError && (
-          <Alert variant="destructive" className="m-4 bg-red-500/20 border border-red-500/50">
+          <Alert variant="destructive" className="mx-4 mt-2 mb-1 bg-red-500/20 border border-red-500/50">
             <AlertCircle className="h-4 w-4 text-white" />
             <AlertDescription className="text-white">{connectionError}</AlertDescription>
           </Alert>
         )}
 
-        <div className="p-4 space-y-2">
-          <div className="flex items-center justify-between gap-4 flex-wrap">
+        <div className="px-4 pb-4 pt-2 space-y-1">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
             <div className="flex-1 min-w-[200px]">
               <Select
                 value={difficulty}
@@ -315,7 +314,7 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.8 }}
-                className="py-1"
+                className="pt-0"
               >
                 <CategoryWheel
                   difficulty={difficulty}
