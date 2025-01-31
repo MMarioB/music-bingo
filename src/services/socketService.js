@@ -109,6 +109,33 @@ class GameWebSocket {
     return this.connectPromise;
   }
 
+  async createRoom(roomConfig) {
+    await this.ensureConnection();
+    
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        reject(new Error('Timeout creating room'));
+      }, 10000);
+
+      const handleRoomCreated = (roomInfo) => {
+        clearTimeout(timeout);
+        this.socket.off('error', handleError);
+        resolve(roomInfo);
+      };
+
+      const handleError = (error) => {
+        clearTimeout(timeout);
+        this.socket.off('roomCreated', handleRoomCreated);
+        reject(error);
+      };
+
+      console.log('Creando sala:', roomConfig);
+      this.socket.emit('createRoom', roomConfig);
+      this.socket.once('roomCreated', handleRoomCreated);
+      this.socket.once('error', handleError);
+    });
+  }
+
   async joinRoom(roomCode, playerInfo) {
     // Añadir un retraso aleatorio entre conexiones
     await new Promise(resolve => setTimeout(resolve, Math.random() * 1000));
