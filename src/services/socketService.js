@@ -9,6 +9,7 @@ class GameWebSocket {
     this.connectionAttempts = 0;
     this.maxAttempts = 5;
     this.connectPromise = null;
+    this.connectionQueue = [];
   }
 
   async connect() {
@@ -73,6 +74,10 @@ class GameWebSocket {
             this.isConnecting = false;
             this.connectionAttempts = 0;
             this.restoreEventHandlers();
+            
+            // Process queued connections
+            this.processConnectionQueue();
+            
             resolve();
           });
   
@@ -104,36 +109,10 @@ class GameWebSocket {
     return this.connectPromise;
   }
 
-  async createRoom(roomConfig) {
-    await this.ensureConnection();
-    
-    return new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        reject(new Error('Timeout creating room'));
-      }, 10000);
-
-      const handleRoomCreated = (roomInfo) => {
-        clearTimeout(timeout);
-        this.socket.off('error', handleError);
-        resolve(roomInfo);
-      };
-
-      const handleError = (error) => {
-        clearTimeout(timeout);
-        this.socket.off('roomCreated', handleRoomCreated);
-        reject(error);
-      };
-
-      console.log('Creando sala:', roomConfig);
-      this.socket.emit('createRoom', roomConfig);
-      this.socket.once('roomCreated', handleRoomCreated);
-      this.socket.once('error', handleError);
-    });
-  }
-
   async joinRoom(roomCode, playerInfo) {
-    await this.ensureConnection();
-    
+    // Añadir un retraso aleatorio entre conexiones
+    await new Promise(resolve => setTimeout(resolve, Math.random() * 1000));
+
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
         reject(new Error('Timeout joining room'));
@@ -162,6 +141,13 @@ class GameWebSocket {
       this.socket.once('roomJoined', handleRoomJoined);
       this.socket.once('error', handleError);
     });
+  }
+
+  processConnectionQueue() {
+    while (this.connectionQueue.length > 0) {
+      const { resolve, reject, fn } = this.connectionQueue.shift();
+      fn().then(resolve).catch(reject);
+    }
   }
 
   async setPlayerReady(roomCode) {
