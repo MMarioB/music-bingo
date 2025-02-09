@@ -218,7 +218,7 @@ function App() {
           {gameState.error && (
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{gameState.error}</AlertDescription>
+              <AlertDescription className="text-white">{gameState.error}</AlertDescription>
             </Alert>
           )}
 
