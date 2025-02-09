@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import MusicBingoGame from "../components/PlayerView/MusicBingoGame";
 import GameMaster from "../components/GameMasterView/GameMaster";
 import GameRoom from "../components/GameRoom";
@@ -11,13 +11,27 @@ import { motion, AnimatePresence } from "framer-motion";
 
 function App() {
   const [gameState, setGameState] = useState({
-    phase: 'role-selection',
+    phase: 'auth',
+    authMode: 'login',
     selectedRole: null,
     playerName: '',
     roomCode: '',
     difficulty: 'principiante',
-    error: null
+    error: null,
+    username: '',
+    email: '',
+    password: ''
   });
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      setGameState(prev => ({
+        ...prev,
+        phase: 'role-selection'
+      }));
+    }
+  }, []);
 
   const handleError = useCallback((errorMessage) => {
     setGameState(prev => ({
@@ -41,6 +55,50 @@ function App() {
       error: 'Sala no encontrada. Verifica el código e inténtalo de nuevo.'
     }));
   }, []);
+
+  const handleAuth = async () => {
+    try {
+      if (!gameState.username || !gameState.password || (gameState.authMode === 'register' && !gameState.email)) {
+        handleError('Por favor completa todos los campos');
+        return;
+      }
+
+      const API_URL = import.meta.env.VITE_API_URL;
+      const endpoint = gameState.authMode === 'login' ? '/auth/login' : '/auth/register';
+
+      const response = await fetch(`${API_URL}${endpoint}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          username: gameState.username,
+          password: gameState.password,
+          ...(gameState.authMode === 'register' && { email: gameState.email })
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Error en la autenticación');
+      }
+
+      localStorage.setItem('token', data.token);
+
+      setGameState(prev => ({
+        ...prev,
+        phase: 'role-selection',
+        error: null,
+        username: '',
+        password: '',
+        email: ''
+      }));
+
+    } catch (error) {
+      handleError(error.message);
+    }
+  };
 
   const handleRoleSelect = (role) => {
     setGameState(prev => ({
@@ -105,6 +163,99 @@ function App() {
       error: null
     });
   };
+
+  const renderAuth = () => (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.95 }}
+      className="w-full max-w-md"
+    >
+      <Card className="p-8 bg-black/40 shadow-2xl backdrop-blur-sm border border-white/10">
+        <h2 className="text-2xl font-bold text-center text-white mb-6">
+          {gameState.authMode === 'login' ? 'Iniciar Sesión' : 'Registro'}
+        </h2>
+        
+        <div className="space-y-4">
+          <Input
+            type="text"
+            placeholder="Usuario"
+            value={gameState.username}
+            onChange={(e) => setGameState(prev => ({
+              ...prev,
+              username: e.target.value,
+              error: null
+            }))}
+            className="w-full bg-black/30 border-white/20 text-white placeholder:text-white/50"
+          />
+
+          {gameState.authMode === 'register' && (
+            <Input
+              type="email"
+              placeholder="Email"
+              value={gameState.email}
+              onChange={(e) => setGameState(prev => ({
+                ...prev,
+                email: e.target.value,
+                error: null
+              }))}
+              className="w-full bg-black/30 border-white/20 text-white placeholder:text-white/50"
+            />
+          )}
+
+          <Input
+            type="password"
+            placeholder="Contraseña"
+            value={gameState.password}
+            onChange={(e) => setGameState(prev => ({
+              ...prev,
+              password: e.target.value,
+              error: null
+            }))}
+            className="w-full bg-black/30 border-white/20 text-white placeholder:text-white/50"
+          />
+
+          {gameState.error && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{gameState.error}</AlertDescription>
+            </Alert>
+          )}
+
+          <Button 
+            onClick={handleAuth}
+            className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white hover:from-purple-700 hover:to-indigo-700 transition-all duration-300"
+          >
+            {gameState.authMode === 'login' ? 'Iniciar Sesión' : 'Registrarse'}
+          </Button>
+
+          <p className="text-white/60 text-center mt-2">
+            {gameState.authMode === 'login' ? (
+              <>
+                ¿No tienes cuenta?{' '}
+                <button
+                  onClick={() => setGameState(prev => ({ ...prev, authMode: 'register', error: null }))}
+                  className="text-purple-400 hover:text-purple-300"
+                >
+                  Regístrate
+                </button>
+              </>
+            ) : (
+              <>
+                ¿Ya tienes cuenta?{' '}
+                <button
+                  onClick={() => setGameState(prev => ({ ...prev, authMode: 'login', error: null }))}
+                  className="text-purple-400 hover:text-purple-300"
+                >
+                  Inicia sesión
+                </button>
+              </>
+            )}
+          </p>
+        </div>
+      </Card>
+    </motion.div>
+  );
 
   const renderNameInput = () => (
     <motion.div
@@ -267,6 +418,7 @@ function App() {
 
         {/* Área principal de juego */}
         <AnimatePresence mode="wait">
+          {gameState.phase === 'auth' && renderAuth()}
           {gameState.phase === 'role-selection' && (
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
