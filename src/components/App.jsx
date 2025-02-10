@@ -8,6 +8,7 @@ import { Button } from "../components/ui/button";
 import { Alert, AlertDescription } from "../components/ui/alert";
 import { AlertCircle, ArrowLeft, Music, Users } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { authService } from "../services/authService";
 
 function App() {
   const [gameState, setGameState] = useState({
@@ -62,30 +63,12 @@ function App() {
         handleError('Por favor completa todos los campos');
         return;
       }
-
-      const API_URL = import.meta.env.VITE_API_URL;
-      const endpoint = gameState.authMode === 'login' ? '/auth/login' : '/auth/register';
-
-      const response = await fetch(`${API_URL}${endpoint}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          username: gameState.username,
-          password: gameState.password,
-          ...(gameState.authMode === 'register' && { email: gameState.email })
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Error en la autenticación');
-      }
-
-      localStorage.setItem('token', data.token);
-
+  
+      const response = gameState.authMode === 'login' 
+        ? await authService.login(gameState.username, gameState.password)
+        : await authService.register(gameState.username, gameState.email, gameState.password);
+  
+      localStorage.setItem('token', response.token);
       setGameState(prev => ({
         ...prev,
         phase: 'role-selection',
@@ -94,7 +77,7 @@ function App() {
         password: '',
         email: ''
       }));
-
+  
     } catch (error) {
       handleError(error.message);
     }
