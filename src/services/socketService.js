@@ -112,6 +112,10 @@ class GameWebSocket {
        return this.sendWithResponse('playerReady', { roomCode }, 'playersUpdate');
    }
 
+   async startGame(roomCode, difficulty) {
+    return this.sendWithResponse('startGame', { roomCode, difficulty }, 'gameStarted');
+}
+
    async createRoom(roomConfig) {
        return this.sendWithResponse('createRoom', roomConfig, 'roomCreated');
    }
