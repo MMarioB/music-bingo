@@ -24,7 +24,7 @@ class GameWebSocket {
                 return;
             }
 
-            const wsUrl = `${import.meta.env.VITE_API_URL}/socket?token=${token}`;
+            const wsUrl = `${import.meta.env.VITE_WS_URL}/socket?token=${token}`;
             this.socket = new SockJS(wsUrl, null, {
                 transports: ['websocket'],
                 timeout: 5000
