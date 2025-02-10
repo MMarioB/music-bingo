@@ -80,9 +80,20 @@ class GameWebSocket {
     }
 
     async send(event, data) {
-        await this.ensureConnection();
-        this.socket.send(JSON.stringify({ event, data }));
-    }
+      await this.ensureConnection();
+      return new Promise((resolve, reject) => {
+          if (!this.socket || !this.connected) {
+              reject(new Error('No conectado'));
+              return;
+          }
+          try {
+              this.socket.send(JSON.stringify({ event, data }));
+              resolve();
+          } catch (error) {
+              reject(error);
+          }
+      });
+  }
 
     async createRoom(roomConfig) {
         return this.sendWithResponse('createRoom', roomConfig, 'roomCreated');
@@ -143,10 +154,19 @@ class GameWebSocket {
     }
 
     async ensureConnection() {
-        if (!this.connected) {
-            await this.connect();
-        }
-    }
+      if (!this.connected) {
+          await new Promise((resolve) => {
+              const checkConnection = () => {
+                  if (this.connected) {
+                      resolve();
+                  } else {
+                      setTimeout(checkConnection, 100);
+                  }
+              };
+              this.connect().then(checkConnection);
+          });
+      }
+  }
 
     disconnect() {
         if (this.reconnectTimeout) {

@@ -64,25 +64,32 @@ function App() {
         return;
       }
   
-      const response = gameState.authMode === 'login' 
-        ? await authService.login(gameState.username, gameState.password)
-        : await authService.register(gameState.username, gameState.email, gameState.password);
-  
-      localStorage.setItem('token', response.token);
-      setGameState(prev => ({
-        ...prev,
-        phase: 'role-selection',
-        error: null,
-        username: '',
-        password: '',
-        email: ''
-      }));
-  
+      if (gameState.authMode === 'register') {
+        await authService.register(gameState.username, gameState.email, gameState.password);
+        setGameState(prev => ({
+          ...prev,
+          authMode: 'login',
+          error: null,
+          username: '',
+          password: '',
+          email: ''
+        }));
+      } else {
+        const response = await authService.login(gameState.username, gameState.password);
+        localStorage.setItem('token', response.token);
+        setGameState(prev => ({
+          ...prev,
+          phase: 'role-selection',
+          error: null,
+          username: '',
+          password: '',
+          email: ''
+        }));
+      }
     } catch (error) {
       handleError(error.message);
     }
   };
-
   const handleRoleSelect = (role) => {
     setGameState(prev => ({
       ...prev,

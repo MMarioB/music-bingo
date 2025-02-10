@@ -1,38 +1,38 @@
-const API_URL = import.meta.env.VITE_WS_URL;
+const API_URL = import.meta.env.VITE_API_URL;
 
 export const authService = {
   async register(username, email, password) {
     const response = await fetch(`${API_URL}/auth/register`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, email, password }),
     });
 
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || 'Registration failed');
+      const error = await response.json();
+      throw new Error(error.message || 'Registration failed');
     }
 
-    return response.json();
+    const data = await response.json();
+    window.location.href = '/'; // Redirige al login después del registro
+    return data;
   },
 
   async login(username, password) {
     const response = await fetch(`${API_URL}/auth/login`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, password }),
     });
 
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || 'Login failed');
+      const error = await response.json();
+      throw new Error(error.message || 'Login failed');
     }
 
-    return response.json();
+    const data = await response.json();
+    localStorage.setItem('token', data.token);
+    return data;
   },
 
   async verifyToken(token) {
