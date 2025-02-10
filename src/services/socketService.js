@@ -20,11 +20,16 @@ class GameWebSocket {
     try {
       const token = localStorage.getItem('token');
       if (!token) {
-        throw new Error('No token found');
+        window.location.href = '/';
+        return;
       }
 
       const wsUrl = `${import.meta.env.VITE_WS_URL}/socket?token=${token}`;
-      this.socket = new SockJS(wsUrl);
+      this.socket = new SockJS(wsUrl, null, {
+        transports: ['websocket'],
+        timeout: 5000,
+        withCredentials: false
+      });
 
       this.socket.onopen = () => {
         console.log('WebSocket conectado');
@@ -39,7 +44,7 @@ class GameWebSocket {
         this.connected = false;
         this.isConnecting = false;
 
-        if (event.code === 1003 || event.code === 4001) { // Token inválido o expirado
+        if (event.code === 1003 || event.code === 4001) {
           localStorage.removeItem('token');
           window.location.href = '/';
           this.eventHandlers.get('tokenInvalid')?.();
@@ -83,12 +88,7 @@ class GameWebSocket {
 
   async send(event, data) {
     await this.ensureConnection();
-    try {
-      this.socket.send(JSON.stringify({ event, data }));
-    } catch (error) {
-      console.error('Error sending message:', error);
-      throw error;
-    }
+    this.socket.send(JSON.stringify({ event, data }));
   }
 
   async createRoom(roomConfig) {
@@ -102,58 +102,57 @@ class GameWebSocket {
   async sendWithResponse(event, data, responseEvent) {
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
-        this.off(responseEvent);
-        this.off('error');
-        reject(new Error('Timeout en la operación'));
+        this.removeEventListener(responseEvent);
+        this.removeEventListener('error');
+        reject(new Error('Timeout'));
       }, 10000);
 
-      const errorHandler = (error) => {
+      const handler = (response) => {
         clearTimeout(timeout);
-        this.off(responseEvent);
-        this.off('error');
-        reject(new Error(error));
-      };
-
-      const successHandler = (response) => {
-        clearTimeout(timeout);
-        this.off(responseEvent);
-        this.off('error');
+        this.removeEventListener(responseEvent);
+        this.removeEventListener('error');
         resolve(response);
       };
 
-      this.on(responseEvent, successHandler);
-      this.on('error', errorHandler);
+      const errorHandler = (error) => {
+        clearTimeout(timeout);
+        this.removeEventListener(responseEvent);
+        this.removeEventListener('error');
+        reject(error);
+      };
+
+      this.addEventListener(responseEvent, handler);
+      this.addEventListener('error', errorHandler);
       this.send(event, data).catch(errorHandler);
     });
   }
 
+  addEventListener(event, handler) {
+    this.eventHandlers.set(event, handler);
+    if (this.socket && event !== 'tokenInvalid' && event !== 'error') {
+      this.socket.addEventListener(event, handler);
+    }
+  }
+
+  removeEventListener(event) {
+    if (this.socket && event !== 'tokenInvalid' && event !== 'error') {
+      this.socket.removeEventListener(event);
+    }
+    this.eventHandlers.delete(event);
+  }
+
   restoreEventHandlers() {
     this.eventHandlers.forEach((handler, event) => {
-      if (!['tokenInvalid', 'error'].includes(event)) {
-        this.socket.on(event, handler);
+      if (event !== 'tokenInvalid' && event !== 'error') {
+        this.socket.addEventListener(event, handler);
       }
     });
-  }
-
-  on(event, handler) {
-    this.eventHandlers.set(event, handler);
-    if (this.socket && !['tokenInvalid', 'error'].includes(event)) {
-      this.socket.on(event, handler);
-    }
-  }
-
-  off(event) {
-    this.eventHandlers.delete(event);
-    if (this.socket) {
-      this.socket.off(event);
-    }
   }
 
   async ensureConnection() {
     if (!this.connected) {
       await this.connect();
     }
-    return this.connected;
   }
 
   disconnect() {
@@ -169,12 +168,6 @@ class GameWebSocket {
       this.isConnecting = false;
       this.connectionAttempts = 0;
     }
-  }
-
-  logout() {
-    localStorage.removeItem('token');
-    this.disconnect();
-    window.location.href = '/';
   }
 }
 
