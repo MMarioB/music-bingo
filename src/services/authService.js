@@ -1,4 +1,4 @@
-const API_URL = 'https://spring-sockets-login-production.up.railway.app';
+const API_URL = import.meta.env.VITE_WS_URL;
 
 export const authService = {
   async register(username, email, password) {
@@ -9,6 +9,12 @@ export const authService = {
       },
       body: JSON.stringify({ username, email, password }),
     });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Registration failed');
+    }
+
     return response.json();
   },
 
@@ -20,10 +26,27 @@ export const authService = {
       },
       body: JSON.stringify({ username, password }),
     });
-    const data = await response.json();
-    if (data.token) {
-      localStorage.setItem('token', data.token);
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Login failed');
     }
-    return data;
+
+    return response.json();
+  },
+
+  async verifyToken(token) {
+    const response = await fetch(`${API_URL}/auth/verify`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error('Token inválido');
+    }
+
+    return response.json();
   }
 };
