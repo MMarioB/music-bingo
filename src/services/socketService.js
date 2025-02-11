@@ -136,9 +136,26 @@ class GameWebSocket {
    }
 
    async setPlayerReady(roomCode) {
-       console.log('Marcando jugador como listo:', roomCode);
-       return this.sendWithResponse('playerReady', { roomCode }, 'playersUpdate', 'error');
-   }
+    console.log('Marcando jugador como listo:', roomCode);
+    try {
+        // Primero verificar si la sala existe
+        const roomExists = await this.checkRoom(roomCode);
+        if (!roomExists) {
+            throw new Error('Sala no encontrada');
+        }
+        return this.sendWithResponse('playerReady', { roomCode }, 'playersUpdate', 'error');
+    } catch (error) {
+        console.error('Error en setPlayerReady:', error);
+        // Si es un error de sala no encontrada, emitimos un evento específico
+        if (error.message.includes('Sala no encontrada')) {
+            const handler = this.eventHandlers.get('roomNotFound');
+            if (handler) {
+                handler();
+            }
+        }
+        throw error;
+    }
+}
 
    async startGame(options) {
        console.log('Iniciando juego:', options);
@@ -170,41 +187,84 @@ class GameWebSocket {
        return this.sendWithResponse('winner', data, 'winnerAnnounced', 'error');
    }
 
-   async sendWithResponse(event, data, successEvent, errorEvent = 'error') {
-       return new Promise((resolve, reject) => {
-           const messageId = `msg_${++this.messageId}`;
-           const timeout = setTimeout(() => {
-               this.pendingPromises.delete(messageId);
-               this.off(successEvent);
-               this.off(errorEvent);
-               reject(new Error('Timeout'));
-           }, 10000);
+   async checkRoom(roomCode) {
+    console.log('Verificando existencia de sala:', roomCode);
+    try {
+        const response = await this.sendWithResponse(
+            'checkRoom', 
+            { roomCode }, 
+            'roomStatus',
+            'error'
+        );
+        return response.exists;
+    } catch (error) {
+        console.error('Error verificando sala:', error);
+        // Si el error es específicamente "Sala no encontrada", retornamos false
+        if (error.message.includes('Sala no encontrada')) {
+            return false;
+        }
+        // Si es otro tipo de error, lo propagamos
+        throw error;
+    }
+}
 
-           const successHandler = (response) => {
-               clearTimeout(timeout);
-               this.pendingPromises.delete(messageId);
-               this.off(successEvent);
-               this.off(errorEvent);
-               resolve(response);
-           };
+async sendWithResponse(event, data, successEvent, errorEvent = 'error') {
+  return new Promise((resolve, reject) => {
+      const messageId = `msg_${++this.messageId}`;
+      const timeout = setTimeout(() => {
+          this.pendingPromises.delete(messageId);
+          this.off(successEvent);
+          this.off(errorEvent);
+          reject(new Error('Timeout en la operación'));
+      }, 10000);
 
-           const errorHandler = (error) => {
-               clearTimeout(timeout);
-               this.pendingPromises.delete(messageId);
-               this.off(successEvent);
-               this.off(errorEvent);
-               reject(new Error(error.message || 'Error desconocido'));
-           };
+      const successHandler = (response) => {
+          clearTimeout(timeout);
+          this.pendingPromises.delete(messageId);
+          this.off(successEvent);
+          this.off(errorEvent);
+          
+          // Verificar si la respuesta indica que la sala no existe
+          if (response.error === 'ROOM_NOT_FOUND') {
+              const handler = this.eventHandlers.get('roomNotFound');
+              if (handler) {
+                  handler();
+              }
+              reject(new Error('Sala no encontrada'));
+              return;
+          }
+          
+          resolve(response);
+      };
 
-           this.pendingPromises.set(messageId, { resolve: successHandler, reject: errorHandler });
-           this.on(successEvent, successHandler);
-           this.on(errorEvent, errorHandler);
+      const errorHandler = (error) => {
+          clearTimeout(timeout);
+          this.pendingPromises.delete(messageId);
+          this.off(successEvent);
+          this.off(errorEvent);
+          
+          // Verificar si el error está relacionado con la sala no encontrada
+          if (error.message?.includes('ROOM_NOT_FOUND') || 
+              error.code === 'ROOM_NOT_FOUND' ||
+              error.message?.includes('Sala no encontrada')) {
+              const handler = this.eventHandlers.get('roomNotFound');
+              if (handler) {
+                  handler();
+              }
+          }
+          
+          reject(new Error(error.message || 'Error desconocido'));
+      };
 
-           this.ensureConnection()
-               .then(() => this.send(event, { ...data, messageId }))
-               .catch(errorHandler);
-       });
-   }
+      this.pendingPromises.set(messageId, { resolve: successHandler, reject: errorHandler });
+      this.on(successEvent, successHandler);
+      this.on(errorEvent, errorHandler);
+
+      this.ensureConnection()
+          .then(() => this.send(event, { ...data, messageId }))
+          .catch(errorHandler);
+  });
+}
 
    async reconnect() {
        if (this.isConnecting) return;
