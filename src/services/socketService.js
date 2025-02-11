@@ -9,10 +9,16 @@ class GameWebSocket {
        this.connectionAttempts = 0;
        this.maxAttempts = 5;
        this.reconnectTimeout = null;
+       this.pendingPromises = new Map();
+       this.messageId = 0;
+   }
+
+   isConnected() {
+       return this.socket && this.socket.readyState === SockJS.OPEN && this.connected;
    }
 
    async connect() {
-       if (this.socket?.connected) return;
+       if (this.isConnected()) return;
        if (this.isConnecting) return;
 
        this.isConnecting = true;
@@ -35,12 +41,23 @@ class GameWebSocket {
                this.isConnecting = false;
                this.connectionAttempts = 0;
                this.restoreEventHandlers();
+               // Resolver promesas pendientes si hay reconexión
+               this.pendingPromises.forEach(({ resolve }) => {
+                   resolve();
+               });
+               this.pendingPromises.clear();
            };
 
            this.socket.onclose = (event) => {
                console.log('WebSocket desconectado:', event.code);
                this.connected = false;
                this.isConnecting = false;
+
+               // Rechazar todas las promesas pendientes en caso de desconexión
+               this.pendingPromises.forEach(({ reject }) => {
+                   reject(new Error('Conexión perdida'));
+               });
+               this.pendingPromises.clear();
 
                if (event.code === 1003 || event.code === 4001) {
                    localStorage.removeItem('token');
@@ -56,12 +73,22 @@ class GameWebSocket {
                    const data = JSON.parse(e.data);
                    console.log('Mensaje recibido:', data);
                    
+                   // Manejar errores globales
                    if (data.error || data.message) {
                        const handler = this.eventHandlers.get('error');
                        if (handler) handler(data);
                        return;
                    }
 
+                   // Resolver promesa pendiente si existe
+                   if (data.messageId && this.pendingPromises.has(data.messageId)) {
+                       const { resolve } = this.pendingPromises.get(data.messageId);
+                       resolve(data);
+                       this.pendingPromises.delete(data.messageId);
+                       return;
+                   }
+
+                   // Manejar eventos normales
                    const handler = this.eventHandlers.get(data.event);
                    if (handler) {
                        if (data.event === 'playersUpdate') {
@@ -81,11 +108,21 @@ class GameWebSocket {
    }
 
    async send(event, data) {
+       const messageId = `msg_${++this.messageId}`;
        await this.ensureConnection();
-       if (!this.socket || this.socket.readyState !== SockJS.OPEN) {
+       
+       if (!this.isConnected()) {
            throw new Error('Socket not ready');
        }
-       this.socket.send(JSON.stringify({ event, data }));
+
+       const message = JSON.stringify({
+           event,
+           data,
+           messageId
+       });
+
+       this.socket.send(message);
+       return messageId;
    }
 
    async createRoom(roomConfig) {
@@ -103,9 +140,9 @@ class GameWebSocket {
        return this.sendWithResponse('playerReady', { roomCode }, 'playersUpdate', 'error');
    }
 
-   async startGame(roomCode, difficulty) {
-       console.log('Iniciando juego:', roomCode, difficulty);
-       return this.sendWithResponse('startGame', { roomCode, difficulty }, 'gameStarted', 'error');
+   async startGame(options) {
+       console.log('Iniciando juego:', options);
+       return this.sendWithResponse('startGame', options, 'gameStarted', 'gameStartFailed');
    }
 
    async selectCategory(data) {
@@ -115,27 +152,29 @@ class GameWebSocket {
 
    async revealSong(data) {
        console.log('Revelando canción:', data);
-       await this.send('revealSong', data);
+       return this.sendWithResponse('revealSong', data, 'songRevealed', 'error');
    }
 
    async enableMarking(data) {
        console.log('Habilitando marcado:', data);
-       await this.send('enableMarking', data);
+       return this.sendWithResponse('enableMarking', data, 'markingEnabled', 'error');
    }
 
    async disableMarking(data) {
        console.log('Deshabilitando marcado:', data);
-       await this.send('disableMarking', data);
+       return this.sendWithResponse('disableMarking', data, 'markingDisabled', 'error');
    }
 
    async winner(data) {
        console.log('Anunciando ganador:', data);
-       await this.send('winner', data);
+       return this.sendWithResponse('winner', data, 'winnerAnnounced', 'error');
    }
 
    async sendWithResponse(event, data, successEvent, errorEvent = 'error') {
        return new Promise((resolve, reject) => {
+           const messageId = `msg_${++this.messageId}`;
            const timeout = setTimeout(() => {
+               this.pendingPromises.delete(messageId);
                this.off(successEvent);
                this.off(errorEvent);
                reject(new Error('Timeout'));
@@ -143,6 +182,7 @@ class GameWebSocket {
 
            const successHandler = (response) => {
                clearTimeout(timeout);
+               this.pendingPromises.delete(messageId);
                this.off(successEvent);
                this.off(errorEvent);
                resolve(response);
@@ -150,16 +190,18 @@ class GameWebSocket {
 
            const errorHandler = (error) => {
                clearTimeout(timeout);
+               this.pendingPromises.delete(messageId);
                this.off(successEvent);
                this.off(errorEvent);
                reject(new Error(error.message || 'Error desconocido'));
            };
 
+           this.pendingPromises.set(messageId, { resolve: successHandler, reject: errorHandler });
            this.on(successEvent, successHandler);
            this.on(errorEvent, errorHandler);
 
            this.ensureConnection()
-               .then(() => this.send(event, data))
+               .then(() => this.send(event, { ...data, messageId }))
                .catch(errorHandler);
        });
    }
@@ -168,26 +210,44 @@ class GameWebSocket {
        if (this.isConnecting) return;
        this.connectionAttempts++;
        console.log(`Intento de reconexión ${this.connectionAttempts}/${this.maxAttempts}`);
-       await this.connect();
+       
+       try {
+           await this.connect();
+       } catch (error) {
+           console.error('Error en reconexión:', error);
+           const handler = this.eventHandlers.get('error');
+           if (handler) {
+               handler({ message: 'Error de reconexión' });
+           }
+       }
    }
 
    async ensureConnection() {
-       if (!this.connected) {
-           await new Promise((resolve) => {
-               if (this.socket && this.socket.readyState === SockJS.OPEN) {
-                   resolve();
-                   return;
-               }
+       if (!this.isConnected()) {
+           return new Promise((resolve, reject) => {
+               const messageId = `conn_${++this.messageId}`;
+               const timeout = setTimeout(() => {
+                   this.pendingPromises.delete(messageId);
+                   reject(new Error('Timeout en conexión'));
+               }, 10000);
 
-               const checkConnection = () => {
-                   if (this.socket && this.socket.readyState === SockJS.OPEN) {
+               this.pendingPromises.set(messageId, {
+                   resolve: () => {
+                       clearTimeout(timeout);
+                       this.pendingPromises.delete(messageId);
                        resolve();
-                   } else {
-                       setTimeout(checkConnection, 100);
+                   },
+                   reject: (error) => {
+                       clearTimeout(timeout);
+                       this.pendingPromises.delete(messageId);
+                       reject(error);
                    }
-               };
+               });
 
-               this.connect().then(checkConnection);
+               this.connect().catch((error) => {
+                   const { reject } = this.pendingPromises.get(messageId) || {};
+                   if (reject) reject(error);
+               });
            });
        }
    }
@@ -215,6 +275,12 @@ class GameWebSocket {
            clearTimeout(this.reconnectTimeout);
            this.reconnectTimeout = null;
        }
+       
+       // Rechazar todas las promesas pendientes
+       this.pendingPromises.forEach(({ reject }) => {
+           reject(new Error('Desconexión manual'));
+       });
+       this.pendingPromises.clear();
        
        if (this.socket) {
            this.socket.close();
