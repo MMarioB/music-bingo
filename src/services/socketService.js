@@ -11,7 +11,7 @@ class GameWebSocket {
        this.reconnectTimeout = null;
        this.pendingPromises = new Map();
        this.messageId = 0;
-       this.lastOperation = null;
+       this.operationRetries = new Map();
    }
 
    isConnected() {
@@ -58,24 +58,12 @@ class GameWebSocket {
                    }
                }, 5000);
 
-               this.socket.onopen = async () => {
+               this.socket.onopen = () => {
                    console.log('WebSocket conectado');
                    clearTimeout(connectionTimeout);
                    this.connected = true;
                    this.isConnecting = false;
                    this.connectionAttempts = 0;
-
-                   // Si hay una operación pendiente, reintentarla
-                   if (this.lastOperation) {
-                       const { event, data } = this.lastOperation;
-                       this.lastOperation = null;
-                       try {
-                           await this.send(event, data);
-                       } catch (error) {
-                           console.error('Error reintentando operación:', error);
-                       }
-                   }
-
                    resolve();
                };
 
@@ -85,23 +73,28 @@ class GameWebSocket {
                    this.connected = false;
                    this.isConnecting = false;
 
+                   // Rechazar todas las promesas pendientes
+                   this.pendingPromises.forEach(({ reject: promiseReject }) => {
+                       promiseReject(new Error('Conexión cerrada'));
+                   });
+                   this.pendingPromises.clear();
+
                    if (event.code === 1003 || event.code === 4001) {
                        localStorage.removeItem('token');
                        window.location.href = '/';
                        return;
                    }
 
-                   // Manejar reconexión inmediata para código 1011
                    if (event.code === 1011 && this.connectionAttempts < this.maxAttempts) {
                        console.log('Reconexión inmediata por código 1011');
-                       try {
-                           await this.reconnect();
-                       } catch (error) {
-                           console.error('Error en reconexión inmediata:', error);
-                       }
+                       this.connectionAttempts++;
+                       setTimeout(() => this.reconnect(), 1000);
                    } else if (this.connectionAttempts < this.maxAttempts) {
                        const delay = Math.min(1000 * Math.pow(2, this.connectionAttempts), 30000);
                        this.reconnectTimeout = setTimeout(() => this.reconnect(), delay);
+                   } else {
+                       console.log('Máximo de intentos de reconexión alcanzado');
+                       this.notifyError('Error de conexión: Máximo de intentos alcanzado');
                    }
                };
 
@@ -149,11 +142,15 @@ class GameWebSocket {
        });
    }
 
-   async send(event, data, retryCount = 0) {
+   async send(event, data) {
        const messageId = `msg_${++this.messageId}`;
-       
-       // Guardar la operación actual para posible reintento
-       this.lastOperation = { event, data };
+       const retryKey = `${event}_${messageId}`;
+       const retryCount = this.operationRetries.get(retryKey) || 0;
+
+       if (retryCount >= this.maxAttempts) {
+           this.operationRetries.delete(retryKey);
+           throw new Error(`Máximo de intentos alcanzado para ${event}`);
+       }
 
        if (!this.isConnected()) {
            try {
@@ -166,20 +163,14 @@ class GameWebSocket {
        return new Promise((resolve, reject) => {
            const timeout = setTimeout(() => {
                this.pendingPromises.delete(messageId);
-               if (retryCount < 2) {
-                   console.log(`Reintentando operación ${event}, intento ${retryCount + 1}`);
-                   this.send(event, data, retryCount + 1)
-                       .then(resolve)
-                       .catch(reject);
-               } else {
-                   reject(new Error('Timeout en envío de mensaje'));
-               }
+               this.operationRetries.set(retryKey, retryCount + 1);
+               reject(new Error('Timeout en envío de mensaje'));
            }, 5000);
 
            this.pendingPromises.set(messageId, {
                resolve: (data) => {
                    clearTimeout(timeout);
-                   this.lastOperation = null; // Limpiar operación cuando es exitosa
+                   this.operationRetries.delete(retryKey);
                    resolve(data);
                },
                reject: (error) => {
@@ -203,19 +194,29 @@ class GameWebSocket {
 
    async createRoom(roomConfig) {
        console.log('Creando sala:', roomConfig);
-       try {
-           return await this.sendWithResponse('createRoom', roomConfig);
-       } catch (error) {
-           if (error.message.includes('Conexión cerrada')) {
-               console.log('Reintentando crear sala después de desconexión');
-               await this.connect();
-               return this.sendWithResponse('createRoom', roomConfig);
-           }
-           throw error;
-       }
+       return this.sendWithResponse('createRoom', roomConfig);
    }
 
-   // ... resto de métodos ...
+   async joinRoom(roomCode, playerInfo) {
+       console.log('Intentando unirse a sala:', roomCode, playerInfo);
+       return this.sendWithResponse('joinRoom', { roomCode, ...playerInfo });
+   }
+
+   async setPlayerReady(roomCode) {
+       console.log('Marcando jugador como listo:', roomCode);
+       return this.sendWithResponse('playerReady', { roomCode });
+   }
+
+   async checkRoom(roomCode) {
+       console.log('Verificando existencia de sala:', roomCode);
+       try {
+           const response = await this.sendWithResponse('checkRoom', { roomCode });
+           return response.exists;
+       } catch (error) {
+           console.error('Error verificando sala:', error);
+           return false;
+       }
+   }
 
    async sendWithResponse(event, data) {
        try {
@@ -225,7 +226,7 @@ class GameWebSocket {
            }
            return response;
        } catch (error) {
-           if (error.message.includes('Conexión cerrada')) {
+           if (error.message.includes('Conexión cerrada') && !error.message.includes('Máximo')) {
                await this.connect();
                return this.sendWithResponse(event, data);
            }
@@ -233,11 +234,21 @@ class GameWebSocket {
        }
    }
 
+   notifyError(message) {
+       const handler = this.eventHandlers.get('error');
+       if (handler) {
+           handler({ message });
+       }
+   }
+
    async reconnect() {
        if (this.isConnecting) return;
-       this.connectionAttempts++;
-       console.log(`Intento de reconexión ${this.connectionAttempts}/${this.maxAttempts}`);
-       await this.connect();
+       try {
+           await this.connect();
+       } catch (error) {
+           console.error('Error en reconexión:', error);
+           this.notifyError('Error de reconexión');
+       }
    }
 
    disconnect() {
@@ -246,11 +257,11 @@ class GameWebSocket {
            this.reconnectTimeout = null;
        }
        
-       this.lastOperation = null;
        this.pendingPromises.forEach(({ reject }) => {
            reject(new Error('Desconexión manual'));
        });
        this.pendingPromises.clear();
+       this.operationRetries.clear();
        
        if (this.socket) {
            this.socket.close();
