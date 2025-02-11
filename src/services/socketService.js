@@ -11,7 +11,6 @@ class GameWebSocket {
        this.reconnectTimeout = null;
        this.pendingPromises = new Map();
        this.messageId = 0;
-       this.operationRetries = new Map();
    }
 
    isConnected() {
@@ -85,10 +84,16 @@ class GameWebSocket {
                        return;
                    }
 
-                   if (event.code === 1011 && this.connectionAttempts < this.maxAttempts) {
-                       console.log('Reconexión inmediata por código 1011');
-                       this.connectionAttempts++;
-                       setTimeout(() => this.reconnect(), 1000);
+                   if (event.code === 1011) {
+                       if (this.connectionAttempts < 3) {
+                           console.log('Reconexión inmediata por código 1011');
+                           this.connectionAttempts++;
+                           await new Promise(resolve => setTimeout(resolve, 1000));
+                           this.reconnect();
+                       } else {
+                           console.log('Máximo de intentos de reconexión alcanzado para código 1011');
+                           this.notifyError('No se pudo establecer la conexión');
+                       }
                    } else if (this.connectionAttempts < this.maxAttempts) {
                        const delay = Math.min(1000 * Math.pow(2, this.connectionAttempts), 30000);
                        this.reconnectTimeout = setTimeout(() => this.reconnect(), delay);
@@ -144,57 +149,88 @@ class GameWebSocket {
 
    async send(event, data) {
        const messageId = `msg_${++this.messageId}`;
-       const retryKey = `${event}_${messageId}`;
-       const retryCount = this.operationRetries.get(retryKey) || 0;
+       const maxSendAttempts = 3;
+       let sendAttempts = 0;
 
-       if (retryCount >= this.maxAttempts) {
-           this.operationRetries.delete(retryKey);
-           throw new Error(`Máximo de intentos alcanzado para ${event}`);
-       }
-
-       if (!this.isConnected()) {
-           try {
-               await this.connect();
-           } catch (error) {
-               throw new Error(`Error de conexión: ${error.message}`);
+       const attemptSend = async () => {
+           if (sendAttempts >= maxSendAttempts) {
+               throw new Error(`Máximo de intentos alcanzado para ${event}`);
            }
-       }
 
-       return new Promise((resolve, reject) => {
-           const timeout = setTimeout(() => {
-               this.pendingPromises.delete(messageId);
-               this.operationRetries.set(retryKey, retryCount + 1);
-               reject(new Error('Timeout en envío de mensaje'));
-           }, 5000);
+           if (!this.isConnected()) {
+               try {
+                   await this.connect();
+               } catch (error) {
+                   throw new Error(`Error de conexión: ${error.message}`);
+               }
+           }
 
-           this.pendingPromises.set(messageId, {
-               resolve: (data) => {
+           return new Promise((resolve, reject) => {
+               const timeout = setTimeout(() => {
+                   this.pendingPromises.delete(messageId);
+                   sendAttempts++;
+                   reject(new Error('Timeout en envío de mensaje'));
+               }, 5000);
+
+               this.pendingPromises.set(messageId, {
+                   resolve: (data) => {
+                       clearTimeout(timeout);
+                       resolve(data);
+                   },
+                   reject: (error) => {
+                       clearTimeout(timeout);
+                       reject(error);
+                   }
+               });
+
+               try {
+                   this.socket.send(JSON.stringify({
+                       event,
+                       data: { ...data, messageId }
+                   }));
+               } catch (error) {
                    clearTimeout(timeout);
-                   this.operationRetries.delete(retryKey);
-                   resolve(data);
-               },
-               reject: (error) => {
-                   clearTimeout(timeout);
+                   this.pendingPromises.delete(messageId);
                    reject(error);
                }
            });
+       };
 
-           try {
-               this.socket.send(JSON.stringify({
-                   event,
-                   data: { ...data, messageId }
-               }));
-           } catch (error) {
-               clearTimeout(timeout);
-               this.pendingPromises.delete(messageId);
-               reject(error);
+       try {
+           return await attemptSend();
+       } catch (error) {
+           if (sendAttempts < maxSendAttempts) {
+               console.log(`Reintentando envío ${event}, intento ${sendAttempts + 1}`);
+               return attemptSend();
            }
-       });
+           throw error;
+       }
    }
 
    async createRoom(roomConfig) {
        console.log('Creando sala:', roomConfig);
-       return this.sendWithResponse('createRoom', roomConfig);
+       let attempts = 0;
+       const maxCreateAttempts = 3;
+
+       const attemptCreate = async () => {
+           try {
+               const response = await this.send('createRoom', roomConfig);
+               if (response.error) {
+                   throw new Error(response.error.message || 'Error desconocido');
+               }
+               return response;
+           } catch (error) {
+               attempts++;
+               if (attempts >= maxCreateAttempts) {
+                   throw new Error(`Error al crear sala después de ${maxCreateAttempts} intentos: ${error.message}`);
+               }
+               console.log(`Reintento ${attempts} de crear sala`);
+               await new Promise(resolve => setTimeout(resolve, 1000));
+               return attemptCreate();
+           }
+       };
+
+       return attemptCreate();
    }
 
    async joinRoom(roomCode, playerInfo) {
@@ -226,10 +262,6 @@ class GameWebSocket {
            }
            return response;
        } catch (error) {
-           if (error.message.includes('Conexión cerrada') && !error.message.includes('Máximo')) {
-               await this.connect();
-               return this.sendWithResponse(event, data);
-           }
            throw new Error(`Error en ${event}: ${error.message}`);
        }
    }
@@ -261,7 +293,6 @@ class GameWebSocket {
            reject(new Error('Desconexión manual'));
        });
        this.pendingPromises.clear();
-       this.operationRetries.clear();
        
        if (this.socket) {
            this.socket.close();
