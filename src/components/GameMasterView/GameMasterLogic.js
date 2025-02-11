@@ -18,6 +18,12 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
   const MAX_RETRIES = 3;
   const RETRY_DELAY = 2000;
 
+  const handleSocketError = useCallback((error) => {
+    console.error('Error en socket:', error);
+    setConnectionError(error.message);
+    handleReconnect();
+  }, []);
+
   // Función auxiliar para manejar reconexiones
   const handleReconnect = useCallback(async () => {
     if (retryCount >= MAX_RETRIES) {
@@ -30,7 +36,7 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
       setRetryCount(0);
       return true;
     } catch (error) {
-      console.log(error)
+      console.log(error);
       setRetryCount(prev => prev + 1);
       await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
       return false;
@@ -276,17 +282,35 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
 
   // Efecto para eventos del socket
   useEffect(() => {
-    const handleSocketError = (error) => {
-      console.error('Error en socket:', error);
-      setConnectionError(error.message);
-      handleReconnect();
-    };
-
     const handlers = {
       playersUpdate: ({ players }) => {
         console.log('Actualización de jugadores:', players);
         setConnectedPlayers(players);
         checkAllPlayersReady(players);
+      },
+      gameStarted: ({ difficulty, gameState }) => {
+        console.log('Juego iniciado con dificultad:', difficulty);
+        setGameStep('wheel');  // Asegurar que estamos en el paso correcto
+        if (gameState) {
+          // Actualizar estado del juego si existe
+          if (gameState.currentCard) setCurrentCard(gameState.currentCard);
+          if (gameState.category) setSelectedCategory(gameState.category);
+        }
+      },
+      categorySelected: ({ category }) => {
+        console.log('Categoría seleccionada:', category);
+        setSelectedCategory(category);
+        setGameStep('card');
+      },
+      songRevealed: (songData) => {
+        console.log('Canción revelada:', songData);
+        setCurrentCard(prev => ({ ...prev, revealed: true }));
+      },
+      gameStateUpdated: (state) => {
+        console.log('Estado del juego actualizado:', state);
+        if (state.currentCard) setCurrentCard(state.currentCard);
+        if (state.category) setSelectedCategory(state.category);
+        if (state.isMarkingEnabled !== undefined) setIsMarkingEnabled(state.isMarkingEnabled);
       },
       gameStartFailed: (error) => {
         console.error('Error al iniciar juego:', error);
@@ -315,7 +339,7 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
       });
       gameSocket.disconnect();
     };
-  }, [initializeRoom, handleReconnect, checkAllPlayersReady]);
+  }, [initializeRoom, handleReconnect, checkAllPlayersReady, handleSocketError]);
 
   // Efecto para auto-reconexión cuando hay error de conexión
   useEffect(() => {
