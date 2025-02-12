@@ -233,33 +233,25 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
         const connected = await handleReconnect();
         if (!connected) return;
       }
-
+  
       if (isMarkingEnabled) {
-        await Promise.race([
-          gameSocket.disableMarking({
-            roomCode,
-            phase: gamePhase
-          }),
-          new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('Timeout al deshabilitar marcado')), 5000)
-          )
-        ]);
+        await gameSocket.disableMarking({
+          roomCode,
+          phase: gamePhase
+        });
         setIsMarkingEnabled(false);
       } else {
-        await Promise.race([
-          gameSocket.enableMarking({
-            roomCode,
-            phase: gamePhase
-          }),
-          new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('Timeout al habilitar marcado')), 5000)
-          )
-        ]);
+        console.log('Intentando habilitar marcado...');
+        await gameSocket.enableMarking({
+          roomCode
+        });
+        console.log('Marcado habilitado exitosamente');
         setIsMarkingEnabled(true);
       }
     } catch (error) {
       console.error('Error al cambiar estado de marcado:', error);
-      setConnectionError('Error al cambiar estado de marcado');
+      // No cambiamos el estado si hay error
+      setConnectionError('Error al cambiar estado de marcado. Intente nuevamente.');
     }
   }, [isMarkingEnabled, roomCode, handleReconnect, gamePhase]);
 
@@ -334,6 +326,14 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
       songRevealed: (songData) => {
         console.log('Canción revelada:', songData);
         setCurrentCard(prev => ({ ...prev, revealed: true }));
+      },
+      markingEnabled: () => {
+        console.log('Marcado habilitado recibido del servidor');
+        setIsMarkingEnabled(true);
+      },
+      markingDisabled: () => {
+        console.log('Marcado deshabilitado recibido del servidor');
+        setIsMarkingEnabled(false);
       },
       gameStateUpdated: (state) => {
         console.log('Estado del juego actualizado:', state);

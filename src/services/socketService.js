@@ -281,7 +281,29 @@ class GameWebSocket {
 
   async enableMarking(data) {
     console.log('Habilitando marcado:', data);
-    return this.sendWithResponse('enableMarking', data);
+    try {
+      const response = await this.sendWithResponse('enableMarking', {
+        roomCode: data.roomCode
+      });
+      // Esperamos tanto un evento de éxito como el evento markingEnabled
+      return new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          this.off('markingEnabled');
+          reject(new Error('Timeout al habilitar marcado'));
+        }, 15000); // Aumentamos el timeout a 15 segundos
+  
+        const handleMarkingEnabled = () => {
+          clearTimeout(timeout);
+          this.off('markingEnabled');
+          resolve(response);
+        };
+  
+        this.on('markingEnabled', handleMarkingEnabled);
+      });
+    } catch (error) {
+      console.error('Error en enableMarking:', error);
+      throw error;
+    }
   }
 
   async disableMarking(data) {
