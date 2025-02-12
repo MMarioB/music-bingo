@@ -192,7 +192,8 @@ class GameWebSocket {
         try {
           this.socket.send(JSON.stringify({
             event,
-            data: { ...data, messageId }
+            messageId,
+            data
           }));
         } catch (error) {
           clearTimeout(timeout);
