@@ -48,29 +48,34 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
   const initializeRoom = useCallback(async () => {
     try {
       console.log('Iniciando sala:', roomCode);
-
+  
       if (!gameSocket.isConnected()) {
         const connected = await handleReconnect();
         if (!connected) return;
       }
-
+  
       const roomResponse = await Promise.race([
         gameSocket.createRoom({
           roomCode,
           difficulty,
-          maxPlayers: 12,
-          host: true,
-          phase: gamePhase
+          maxPlayers: 12
         }),
         new Promise((_, reject) =>
           setTimeout(() => reject(new Error('Timeout al crear sala')), 10000)
         )
       ]);
-
+  
       if (roomResponse?.players) {
         console.log('Jugadores iniciales:', roomResponse.players);
         setConnectedPlayers(roomResponse.players);
         checkAllPlayersReady(roomResponse.players);
+      }
+  
+      if (gamePhase) {
+        await gameSocket.updateGameState({
+          roomCode,
+          phase: gamePhase
+        });
       }
     } catch (error) {
       console.error('Error inicializando sala:', error);

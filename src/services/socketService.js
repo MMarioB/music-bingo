@@ -208,7 +208,20 @@ class GameWebSocket {
 
   async createRoom(roomConfig) {
     console.log('Creando sala:', roomConfig);
-    return this.sendWithResponse('createRoom', roomConfig);
+    // Solo enviamos los campos que el servidor espera
+    const sanitizedConfig = {
+      roomCode: roomConfig.roomCode,
+      difficulty: roomConfig.difficulty,
+      maxPlayers: roomConfig.maxPlayers || 12,
+      gameMode: roomConfig.gameMode || 'normal'
+    };
+    
+    // Eliminamos cualquier campo undefined
+    Object.keys(sanitizedConfig).forEach(key => 
+      sanitizedConfig[key] === undefined && delete sanitizedConfig[key]
+    );
+    
+    return this.sendWithResponse('createRoom', sanitizedConfig);
   }
 
   async joinRoom(roomCode, playerInfo) {
@@ -234,10 +247,27 @@ class GameWebSocket {
 
   async startGame(options) {
     console.log('Iniciando juego:', options);
-    return this.sendWithResponse('startGame', {
-      ...options,
+    const gameConfig = {
+      roomCode: options.roomCode,
+      difficulty: options.difficulty,
       phase: 'playing'
-    });
+    };
+    
+    try {
+      // Intentamos asegurar la conexión antes de enviar
+      if (!this.isConnected()) {
+        await this.connect();
+      }
+      return await this.sendWithResponse('startGame', gameConfig);
+    } catch (error) {
+      console.error('Error al iniciar el juego:', error);
+      // Si hay un error de conexión, intentamos reconectar una vez más
+      if (error.message.includes('Conexión cerrada') || error.message.includes('Desconexión manual')) {
+        await this.connect();
+        return this.sendWithResponse('startGame', gameConfig);
+      }
+      throw error;
+    }
   }
 
   async selectCategory(data) {
@@ -309,6 +339,7 @@ class GameWebSocket {
   }
 
   disconnect() {
+    console.log('Llamada a disconnect. Stack:', new Error().stack);
     if (this.reconnectTimeout) {
       clearTimeout(this.reconnectTimeout);
       this.reconnectTimeout = null;
