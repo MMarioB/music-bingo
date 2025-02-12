@@ -72,26 +72,23 @@ class GameWebSocket {
           this.connected = false;
           this.isConnecting = false;
 
-          // Solo notificamos a las promesas si no es una desconexión normal
+          // Solo manejamos las promesas pendientes si no es una desconexión controlada
           if (event.code !== 1000) {
             this.pendingPromises.forEach(({ reject: promiseReject }) => {
               promiseReject(new Error('Conexión cerrada'));
             });
-          }
-          this.pendingPromises.clear();
+            this.pendingPromises.clear();
 
-          if (event.code === 1003 || event.code === 4001) {
-            localStorage.removeItem('token');
-            window.location.href = '/';
-            return;
-          }
-
-          if (this.connectionAttempts < this.maxAttempts) {
-            const delay = Math.min(1000 * Math.pow(2, this.connectionAttempts), 30000);
-            this.reconnectTimeout = setTimeout(() => this.reconnect(), delay);
+            if (this.connectionAttempts < this.maxAttempts) {
+              const delay = Math.min(1000 * Math.pow(2, this.connectionAttempts), 5000);
+              this.reconnectTimeout = setTimeout(() => this.reconnect(), delay);
+            }
           } else {
-            console.log('Máximo de intentos de reconexión alcanzado');
-            this.notifyError('Error de conexión: Máximo de intentos alcanzado');
+            // Si es una desconexión controlada, resolvemos las promesas pendientes
+            this.pendingPromises.forEach(({ resolve }) => {
+              resolve({ status: 'disconnected' });
+            });
+            this.pendingPromises.clear();
           }
         };
 
@@ -100,10 +97,20 @@ class GameWebSocket {
             const data = JSON.parse(e.data);
             console.log('Mensaje recibido:', data);
 
-            // Si es una actualización de jugadores o estado del juego, procesarla primero
-            if (data.event === 'playersUpdate' || data.event === 'gameStateUpdated') {
+            // Priorizar eventos de estado del juego
+            if (data.event === 'gameStarted' || data.event === 'gameStateUpdated') {
               const handler = this.eventHandlers.get(data.event);
-              if (handler) handler(data);
+              if (handler) {
+                handler(data);
+                // Para gameStarted, también marcamos automáticamente como ready
+                if (data.event === 'gameStarted') {
+                  const roomCode = data.roomCode || data.config?.roomCode;
+                  if (roomCode) {
+                    this.setPlayerReady(roomCode).catch(console.error);
+                  }
+                }
+              }
+              return;
             }
 
             // Si es una respuesta a un mensaje específico
@@ -226,7 +233,27 @@ class GameWebSocket {
 
   async joinRoom(roomCode, playerInfo) {
     console.log('Intentando unirse a sala:', roomCode, playerInfo);
-    return this.sendWithResponse('joinRoom', { roomCode, ...playerInfo });
+    try {
+      const response = await this.sendWithResponse('joinRoom', { 
+        roomCode, 
+        ...playerInfo,
+        reconnecting: this.connectionAttempts > 0
+      });
+
+      // Si es una reconexión y el juego está en curso, automáticamente marcamos como ready
+      if (response.phase === 'playing') {
+        try {
+          await this.setPlayerReady(roomCode);
+        } catch (error) {
+          console.error('Error al marcar ready en reconexión:', error);
+        }
+      }
+
+      return response;
+    } catch (error) {
+      console.error('Error en joinRoom:', error);
+      throw error;
+    }
   }
 
   async setPlayerReady(roomCode) {
@@ -236,10 +263,19 @@ class GameWebSocket {
 
   async startGame(options) {
     console.log('Iniciando juego:', options);
-    return this.sendWithResponse('startGame', {
-      roomCode: options.roomCode,
-      difficulty: options.difficulty
-    });
+    try {
+      const response = await this.sendWithResponse('startGame', {
+        roomCode: options.roomCode,
+        difficulty: options.difficulty
+      });
+
+      // Esperamos un poco antes de continuar para asegurar sincronización
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      return response;
+    } catch (error) {
+      console.error('Error en startGame:', error);
+      throw error;
+    }
   }
 
   async selectCategory(data) {
@@ -293,17 +329,22 @@ class GameWebSocket {
     });
   }
 
-  async sendWithResponse(event, data, timeout = 20000) {
+  async sendWithResponse(event, data) {
     try {
       const response = await Promise.race([
         this.send(event, data),
-        new Promise((_, reject) =>
-          setTimeout(() => reject(new Error(`Timeout en ${event}`)), timeout)
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error(`Timeout en ${event}`)), 20000)
         )
       ]);
 
       if (response.error) {
         throw new Error(response.error.message || 'Error desconocido');
+      }
+
+      // Si es un evento crítico, esperamos un poco para asegurar sincronización
+      if (['startGame', 'joinRoom', 'playerReady'].includes(event)) {
+        await new Promise(resolve => setTimeout(resolve, 500));
       }
 
       return response;
@@ -326,6 +367,7 @@ class GameWebSocket {
   async reconnect() {
     if (this.isConnecting) return;
     try {
+      this.connectionAttempts++;
       await this.connect();
     } catch (error) {
       console.error('Error en reconexión:', error);
