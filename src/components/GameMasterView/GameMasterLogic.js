@@ -70,13 +70,6 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
         setConnectedPlayers(roomResponse.players);
         checkAllPlayersReady(roomResponse.players);
       }
-  
-      if (gamePhase) {
-        await gameSocket.updateGameState({
-          roomCode,
-          phase: gamePhase
-        });
-      }
     } catch (error) {
       console.error('Error inicializando sala:', error);
       setConnectionError(error.message);
@@ -84,7 +77,7 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
         handleReconnect();
       }
     }
-  }, [roomCode, difficulty, handleReconnect, gamePhase]);
+  }, [roomCode, difficulty, handleReconnect]);
 
   // Función para verificar si todos los jugadores están listos
   const checkAllPlayersReady = useCallback((players) => {

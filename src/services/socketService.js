@@ -208,12 +208,10 @@ class GameWebSocket {
 
   async createRoom(roomConfig) {
     console.log('Creando sala:', roomConfig);
-    // Solo enviamos los campos que el servidor espera
     const sanitizedConfig = {
       roomCode: roomConfig.roomCode,
       difficulty: roomConfig.difficulty,
-      maxPlayers: roomConfig.maxPlayers || 12,
-      gameMode: roomConfig.gameMode || 'normal'
+      maxPlayers: roomConfig.maxPlayers || 12
     };
     
     // Eliminamos cualquier campo undefined
@@ -221,6 +219,7 @@ class GameWebSocket {
       sanitizedConfig[key] === undefined && delete sanitizedConfig[key]
     );
     
+    console.log('Configuración sanitizada:', sanitizedConfig); // Para debug
     return this.sendWithResponse('createRoom', sanitizedConfig);
   }
 
