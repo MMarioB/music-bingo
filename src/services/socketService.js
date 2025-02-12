@@ -45,7 +45,7 @@ class GameWebSocket {
         }
 
         const wsUrl = `${import.meta.env.VITE_WS_URL}/socket?token=${token}`;
-        console.log('Connecting to:', wsUrl);
+        console.log('Intentando conectar al servidor...', wsUrl);
         
         this.socket = new SockJS(wsUrl);
 
@@ -55,7 +55,7 @@ class GameWebSocket {
             this.socket.close();
             reject(new Error('Timeout en conexión inicial'));
           }
-        }, 15000); // Aumentado de 5000 a 15000
+        }, 20000);
 
         this.socket.onopen = () => {
           console.log('WebSocket conectado');
@@ -72,10 +72,12 @@ class GameWebSocket {
           this.connected = false;
           this.isConnecting = false;
 
-          // Resolver todas las promesas pendientes antes de reconectar
-          this.pendingPromises.forEach(({ resolve }) => {
-            resolve({ status: 'pending_reconnect' });
-          });
+          // Solo notificamos a las promesas si no es una desconexión normal
+          if (event.code !== 1000) {
+            this.pendingPromises.forEach(({ reject: promiseReject }) => {
+              promiseReject(new Error('Conexión cerrada'));
+            });
+          }
           this.pendingPromises.clear();
 
           if (event.code === 1003 || event.code === 4001) {
@@ -84,17 +86,7 @@ class GameWebSocket {
             return;
           }
 
-          if (event.code === 1011) {
-            if (this.connectionAttempts < 3) {
-              console.log('Reconexión inmediata por código 1011');
-              this.connectionAttempts++;
-              await new Promise(resolve => setTimeout(resolve, 1000));
-              this.reconnect();
-            } else {
-              console.log('Máximo de intentos de reconexión alcanzado para código 1011');
-              this.notifyError('No se pudo establecer la conexión');
-            }
-          } else if (this.connectionAttempts < this.maxAttempts) {
+          if (this.connectionAttempts < this.maxAttempts) {
             const delay = Math.min(1000 * Math.pow(2, this.connectionAttempts), 30000);
             this.reconnectTimeout = setTimeout(() => this.reconnect(), delay);
           } else {
@@ -108,18 +100,15 @@ class GameWebSocket {
             const data = JSON.parse(e.data);
             console.log('Mensaje recibido:', data);
 
-            // Primero manejamos los eventos del sistema
-            if (data.event === 'connect' || data.event === 'disconnect') {
+            // Si es una actualización de jugadores o estado del juego, procesarla primero
+            if (data.event === 'playersUpdate' || data.event === 'gameStateUpdated') {
               const handler = this.eventHandlers.get(data.event);
               if (handler) handler(data);
-              return;
             }
 
-            // Luego manejamos las respuestas a mensajes específicos
+            // Si es una respuesta a un mensaje específico
             if (data.messageId && this.pendingPromises.has(data.messageId)) {
-              const { resolve, reject, event } = this.pendingPromises.get(data.messageId);
-              console.log(`Procesando respuesta para ${event}:`, data);
-              
+              const { resolve, reject } = this.pendingPromises.get(data.messageId);
               if (data.error) {
                 reject(new Error(data.error.message || 'Error desconocido'));
               } else {
@@ -129,7 +118,7 @@ class GameWebSocket {
               return;
             }
 
-            // Finalmente manejamos otros eventos
+            // Para otros eventos
             if (data.event) {
               const handler = this.eventHandlers.get(data.event);
               if (handler) {
@@ -174,39 +163,39 @@ class GameWebSocket {
 
       return new Promise((resolve, reject) => {
         const timeout = setTimeout(() => {
-          this.pendingPromises.delete(messageId);
-          sendAttempts++;
-          if (sendAttempts < maxSendAttempts) {
-            console.log(`Reintentando operación ${event}, intento ${sendAttempts + 1}`);
-            attemptSend()
-              .then(resolve)
-              .catch(reject);
-          } else {
-            reject(new Error('Timeout en envío de mensaje'));
+          if (this.pendingPromises.has(messageId)) {
+            this.pendingPromises.delete(messageId);
+            sendAttempts++;
+            if (sendAttempts < maxSendAttempts) {
+              console.log(`Reintentando operación ${event}, intento ${sendAttempts + 1}`);
+              attemptSend()
+                .then(resolve)
+                .catch(reject);
+            } else {
+              reject(new Error(`Timeout en ${event} después de ${maxSendAttempts} intentos`));
+            }
           }
-        }, 15000); // Aumentado de 5000 a 15000
+        }, 20000);
 
         this.pendingPromises.set(messageId, {
           resolve: (data) => {
-            console.log(`Respuesta recibida para ${event}`, data);
             clearTimeout(timeout);
             resolve(data);
           },
           reject: (error) => {
-            console.log(`Error en ${event}:`, error);
             clearTimeout(timeout);
             reject(error);
-          },
-          event
+          }
         });
 
         try {
-          this.socket.send(JSON.stringify({
+          const message = {
             event,
             messageId,
             data
-          }));
-          console.log(`Mensaje enviado para ${event}`, { messageId, data });
+          };
+          this.socket.send(JSON.stringify(message));
+          console.log(`Mensaje enviado para ${event}:`, message);
         } catch (error) {
           clearTimeout(timeout);
           this.pendingPromises.delete(messageId);
@@ -220,18 +209,19 @@ class GameWebSocket {
 
   async createRoom(roomConfig) {
     console.log('Creando sala:', roomConfig);
-    const sanitizedConfig = {
-      roomCode: roomConfig.roomCode,
-      difficulty: roomConfig.difficulty,
-      maxPlayers: roomConfig.maxPlayers || 12
-    };
-    
-    Object.keys(sanitizedConfig).forEach(key => 
-      sanitizedConfig[key] === undefined && delete sanitizedConfig[key]
-    );
-    
-    console.log('Configuración sanitizada:', sanitizedConfig);
-    return this.sendWithResponse('createRoom', sanitizedConfig);
+    try {
+      if (!this.isConnected()) {
+        await this.connect();
+      }
+      const sanitizedConfig = {
+        roomCode: roomConfig.roomCode,
+        difficulty: roomConfig.difficulty,
+        maxPlayers: roomConfig.maxPlayers || 12
+      };
+      return await this.sendWithResponse('createRoom', sanitizedConfig);
+    } catch (error) {
+      throw new Error(`Error al crear sala: ${error.message}`);
+    }
   }
 
   async joinRoom(roomCode, playerInfo) {
@@ -244,44 +234,42 @@ class GameWebSocket {
     return this.sendWithResponse('playerReady', { roomCode });
   }
 
-  async checkRoom(roomCode) {
-    console.log('Verificando existencia de sala:', roomCode);
-    try {
-      const response = await this.sendWithResponse('checkRoom', { roomCode });
-      return response.exists;
-    } catch (error) {
-      console.error('Error verificando sala:', error);
-      return false;
-    }
-  }
-
   async startGame(options) {
     console.log('Iniciando juego:', options);
-    const gameConfig = {
+    return this.sendWithResponse('startGame', {
       roomCode: options.roomCode,
       difficulty: options.difficulty
-    };
-    return this.sendWithResponse('startGame', gameConfig);
+    });
   }
 
   async selectCategory(data) {
     console.log('Seleccionando categoría:', data);
-    return this.sendWithResponse('selectCategory', data);
+    return this.sendWithResponse('selectCategory', {
+      roomCode: data.roomCode,
+      category: data.category
+    });
   }
 
   async revealSong(data) {
     console.log('Revelando canción:', data);
-    return this.sendWithResponse('revealSong', data);
+    return this.sendWithResponse('revealSong', {
+      roomCode: data.roomCode,
+      songData: data.songData
+    });
   }
 
   async enableMarking(data) {
     console.log('Habilitando marcado:', data);
-    return this.sendWithResponse('enableMarking', { roomCode: data.roomCode });
+    return this.sendWithResponse('enableMarking', {
+      roomCode: data.roomCode
+    });
   }
 
   async disableMarking(data) {
     console.log('Deshabilitando marcado:', data);
-    return this.sendWithResponse('disableMarking', { roomCode: data.roomCode });
+    return this.sendWithResponse('disableMarking', {
+      roomCode: data.roomCode
+    });
   }
 
   async winner(data) {
@@ -291,65 +279,41 @@ class GameWebSocket {
 
   async updateRoom(data) {
     console.log('Actualizando sala:', data);
-    const updateData = {
+    return this.sendWithResponse('updateRoom', {
       roomCode: data.roomCode,
       difficulty: data.difficulty
-    };
-    return this.sendWithResponse('updateRoom', updateData);
+    });
   }
 
   async updateGameState(data) {
     console.log('Actualizando estado del juego:', data);
-    const gameState = {
+    return this.sendWithResponse('updateGameState', {
       roomCode: data.roomCode,
       currentCard: data.currentCard
-    };
-    return this.sendWithResponse('updateGameState', gameState);
+    });
   }
 
-  async sendWithResponse(event, data) {
+  async sendWithResponse(event, data, timeout = 20000) {
     try {
-      console.log(`Iniciando ${event} con datos:`, data);
-      const response = await this.send(event, data);
+      const response = await Promise.race([
+        this.send(event, data),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error(`Timeout en ${event}`)), timeout)
+        )
+      ]);
+
       if (response.error) {
-        console.error(`Error en respuesta de ${event}:`, response.error);
         throw new Error(response.error.message || 'Error desconocido');
       }
-      console.log(`${event} completado exitosamente:`, response);
+
       return response;
     } catch (error) {
-      console.error(`Error en ${event}:`, error);
-      if (error.message.includes('Conexión cerrada') || error.message.includes('Desconexión manual')) {
-        console.log(`Reintentando ${event} después de reconexión`);
+      if (error.message.includes('Conexión cerrada')) {
         await this.connect();
         return this.sendWithResponse(event, data);
       }
       throw error;
     }
-  }
-
-  disconnect() {
-    console.log('Iniciando desconexión controlada');
-    if (this.reconnectTimeout) {
-      clearTimeout(this.reconnectTimeout);
-      this.reconnectTimeout = null;
-    }
-
-    // Resolver todas las promesas pendientes antes de desconectar
-    this.pendingPromises.forEach(({ resolve }, messageId) => {
-      console.log(`Resolviendo promesa pendiente ${messageId}`);
-      resolve({ status: 'disconnected' });
-    });
-    this.pendingPromises.clear();
-
-    if (this.socket) {
-      this.socket.close(1000, 'Desconexión normal');
-      this.socket = null;
-      this.connected = false;
-      this.isConnecting = false;
-      this.connectionAttempts = 0;
-    }
-    console.log('Desconexión completada');
   }
 
   notifyError(message) {
@@ -366,6 +330,22 @@ class GameWebSocket {
     } catch (error) {
       console.error('Error en reconexión:', error);
       this.notifyError('Error de reconexión');
+    }
+  }
+
+  disconnect() {
+    if (this.reconnectTimeout) {
+      clearTimeout(this.reconnectTimeout);
+      this.reconnectTimeout = null;
+    }
+
+    if (this.socket) {
+      this.socket.close(1000, 'Desconexión normal');
+      this.socket = null;
+      this.connected = false;
+      this.isConnecting = false;
+      this.connectionAttempts = 0;
+      this.pendingPromises.clear();
     }
   }
 
