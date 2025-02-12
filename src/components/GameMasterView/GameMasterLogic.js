@@ -285,16 +285,40 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
     const handlers = {
       playersUpdate: ({ players }) => {
         console.log('Actualización de jugadores:', players);
-        setConnectedPlayers(players);
+        // Preservar el estado ready de los jugadores si el juego ya está iniciado
+        if (gameStep === 'wheel') {
+          const updatedPlayers = players.map(player => ({
+            ...player,
+            ready: true // Forzar ready = true si el juego está en curso
+          }));
+          setConnectedPlayers(updatedPlayers);
+        } else {
+          setConnectedPlayers(players);
+        }
         checkAllPlayersReady(players);
       },
-      gameStarted: ({ difficulty, gameState }) => {
-        console.log('Juego iniciado con dificultad:', difficulty);
+      gameStarted: ({ difficulty: newDifficulty, gameState, players }) => {
+        console.log('Juego iniciado con dificultad:', newDifficulty);
         setGameStep('wheel');  // Asegurar que estamos en el paso correcto
+        
+        // Actualizar el estado de los jugadores primero
+        if (players) {
+          const updatedPlayers = players.map(player => ({
+            ...player,
+            ready: true // Marcar todos los jugadores como listos
+          }));
+          setConnectedPlayers(updatedPlayers);
+        }
+
+        // Actualizar el estado del juego
         if (gameState) {
-          // Actualizar estado del juego si existe
           if (gameState.currentCard) setCurrentCard(gameState.currentCard);
           if (gameState.category) setSelectedCategory(gameState.category);
+        }
+
+        // Actualizar dificultad si es necesario
+        if (newDifficulty) {
+          setDifficulty(newDifficulty);
         }
       },
       categorySelected: ({ category }) => {
@@ -339,7 +363,7 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
       });
       gameSocket.disconnect();
     };
-  }, [initializeRoom, handleReconnect, checkAllPlayersReady, handleSocketError]);
+  }, [initializeRoom, handleReconnect, checkAllPlayersReady, handleSocketError, gameStep]);
 
   // Efecto para auto-reconexión cuando hay error de conexión
   useEffect(() => {
