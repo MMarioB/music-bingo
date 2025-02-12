@@ -9,6 +9,7 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [gameStep, setGameStep] = useState('wheel');
+  const [gamePhase, setGamePhase] = useState('waiting');
   const [connectedPlayers, setConnectedPlayers] = useState([]);
   const [difficulty, setDifficulty] = useState(initialDifficulty);
   const [connectionError, setConnectionError] = useState(null);
@@ -58,7 +59,8 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
           roomCode,
           difficulty,
           maxPlayers: 12,
-          host: true
+          host: true,
+          phase: gamePhase
         }),
         new Promise((_, reject) =>
           setTimeout(() => reject(new Error('Timeout al crear sala')), 10000)
@@ -73,12 +75,11 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
     } catch (error) {
       console.error('Error inicializando sala:', error);
       setConnectionError(error.message);
-      // Intentar reconectar si es un error de conexión
       if (error.message.includes('conectado') || error.message.includes('connection')) {
         handleReconnect();
       }
     }
-  }, [roomCode, difficulty, handleReconnect]);
+  }, [roomCode, difficulty, handleReconnect, gamePhase]);
 
   // Función para verificar si todos los jugadores están listos
   const checkAllPlayersReady = useCallback((players) => {
@@ -98,7 +99,8 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
       await Promise.race([
         gameSocket.updateRoom({
           roomCode,
-          difficulty: newDifficulty
+          difficulty: newDifficulty,
+          phase: gamePhase
         }),
         new Promise((_, reject) =>
           setTimeout(() => reject(new Error('Timeout al actualizar dificultad')), 5000)
@@ -108,7 +110,7 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
       console.error('Error al cambiar dificultad:', error);
       setConnectionError(error.message);
     }
-  }, [roomCode, handleReconnect]);
+  }, [roomCode, handleReconnect, gamePhase]);
 
   // Manejar selección de categoría con retry
   const handleCategorySelected = useCallback(async (category) => {
@@ -121,7 +123,8 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
       await Promise.race([
         gameSocket.selectCategory({
           roomCode,
-          category
+          category,
+          phase: gamePhase
         }),
         new Promise((_, reject) =>
           setTimeout(() => reject(new Error('Timeout al seleccionar categoría')), 5000)
@@ -136,7 +139,7 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
       console.error('Error al seleccionar categoría:', error);
       setConnectionError(error.message);
     }
-  }, [roomCode, handleReconnect]);
+  }, [roomCode, handleReconnect, gamePhase]);
 
   // Generar nueva carta con manejo mejorado de errores
   const generateNewCard = useCallback(async () => {
@@ -177,11 +180,11 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
 
       setCurrentCard(newCard);
 
-      // Notificar a los jugadores sobre la nueva carta
       if (gameSocket.isConnected()) {
         await gameSocket.updateGameState({
           roomCode,
-          currentCard: newCard
+          currentCard: newCard,
+          phase: gamePhase
         });
       }
 
@@ -191,7 +194,7 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
     } finally {
       setIsLoading(false);
     }
-  }, [loggedIn, selectedCategory, spotify, roomCode]);
+  }, [loggedIn, selectedCategory, spotify, roomCode, gamePhase]);
 
   // Revelar canción con retry
   const handleRevealSong = useCallback(async () => {
@@ -210,7 +213,8 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
             title: currentCard.title,
             artist: currentCard.artist,
             year: currentCard.year
-          }
+          },
+          phase: gamePhase
         }),
         new Promise((_, reject) =>
           setTimeout(() => reject(new Error('Timeout al revelar canción')), 5000)
@@ -222,7 +226,7 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
       console.error('Error al revelar canción:', error);
       setConnectionError('Error al revelar la canción');
     }
-  }, [currentCard, roomCode, handleReconnect]);
+  }, [currentCard, roomCode, handleReconnect, gamePhase]);
 
   // Habilitar/Deshabilitar marcado con retry
   const handleMarkingToggle = useCallback(async () => {
@@ -234,7 +238,10 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
 
       if (isMarkingEnabled) {
         await Promise.race([
-          gameSocket.disableMarking({ roomCode }),
+          gameSocket.disableMarking({
+            roomCode,
+            phase: gamePhase
+          }),
           new Promise((_, reject) =>
             setTimeout(() => reject(new Error('Timeout al deshabilitar marcado')), 5000)
           )
@@ -242,7 +249,10 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
         setIsMarkingEnabled(false);
       } else {
         await Promise.race([
-          gameSocket.enableMarking({ roomCode }),
+          gameSocket.enableMarking({
+            roomCode,
+            phase: gamePhase
+          }),
           new Promise((_, reject) =>
             setTimeout(() => reject(new Error('Timeout al habilitar marcado')), 5000)
           )
@@ -253,7 +263,7 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
       console.error('Error al cambiar estado de marcado:', error);
       setConnectionError('Error al cambiar estado de marcado');
     }
-  }, [isMarkingEnabled, roomCode, handleReconnect]);
+  }, [isMarkingEnabled, roomCode, handleReconnect, gamePhase]);
 
   // Iniciar nueva ronda con retry
   const startNewRound = useCallback(async () => {
@@ -264,7 +274,10 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
       }
 
       await Promise.race([
-        gameSocket.disableMarking({ roomCode }),
+        gameSocket.disableMarking({
+          roomCode,
+          phase: gamePhase
+        }),
         new Promise((_, reject) =>
           setTimeout(() => reject(new Error('Timeout al iniciar nueva ronda')), 5000)
         )
@@ -278,45 +291,39 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
       console.error('Error al iniciar nueva ronda:', error);
       setConnectionError('Error al iniciar nueva ronda');
     }
-  }, [roomCode, handleReconnect]);
+  }, [roomCode, handleReconnect, gamePhase]);
 
   // Efecto para eventos del socket
   useEffect(() => {
     const handlers = {
       playersUpdate: ({ players }) => {
         console.log('Actualización de jugadores:', players);
-        // Preservar el estado ready de los jugadores si el juego ya está iniciado
-        if (gameStep === 'wheel') {
-          const updatedPlayers = players.map(player => ({
-            ...player,
-            ready: true // Forzar ready = true si el juego está en curso
-          }));
-          setConnectedPlayers(updatedPlayers);
-        } else {
-          setConnectedPlayers(players);
-        }
-        checkAllPlayersReady(players);
+        const updatedPlayers = players.map(player => ({
+          ...player,
+          ready: player.isHost || gamePhase === 'playing' || gameStep !== 'wheel' ? true : player.ready
+        }));
+        setConnectedPlayers(updatedPlayers);
+        checkAllPlayersReady(updatedPlayers);
       },
-      gameStarted: ({ difficulty: newDifficulty, gameState, players }) => {
+      gameStarted: ({ difficulty: newDifficulty, gameState, players, phase }) => {
         console.log('Juego iniciado con dificultad:', newDifficulty);
-        setGameStep('wheel');  // Asegurar que estamos en el paso correcto
-        
-        // Actualizar el estado de los jugadores primero
+        if (phase) setGamePhase(phase);
+        setGameStep('wheel');
+
         if (players) {
           const updatedPlayers = players.map(player => ({
             ...player,
-            ready: true // Marcar todos los jugadores como listos
+            ready: true
           }));
           setConnectedPlayers(updatedPlayers);
+          checkAllPlayersReady(updatedPlayers);
         }
 
-        // Actualizar el estado del juego
         if (gameState) {
           if (gameState.currentCard) setCurrentCard(gameState.currentCard);
           if (gameState.category) setSelectedCategory(gameState.category);
         }
 
-        // Actualizar dificultad si es necesario
         if (newDifficulty) {
           setDifficulty(newDifficulty);
         }
@@ -335,6 +342,7 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
         if (state.currentCard) setCurrentCard(state.currentCard);
         if (state.category) setSelectedCategory(state.category);
         if (state.isMarkingEnabled !== undefined) setIsMarkingEnabled(state.isMarkingEnabled);
+        if (state.phase) setGamePhase(state.phase);
       },
       gameStartFailed: (error) => {
         console.error('Error al iniciar juego:', error);
@@ -348,22 +356,19 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
       }
     };
 
-    // Registrar handlers
     Object.entries(handlers).forEach(([event, handler]) => {
       gameSocket.on(event, handler);
     });
 
-    // Inicializar sala
     initializeRoom();
 
-    // Limpieza
     return () => {
       Object.keys(handlers).forEach(event => {
         gameSocket.off(event);
       });
       gameSocket.disconnect();
     };
-  }, [initializeRoom, handleReconnect, checkAllPlayersReady, handleSocketError, gameStep]);
+  }, [initializeRoom, handleReconnect, checkAllPlayersReady, handleSocketError, gameStep, gamePhase]);
 
   // Efecto para auto-reconexión cuando hay error de conexión
   useEffect(() => {
@@ -394,6 +399,7 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
     isLoading,
     selectedCategory,
     gameStep,
+    gamePhase,
     connectedPlayers,
     difficulty,
     connectionError,
