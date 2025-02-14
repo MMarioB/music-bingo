@@ -4,16 +4,11 @@ import { loginUrl, getTokenFromUrl } from '../lib/spotify';
 
 const spotifyApi = new SpotifyWebApi();
 
-// Función para verificar si el token ha expirado
-const isTokenExpired = (token) => {
-  try {
-    const tokenData = JSON.parse(atob(token.split('.')[1]));
-    const expirationTime = tokenData.exp * 1000; // Convertir a milisegundos
-    return Date.now() >= expirationTime;
-  } catch (error) {
-    console.error('Error verificando token:', error);
-    return true;
-  }
+const isTokenExpired = () => {
+  const expirationTime = localStorage.getItem('spotify_token_expiration');
+  if (!expirationTime) return true;
+
+  return Date.now() >= parseInt(expirationTime);
 };
 
 export const useSpotify = () => {
@@ -21,60 +16,54 @@ export const useSpotify = () => {
   const [loggedIn, setLoggedIn] = useState(false);
   const [isTokenValid, setIsTokenValid] = useState(false);
 
-  // Función para verificar y actualizar el estado del token
-  const checkTokenValidity = useCallback(() => {
+  const checkTokenValidity = useCallback(async () => {
     const storedToken = localStorage.getItem('spotify_token');
 
-    if (storedToken) {
-      if (isTokenExpired(storedToken)) {
-        setIsTokenValid(false);
-        logout();
-        return false;
-      }
-      return true;
-    }
-    return false;
-  }, []);
-
-  // Efecto inicial para manejar la autenticación
-  useEffect(() => {
-    const initializeAuth = () => {
-      const storedToken = localStorage.getItem('spotify_token');
-
-      if (storedToken && !isTokenExpired(storedToken)) {
+    if (storedToken && !isTokenExpired()) {
+      if (!token) {
         setToken(storedToken);
         spotifyApi.setAccessToken(storedToken);
         setLoggedIn(true);
         setIsTokenValid(true);
-        return;
       }
+      return true;
+    }
 
+    if (storedToken) {
+      logout();
+    }
+    return false;
+  }, [token]);
+
+  useEffect(() => {
+    const initializeAuth = () => {
       const hash = getTokenFromUrl();
       window.location.hash = "";
       const _token = hash.access_token;
+      const _expiresIn = hash.expires_in;
 
       if (_token) {
+        const expirationTime = Date.now() + ((_expiresIn || 3600) * 1000);
         localStorage.setItem('spotify_token', _token);
+        localStorage.setItem('spotify_token_expiration', expirationTime.toString());
+
         setToken(_token);
         spotifyApi.setAccessToken(_token);
         setLoggedIn(true);
         setIsTokenValid(true);
       } else {
-        logout();
+        checkTokenValidity();
       }
     };
 
     initializeAuth();
-  }, []);
+  }, [checkTokenValidity]);
 
-  // Efecto para verificar periódicamente la validez del token
   useEffect(() => {
     if (!token) return;
 
     const checkInterval = setInterval(() => {
-      if (!checkTokenValidity()) {
-        clearInterval(checkInterval);
-      }
+      checkTokenValidity();
     }, 1000 * 60); // Verificar cada minuto
 
     return () => clearInterval(checkInterval);
@@ -89,12 +78,13 @@ export const useSpotify = () => {
     setLoggedIn(false);
     setIsTokenValid(false);
     localStorage.removeItem('spotify_token');
+    localStorage.removeItem('spotify_token_expiration');
     spotifyApi.setAccessToken(null);
   }, []);
 
   const apiCall = async (fn) => {
-    if (!checkTokenValidity()) {
-      logout();
+    const isValid = await checkTokenValidity();
+    if (!isValid) {
       login();
       throw new Error('Token inválido');
     }
