@@ -139,13 +139,17 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
       if (joinResponse?.players) {
         setConnectedPlayers(joinResponse.players);
       }
+
+      // Generar tablero al unirse
+      const newBoard = generateValidBoard();
+      setBoard(newBoard);
+
       if (joinResponse?.phase) {
         setGamePhase(joinResponse.phase);
       }
       if (joinResponse?.currentCategory) {
         setCurrentCategory(joinResponse.currentCategory);
         setGamePhase('playing');
-        setBoard(generateValidBoard());
       }
     } catch (error) {
       console.error('Error uniéndose al juego:', error);
@@ -178,12 +182,11 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
   const handlePrediction = useCallback((prediction) => {
     setPredictions(prev => [...prev, prediction]);
     // Emitir la predicción al servidor
-    gameSocket.emit('playerPrediction', {
+    gameSocket.submitPrediction({
       roomCode,
-      playerName,
       prediction
     });
-  }, [roomCode, playerName]);
+  }, [roomCode]);
 
   // Efecto para eventos del socket
   useEffect(() => {
@@ -200,6 +203,10 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
         setSongStarted(false);
         setPredictions([]);
         setGamePhase('playing');
+        // Asegurarnos de tener un tablero al cambiar categoría
+        if (board.length === 0) {
+          setBoard(generateValidBoard());
+        }
       },
       songStarted: () => {
         console.log('Canción iniciada');
@@ -221,7 +228,10 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
       gameStarted: () => {
         console.log('Juego iniciado');
         setGamePhase('playing');
-        setBoard(generateValidBoard());
+        // Asegurarnos de tener un tablero al iniciar
+        if (board.length === 0) {
+          setBoard(generateValidBoard());
+        }
       },
       gameStartFailed: () => {
         console.log('Inicio de juego fallido');
@@ -248,7 +258,12 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
       });
       gameSocket.disconnect();
     };
-  }, [joinGame, generateValidBoard]);
+  }, [joinGame, generateValidBoard, board.length]);
+
+  // Efecto para debug del tablero
+  useEffect(() => {
+    console.log('Estado actual del tablero:', board);
+  }, [board]);
 
   return {
     board,
