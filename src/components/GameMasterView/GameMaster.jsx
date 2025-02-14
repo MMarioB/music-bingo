@@ -13,6 +13,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import CategoryWheel from '../CategoryWheel';
+import PredictionsPanel from '../PredictionsPanel';
 import PropTypes from 'prop-types';
 import { useGameMasterLogic } from './GameMasterLogic';
 
@@ -29,6 +30,8 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
     connectionError,
     setConnectionError,
     isMarkingEnabled,
+    playerPredictions,
+    songPlaying,
     handleDifficultyChange,
     handleCategorySelected,
     generateNewCard,
@@ -313,6 +316,13 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
           )}
         </div>
       </div>
+
+      {/* Panel de predicciones */}
+      <PredictionsPanel
+        predictions={playerPredictions}
+        currentSong={currentCard}
+        songPlaying={songPlaying}
+      />
     </div>
   );
 };
