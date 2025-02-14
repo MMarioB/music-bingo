@@ -10,7 +10,7 @@ import {
 import PropTypes from 'prop-types';
 import { useState, useEffect } from 'react';
 import { useMusicBingoLogic } from './MusicBingoGameLogic';
-import PlayerPredictions from '../PlayerPredictions/PlayerPredictions';
+import PlayerPredictions from '../PlayerPredictions';
 
 const MusicBingoGame = ({ playerName, roomCode, difficulty }) => {
   const [lastMarkedIndex, setLastMarkedIndex] = useState(null);
