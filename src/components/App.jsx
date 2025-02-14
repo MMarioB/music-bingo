@@ -2,6 +2,7 @@ import { useState, useCallback } from "react";
 import MusicBingoGame from "../components/PlayerView/MusicBingoGame";
 import GameMaster from "../components/GameMasterView/GameMaster";
 import GameRoom from "../components/GameRoom";
+import SpotifyAuth from "../components/Auth/SpotifyAuth";
 import { Card } from "../components/ui/card";
 import { Input } from "../components/ui/input";
 import { Button } from "../components/ui/button";
@@ -43,12 +44,21 @@ function App() {
   }, []);
 
   const handleRoleSelect = (role) => {
-    setGameState(prev => ({
-      ...prev,
-      selectedRole: role,
-      phase: 'name-input',
-      error: null
-    }));
+    if (role === 'master') {
+      setGameState(prev => ({
+        ...prev,
+        selectedRole: role,
+        phase: 'spotify-auth',
+        error: null
+      }));
+    } else {
+      setGameState(prev => ({
+        ...prev,
+        selectedRole: role,
+        phase: 'name-input',
+        error: null
+      }));
+    }
   };
 
   const handleNameSubmit = () => {
@@ -308,6 +318,16 @@ function App() {
                 </p>
               </Card>
             </motion.div>
+          )}
+          
+          {gameState.phase === 'spotify-auth' && (
+            <SpotifyAuth
+              onSuccess={() => setGameState(prev => ({
+                ...prev,
+                phase: 'name-input',
+                error: null
+              }))}
+            />
           )}
           
           {gameState.phase === 'name-input' && renderNameInput()}

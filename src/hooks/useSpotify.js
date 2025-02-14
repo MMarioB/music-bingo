@@ -24,9 +24,8 @@ export const useSpotify = () => {
   // Función para verificar y actualizar el estado del token
   const checkTokenValidity = useCallback(() => {
     const storedToken = localStorage.getItem('spotify_token');
-    
+
     if (storedToken) {
-      // Si el token ha expirado, marcarlo como inválido
       if (isTokenExpired(storedToken)) {
         setIsTokenValid(false);
         logout();
@@ -40,9 +39,8 @@ export const useSpotify = () => {
   // Efecto inicial para manejar la autenticación
   useEffect(() => {
     const initializeAuth = () => {
-      // Primero verificar si hay un token en localStorage
       const storedToken = localStorage.getItem('spotify_token');
-      
+
       if (storedToken && !isTokenExpired(storedToken)) {
         setToken(storedToken);
         spotifyApi.setAccessToken(storedToken);
@@ -51,7 +49,6 @@ export const useSpotify = () => {
         return;
       }
 
-      // Si no hay token válido en localStorage, buscar en la URL
       const hash = getTokenFromUrl();
       window.location.hash = "";
       const _token = hash.access_token;
@@ -63,7 +60,6 @@ export const useSpotify = () => {
         setLoggedIn(true);
         setIsTokenValid(true);
       } else {
-        // Si no hay token en la URL ni en localStorage, limpiar todo
         logout();
       }
     };
