@@ -16,6 +16,8 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
   const [hasWinner, setHasWinner] = useState(false);
   const [connectionError, setConnectionError] = useState(null);
   const [gamePhase, setGamePhase] = useState('waiting');
+  const [predictions, setPredictions] = useState([]);
+  const [songStarted, setSongStarted] = useState(false);
 
   // Función para validar la distribución de categorías
   const validateLine = useCallback((line) => {
@@ -173,6 +175,16 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
     });
   }, [canMark, currentCategory, checkWinner, roomCode, playerName]);
 
+  const handlePrediction = useCallback((prediction) => {
+    setPredictions(prev => [...prev, prediction]);
+    // Emitir la predicción al servidor
+    gameSocket.emit('playerPrediction', {
+      roomCode,
+      playerName,
+      prediction
+    });
+  }, [roomCode, playerName]);
+
   // Efecto para eventos del socket
   useEffect(() => {
     const handlers = {
@@ -185,11 +197,18 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
         setCurrentCategory(category);
         setCurrentSong(null);
         setCanMark(false);
+        setSongStarted(false);
+        setPredictions([]);
         setGamePhase('playing');
+      },
+      songStarted: () => {
+        console.log('Canción iniciada');
+        setSongStarted(true);
       },
       songRevealed: (songData) => {
         console.log('Canción revelada:', songData);
         setCurrentSong(songData);
+        setSongStarted(false);
       },
       markingEnabled: () => {
         console.log('Marcado habilitado');
@@ -231,13 +250,6 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
     };
   }, [joinGame, generateValidBoard]);
 
-  // Efecto para generar tablero cuando sea necesario
-  useEffect(() => {
-    if (gamePhase === 'playing' && board.length === 0) {
-      setBoard(generateValidBoard());
-    }
-  }, [gamePhase, generateValidBoard, board.length]);
-
   return {
     board,
     connectedPlayers,
@@ -247,7 +259,10 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
     hasWinner,
     connectionError,
     gamePhase,
+    predictions,
+    songStarted,
     handleCellClick,
+    handlePrediction,
     setConnectionError
   };
 };

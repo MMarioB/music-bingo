@@ -75,7 +75,6 @@ class GameWebSocket {
             this.connectionAttempts = 0;
             this.restoreEventHandlers();
             
-            // Process queued connections
             this.processConnectionQueue();
             
             resolve();
@@ -137,7 +136,6 @@ class GameWebSocket {
   }
 
   async joinRoom(roomCode, playerInfo) {
-    // Añadir un retraso aleatorio entre conexiones
     await new Promise(resolve => setTimeout(resolve, Math.random() * 1000));
 
     return new Promise((resolve, reject) => {
@@ -149,7 +147,6 @@ class GameWebSocket {
         clearTimeout(timeout);
         this.socket.off('error', handleError);
         
-        // Si es una reconexión y el juego está en curso, marcar como ready
         if (roomInfo.isReconnecting && roomInfo.phase === 'playing') {
           this.setPlayerReady(roomCode).catch(console.error);
         }
@@ -166,6 +163,57 @@ class GameWebSocket {
       console.log('Intentando unirse a sala:', roomCode, playerInfo);
       this.socket.emit('joinRoom', { roomCode, ...playerInfo });
       this.socket.once('roomJoined', handleRoomJoined);
+      this.socket.once('error', handleError);
+    });
+  }
+
+  async startSong(data) {
+    await this.ensureConnection();
+    console.log('Iniciando reproducción:', data);
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        reject(new Error('Timeout starting song'));
+      }, 5000);
+
+      const handleSongStarted = () => {
+        clearTimeout(timeout);
+        this.socket.off('error', handleError);
+        resolve();
+      };
+
+      const handleError = (error) => {
+        clearTimeout(timeout);
+        this.socket.off('songStarted', handleSongStarted);
+        reject(error);
+      };
+
+      this.socket.emit('startSong', data);
+      this.socket.once('songStarted', handleSongStarted);
+      this.socket.once('error', handleError);
+    });
+  }
+
+  async submitPrediction(data) {
+    await this.ensureConnection();
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        reject(new Error('Timeout submitting prediction'));
+      }, 5000);
+
+      const handlePredictionSubmitted = () => {
+        clearTimeout(timeout);
+        this.socket.off('error', handleError);
+        resolve();
+      };
+
+      const handleError = (error) => {
+        clearTimeout(timeout);
+        this.socket.off('predictionSubmitted', handlePredictionSubmitted);
+        reject(error);
+      };
+
+      this.socket.emit('submitPrediction', data);
+      this.socket.once('predictionSubmitted', handlePredictionSubmitted);
       this.socket.once('error', handleError);
     });
   }
@@ -209,7 +257,7 @@ class GameWebSocket {
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
         reject(new Error('Timeout starting game'));
-      }, 15000); // Aumentado a 15 segundos para dar tiempo a las confirmaciones
+      }, 15000);
 
       const handleGameStarted = (gameInfo) => {
         clearTimeout(timeout);

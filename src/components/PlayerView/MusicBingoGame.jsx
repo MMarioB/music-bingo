@@ -10,6 +10,7 @@ import {
 import PropTypes from 'prop-types';
 import { useState, useEffect } from 'react';
 import { useMusicBingoLogic } from './MusicBingoGameLogic';
+import PlayerPredictions from '../PlayerPredictions/PlayerPredictions';
 
 const MusicBingoGame = ({ playerName, roomCode, difficulty }) => {
   const [lastMarkedIndex, setLastMarkedIndex] = useState(null);
@@ -19,11 +20,15 @@ const MusicBingoGame = ({ playerName, roomCode, difficulty }) => {
     board,
     connectedPlayers,
     currentCategory,
+    currentSong,
     canMark: originalCanMark,
     hasWinner,
     connectionError,
+    predictions,
+    songStarted,
     setConnectionError,
     handleCellClick,
+    handlePrediction,
     gamePhase
   } = useMusicBingoLogic({ playerName, roomCode, difficulty });
 
@@ -252,6 +257,14 @@ const MusicBingoGame = ({ playerName, roomCode, difficulty }) => {
           </div>
         </div>
       </motion.div>
+
+      {/* Componente de predicciones */}
+      <PlayerPredictions
+        isRevealed={!!currentSong}
+        onSubmitPrediction={handlePrediction}
+        predictions={predictions}
+        currentSongStarted={songStarted}
+      />
     </div>
   );
 };

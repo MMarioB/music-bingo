@@ -15,6 +15,8 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
   const [isMarkingEnabled, setIsMarkingEnabled] = useState(false);
   const [allPlayersReady, setAllPlayersReady] = useState(false);
   const [isTokenValid, setIsTokenValid] = useState(true);
+  const [songPlaying, setSongPlaying] = useState(false);
+  const [playerPredictions, setPlayerPredictions] = useState({});
 
   // Verificar estado de autenticación al inicio y cuando cambie el token
   useEffect(() => {
@@ -86,6 +88,13 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
         setConnectedPlayers(players);
         checkAllPlayersReady(players);
       },
+      playerPrediction: ({ playerName, prediction }) => {
+        console.log('Predicción recibida:', playerName, prediction);
+        setPlayerPredictions(prev => ({
+          ...prev,
+          [playerName]: [...(prev[playerName] || []), prediction]
+        }));
+      },
       gameStartFailed: (error) => {
         console.error('Error al iniciar juego:', error);
         setConnectionError(error.message);
@@ -146,6 +155,8 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
       setGameStep('card');
       setIsMarkingEnabled(false);
       setCurrentCard(null);
+      setSongPlaying(false);
+      setPlayerPredictions({});
     } catch (error) {
       console.error('Error al seleccionar categoría:', error);
       setConnectionError(error.message);
@@ -185,6 +196,11 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
       };
 
       setCurrentCard(newCard);
+      
+      // Notificar que la canción ha comenzado
+      await gameSocket.startSong({ roomCode });
+      setSongPlaying(true);
+      
     } catch (error) {
       console.error("Error generando tarjeta:", error);
       if (error.status === 401) {
@@ -197,7 +213,7 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
     } finally {
       setIsLoading(false);
     }
-  }, [loggedIn, isTokenValid, selectedCategory, spotify, logout]);
+  }, [loggedIn, isTokenValid, selectedCategory, spotify, roomCode, logout]);
 
   // Revelar canción
   const handleRevealSong = useCallback(async () => {
@@ -213,6 +229,7 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
         }
       });
       setCurrentCard(prev => ({ ...prev, revealed: true }));
+      setSongPlaying(false);
     } catch (error) {
       console.error('Error al revelar canción:', error);
       setConnectionError('Error al revelar la canción');
@@ -247,6 +264,8 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
       setSelectedCategory(null);
       setGameStep('wheel');
       setIsMarkingEnabled(false);
+      setSongPlaying(false);
+      setPlayerPredictions({});
     } catch (error) {
       console.error('Error al iniciar nueva ronda:', error);
       setConnectionError('Error al iniciar nueva ronda');
@@ -268,6 +287,8 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
     isMarkingEnabled,
     allPlayersReady,
     isTokenValid,
+    songPlaying,
+    playerPredictions,
     handleDifficultyChange,
     handleCategorySelected,
     generateNewCard,
