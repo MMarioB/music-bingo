@@ -145,7 +145,7 @@ function App() {
             <AlertDescription>{gameState.error}</AlertDescription>
           </Alert>
         )}
-        <Button 
+        <Button
           onClick={handleNameSubmit}
           className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white hover:from-purple-700 hover:to-indigo-700 transition-all duration-300"
         >
@@ -184,7 +184,7 @@ function App() {
             <AlertDescription className="text-white">{gameState.error}</AlertDescription>
           </Alert>
         )}
-        <Button 
+        <Button
           onClick={handleJoinRoom}
           className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white hover:from-purple-700 hover:to-indigo-700 transition-all duration-300 mt-4"
         >
@@ -218,7 +218,7 @@ function App() {
   return (
     <div className="min-h-screen bg-[#1a0133] p-4 relative overflow-hidden font-audiowide">
       {/* Fondo con cuadrícula tipo disco */}
-      <div 
+      <div
         className="absolute inset-0 opacity-20"
         style={{
           backgroundImage: `
@@ -251,9 +251,9 @@ function App() {
           className="text-center mb-12 relative"
         >
           <h1 className="text-6xl md:text-5xl md:m-3 font-bold mb-4 tracking-wider"
-              style={{
-                color: '#fff',
-                textShadow: `
+            style={{
+              color: '#fff',
+              textShadow: `
                   0 0 7px #fff,
                   0 0 10px #fff,
                   0 0 21px #fff,
@@ -261,16 +261,16 @@ function App() {
                   0 0 82px #ff00ee,
                   0 0 92px #ff00ee
                 `
-              }}>
+            }}>
             DISCOHITS
           </h1>
           <h2 className="text-4xl md:text-4xl font-bold relative"
-              style={{
-                background: 'linear-gradient(to right, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #4b0082, #8b00ff)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                textShadow: '0 0 20px rgba(255,255,255,0.5)'
-              }}>
+            style={{
+              background: 'linear-gradient(to right, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #4b0082, #8b00ff)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              textShadow: '0 0 20px rgba(255,255,255,0.5)'
+            }}>
             Music BINGO
           </h2>
         </motion.div>
@@ -298,7 +298,7 @@ function App() {
                       <span className="text-xl font-bold tracking-wide">Game Master</span>
                     </div>
                   </Button>
-                  
+
                   <Button
                     onClick={() => handleRoleSelect('player')}
                     className="h-auto py-8 bg-black/30 border-2 border-[#ff00ee] hover:bg-[#ff00ee]/20 transform transition-all hover:scale-105 group text-white/90"
@@ -319,7 +319,7 @@ function App() {
               </Card>
             </motion.div>
           )}
-          
+
           {gameState.phase === 'spotify-auth' && (
             <SpotifyAuth
               onSuccess={() => setGameState(prev => ({
@@ -329,7 +329,7 @@ function App() {
               }))}
             />
           )}
-          
+
           {gameState.phase === 'name-input' && renderNameInput()}
           {gameState.phase === 'room-selection' && renderRoomSelection()}
           {gameState.phase === 'waiting-room' && (
@@ -349,11 +349,11 @@ function App() {
       {/* Botón de retorno */}
       {gameState.phase !== 'role-selection' && (
         <motion.button
-          initial={{ opacity: 0, x: 20 }}
+          initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: 20 }}
+          exit={{ opacity: 0, x: -20 }}
           onClick={handleReset}
-          className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 bg-black/30 text-white rounded-full p-2 sm:p-3 shadow-lg hover:bg-white/10 transition-colors duration-300 z-50 backdrop-blur-sm"
+          className="fixed bottom-4 left-4 sm:bottom-6 sm:left-6 bg-black/30 text-white rounded-full p-2 sm:p-3 shadow-lg hover:bg-white/10 transition-colors duration-300 z-50 backdrop-blur-sm"
         >
           <ArrowLeft className="h-5 w-5 sm:h-6 sm:w-6" />
         </motion.button>
