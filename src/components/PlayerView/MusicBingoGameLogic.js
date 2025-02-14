@@ -16,6 +16,8 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
   const [hasWinner, setHasWinner] = useState(false);
   const [connectionError, setConnectionError] = useState(null);
   const [gamePhase, setGamePhase] = useState('waiting');
+  const [predictions, setPredictions] = useState([]);
+  const [songStarted, setSongStarted] = useState(false);
 
   // Función para validar la distribución de categorías
   const validateLine = useCallback((line) => {
@@ -137,13 +139,17 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
       if (joinResponse?.players) {
         setConnectedPlayers(joinResponse.players);
       }
+
+      // Generar tablero al unirse
+      const newBoard = generateValidBoard();
+      setBoard(newBoard);
+
       if (joinResponse?.phase) {
         setGamePhase(joinResponse.phase);
       }
       if (joinResponse?.currentCategory) {
         setCurrentCategory(joinResponse.currentCategory);
         setGamePhase('playing');
-        setBoard(generateValidBoard());
       }
     } catch (error) {
       console.error('Error uniéndose al juego:', error);
@@ -173,6 +179,15 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
     });
   }, [canMark, currentCategory, checkWinner, roomCode, playerName]);
 
+  const handlePrediction = useCallback((prediction) => {
+    setPredictions(prev => [...prev, prediction]);
+    // Emitir la predicción al servidor
+    gameSocket.submitPrediction({
+      roomCode,
+      prediction
+    });
+  }, [roomCode]);
+
   // Efecto para eventos del socket
   useEffect(() => {
     const handlers = {
@@ -185,11 +200,22 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
         setCurrentCategory(category);
         setCurrentSong(null);
         setCanMark(false);
+        setSongStarted(false);
+        setPredictions([]);
         setGamePhase('playing');
+        // Asegurarnos de tener un tablero al cambiar categoría
+        if (board.length === 0) {
+          setBoard(generateValidBoard());
+        }
+      },
+      songStarted: () => {
+        console.log('Canción iniciada');
+        setSongStarted(true);
       },
       songRevealed: (songData) => {
         console.log('Canción revelada:', songData);
         setCurrentSong(songData);
+        setSongStarted(false);
       },
       markingEnabled: () => {
         console.log('Marcado habilitado');
@@ -202,7 +228,10 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
       gameStarted: () => {
         console.log('Juego iniciado');
         setGamePhase('playing');
-        setBoard(generateValidBoard());
+        // Asegurarnos de tener un tablero al iniciar
+        if (board.length === 0) {
+          setBoard(generateValidBoard());
+        }
       },
       gameStartFailed: () => {
         console.log('Inicio de juego fallido');
@@ -229,14 +258,12 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
       });
       gameSocket.disconnect();
     };
-  }, [joinGame, generateValidBoard]);
+  }, [joinGame, generateValidBoard, board.length]);
 
-  // Efecto para generar tablero cuando sea necesario
+  // Efecto para debug del tablero
   useEffect(() => {
-    if (gamePhase === 'playing' && board.length === 0) {
-      setBoard(generateValidBoard());
-    }
-  }, [gamePhase, generateValidBoard, board.length]);
+    console.log('Estado actual del tablero:', board);
+  }, [board]);
 
   return {
     board,
@@ -247,7 +274,10 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
     hasWinner,
     connectionError,
     gamePhase,
+    predictions,
+    songStarted,
     handleCellClick,
+    handlePrediction,
     setConnectionError
   };
 };
