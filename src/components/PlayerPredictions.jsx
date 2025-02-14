@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import PropTypes from 'prop-types';
-import { Input } from '../ui/input';
-import { Button } from '../ui/button';
-import { Alert, AlertDescription } from '../ui/alert';
+import { Input } from './ui/input';
+import { Button } from './ui/button';
+import { Alert, AlertDescription } from './ui/alert';
 import { Send, Music2Icon, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ScrollArea } from '../ui/scroll-area';
+import { ScrollArea } from './ui/scroll-area';
 
 const PlayerPredictions = ({
   isRevealed,
