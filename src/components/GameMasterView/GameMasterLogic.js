@@ -4,19 +4,50 @@ import { gameSocket } from '../../services/socketService';
 import { ARTISTS } from './constants';
 
 export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
-  const { spotify, loggedIn, login } = useSpotify();
+  const { spotify, loggedIn, login, logout, token } = useSpotify();
   const [currentCard, setCurrentCard] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState(null);
-  const [gameStep, setGameStep] = useState('wheel');
+  const [gameStep, setGameStep] = useState('init');
   const [connectedPlayers, setConnectedPlayers] = useState([]);
   const [difficulty, setDifficulty] = useState(initialDifficulty);
   const [connectionError, setConnectionError] = useState(null);
   const [isMarkingEnabled, setIsMarkingEnabled] = useState(false);
   const [allPlayersReady, setAllPlayersReady] = useState(false);
+  const [isTokenValid, setIsTokenValid] = useState(true);
+
+  // Verificar estado de autenticación al inicio y cuando cambie el token
+  useEffect(() => {
+    const checkAuthState = () => {
+      if (!token) {
+        setGameStep('init');
+        return;
+      }
+
+      const tokenData = localStorage.getItem('spotify_token');
+      if (!tokenData || !isTokenValid) {
+        setIsTokenValid(false);
+        logout();
+        setGameStep('init');
+        return;
+      }
+
+      setIsTokenValid(true);
+      if (gameStep === 'init') {
+        setGameStep('wheel');
+      }
+    };
+
+    checkAuthState();
+  }, [token, logout, gameStep, isTokenValid]);
 
   // Inicializar sala
   const initializeRoom = useCallback(async () => {
+    if (!loggedIn || !isTokenValid) {
+      setGameStep('init');
+      return;
+    }
+
     try {
       console.log('Iniciando sala:', roomCode);
       await gameSocket.connect();
@@ -37,9 +68,9 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
       console.error('Error inicializando sala:', error);
       setConnectionError(error.message);
     }
-  }, [roomCode, difficulty]);
+  }, [roomCode, difficulty, loggedIn, isTokenValid]);
 
-  // Función para verificar si todos los jugadores están listos
+  // Verificar si todos los jugadores están listos
   const checkAllPlayersReady = useCallback((players) => {
     const ready = players.every(player => player.ready || player.isHost);
     setAllPlayersReady(ready);
@@ -47,6 +78,8 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
 
   // Efecto para eventos del socket
   useEffect(() => {
+    if (!loggedIn || !isTokenValid) return;
+
     const handlers = {
       playersUpdate: ({ players }) => {
         console.log('Actualización de jugadores:', players);
@@ -64,25 +97,27 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
       }
     };
 
-    // Registrar handlers
     Object.entries(handlers).forEach(([event, handler]) => {
       gameSocket.on(event, handler);
     });
 
-    // Inicializar sala
     initializeRoom();
 
-    // Limpieza
     return () => {
       Object.keys(handlers).forEach(event => {
         gameSocket.off(event);
       });
       gameSocket.disconnect();
     };
-  }, [initializeRoom]);
+  }, [initializeRoom, loggedIn, isTokenValid]);
 
   // Manejar cambio de dificultad
   const handleDifficultyChange = useCallback(async (newDifficulty) => {
+    if (!loggedIn || !isTokenValid) {
+      setGameStep('init');
+      return;
+    }
+
     try {
       setDifficulty(newDifficulty);
       await gameSocket.updateRoom({
@@ -93,10 +128,15 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
       console.error('Error al cambiar dificultad:', error);
       setConnectionError(error.message);
     }
-  }, [roomCode]);
+  }, [roomCode, loggedIn, isTokenValid]);
 
   // Manejar selección de categoría
   const handleCategorySelected = useCallback(async (category) => {
+    if (!loggedIn || !isTokenValid) {
+      setGameStep('init');
+      return;
+    }
+
     try {
       await gameSocket.selectCategory({
         roomCode,
@@ -110,11 +150,11 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
       console.error('Error al seleccionar categoría:', error);
       setConnectionError(error.message);
     }
-  }, [roomCode]);
+  }, [roomCode, loggedIn, isTokenValid]);
 
   // Generar nueva carta
   const generateNewCard = useCallback(async () => {
-    if (!loggedIn || !selectedCategory || !spotify) return;
+    if (!loggedIn || !isTokenValid || !selectedCategory || !spotify) return;
 
     setIsLoading(true);
     try {
@@ -145,18 +185,24 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
       };
 
       setCurrentCard(newCard);
-
     } catch (error) {
       console.error("Error generando tarjeta:", error);
-      setConnectionError('Error al generar la tarjeta');
+      if (error.status === 401) {
+        setIsTokenValid(false);
+        logout();
+        setGameStep('init');
+      } else {
+        setConnectionError('Error al generar la tarjeta');
+      }
     } finally {
       setIsLoading(false);
     }
-  }, [loggedIn, selectedCategory, spotify, roomCode]);
+  }, [loggedIn, isTokenValid, selectedCategory, spotify, logout]);
 
   // Revelar canción
   const handleRevealSong = useCallback(async () => {
-    if (!currentCard) return;
+    if (!currentCard || !loggedIn || !isTokenValid) return;
+
     try {
       await gameSocket.revealSong({
         roomCode,
@@ -171,10 +217,12 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
       console.error('Error al revelar canción:', error);
       setConnectionError('Error al revelar la canción');
     }
-  }, [currentCard, roomCode]);
+  }, [currentCard, roomCode, loggedIn, isTokenValid]);
 
-  // Habilitar/Deshabilitar marcado
+  // Manejar marcado
   const handleMarkingToggle = useCallback(async () => {
+    if (!loggedIn || !isTokenValid) return;
+
     try {
       if (isMarkingEnabled) {
         await gameSocket.disableMarking({ roomCode });
@@ -187,10 +235,12 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
       console.error('Error al cambiar estado de marcado:', error);
       setConnectionError('Error al cambiar estado de marcado');
     }
-  }, [isMarkingEnabled, roomCode]);
+  }, [isMarkingEnabled, roomCode, loggedIn, isTokenValid]);
 
   // Iniciar nueva ronda
   const startNewRound = useCallback(async () => {
+    if (!loggedIn || !isTokenValid) return;
+
     try {
       await gameSocket.disableMarking({ roomCode });
       setCurrentCard(null);
@@ -201,11 +251,12 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
       console.error('Error al iniciar nueva ronda:', error);
       setConnectionError('Error al iniciar nueva ronda');
     }
-  }, [roomCode]);
+  }, [roomCode, loggedIn, isTokenValid]);
 
   return {
     loggedIn,
     login,
+    logout,
     currentCard,
     isLoading,
     selectedCategory,
@@ -213,8 +264,10 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
     connectedPlayers,
     difficulty,
     connectionError,
+    setConnectionError,
     isMarkingEnabled,
     allPlayersReady,
+    isTokenValid,
     handleDifficultyChange,
     handleCategorySelected,
     generateNewCard,
