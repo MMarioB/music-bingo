@@ -17,7 +17,7 @@ import PredictionsPanel from '../PredictionsPanel';
 import PropTypes from 'prop-types';
 import { useGameMasterLogic } from './GameMasterLogic';
 
-const GameMaster = ({ roomCode, difficulty: initialDifficulty, spotifyTokens, onError }) => {
+const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
   const [markingEnabledThisRound, setMarkingEnabledThisRound] = useState(false);
 
   const {
@@ -38,12 +38,7 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty, spotifyTokens, on
     handleRevealSong,
     handleMarkingToggle,
     startNewRound
-  } = useGameMasterLogic({
-    roomCode,
-    initialDifficulty,
-    spotifyTokens,
-    onError
-  });
+  } = useGameMasterLogic({ roomCode, initialDifficulty });
 
   // Efecto para auto-dismiss del error de conexión
   useEffect(() => {
@@ -144,10 +139,10 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty, spotifyTokens, on
               onClick={handleMarkingControl}
               disabled={markingEnabledThisRound && !isMarkingEnabled}
               className={`w-full h-12 transition-all duration-300 ${isMarkingEnabled
-                ? 'bg-yellow-500/80 hover:bg-yellow-500 border-yellow-400'
-                : markingEnabledThisRound && !isMarkingEnabled
-                  ? 'bg-gray-500/50 border-gray-400 cursor-not-allowed'
-                  : 'bg-green-500/80 hover:bg-green-500 border-green-400'
+                  ? 'bg-yellow-500/80 hover:bg-yellow-500 border-yellow-400'
+                  : markingEnabledThisRound && !isMarkingEnabled
+                    ? 'bg-gray-500/50 border-gray-400 cursor-not-allowed'
+                    : 'bg-green-500/80 hover:bg-green-500 border-green-400'
                 } border`}
               style={
                 !markingEnabledThisRound || isMarkingEnabled
@@ -334,13 +329,7 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty, spotifyTokens, on
 
 GameMaster.propTypes = {
   roomCode: PropTypes.string.isRequired,
-  difficulty: PropTypes.oneOf(['principiante', 'experto']).isRequired,
-  spotifyTokens: PropTypes.shape({
-    access_token: PropTypes.string.isRequired,
-    refresh_token: PropTypes.string.isRequired,
-    expires_in: PropTypes.number.isRequired
-  }),
-  onError: PropTypes.func.isRequired
+  difficulty: PropTypes.oneOf(['principiante', 'experto']).isRequired
 };
 
 export default GameMaster;
