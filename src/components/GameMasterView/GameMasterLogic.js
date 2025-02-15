@@ -2,9 +2,10 @@ import { useState, useCallback, useEffect } from 'react';
 import { useSpotify } from '../../hooks/useSpotify';
 import { gameSocket } from '../../services/socketService';
 import { ARTISTS } from './constants';
+import { getStoredToken } from '../../lib/spotify';
 
 export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
-  const { spotify, loggedIn, login, logout, token } = useSpotify();
+  const { spotify, loggedIn, login, logout, token, initializeRoom } = useSpotify();
   const [currentCard, setCurrentCard] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState(null);
@@ -43,8 +44,14 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
     checkAuthState();
   }, [token, logout, gameStep, isTokenValid]);
 
-  // Inicializar sala
-  const initializeRoom = useCallback(async () => {
+  // Verificar si todos los jugadores están listos
+  const checkAllPlayersReady = useCallback((players) => {
+    const ready = players.every(player => player.ready || player.isHost);
+    setAllPlayersReady(ready);
+  }, []);
+
+  // Inicializar sala con el token de Spotify
+  const initializeGameRoom = useCallback(async () => {
     if (!loggedIn || !isTokenValid) {
       setGameStep('init');
       return;
@@ -53,6 +60,15 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
     try {
       console.log('Iniciando sala:', roomCode);
       await gameSocket.connect();
+      
+      // Obtener el token almacenado
+      const tokenData = getStoredToken();
+      if (!tokenData) {
+        throw new Error('No token available');
+      }
+
+      // Inicializar la sala con el token
+      await initializeRoom(roomCode, tokenData.access_token, tokenData.expires_in);
       
       const roomResponse = await gameSocket.createRoom({
         roomCode,
@@ -69,16 +85,15 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
     } catch (error) {
       console.error('Error inicializando sala:', error);
       setConnectionError(error.message);
+      if (error.message.includes('token')) {
+        setIsTokenValid(false);
+        logout();
+        setGameStep('init');
+      }
     }
-  }, [roomCode, difficulty, loggedIn, isTokenValid]);
+  }, [roomCode, difficulty, loggedIn, isTokenValid, initializeRoom, logout, checkAllPlayersReady]);
 
-  // Verificar si todos los jugadores están listos
-  const checkAllPlayersReady = useCallback((players) => {
-    const ready = players.every(player => player.ready || player.isHost);
-    setAllPlayersReady(ready);
-  }, []);
-
-  // Efecto para eventos del socket
+  // Efecto para eventos del socket y manejo de token
   useEffect(() => {
     if (!loggedIn || !isTokenValid) return;
 
@@ -95,6 +110,10 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
           [playerName]: [...(prev[playerName] || []), prediction]
         }));
       },
+      spotifyTokenUpdated: () => {
+        console.log('Token de Spotify actualizado');
+        // El hook useSpotify se encargará de actualizar el token
+      },
       gameStartFailed: (error) => {
         console.error('Error al iniciar juego:', error);
         setConnectionError(error.message);
@@ -103,6 +122,11 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
       error: (error) => {
         console.error('Error en socket:', error);
         setConnectionError(error.message);
+        if (error.message.includes('token')) {
+          setIsTokenValid(false);
+          logout();
+          setGameStep('init');
+        }
       }
     };
 
@@ -110,7 +134,7 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
       gameSocket.on(event, handler);
     });
 
-    initializeRoom();
+    initializeGameRoom();
 
     return () => {
       Object.keys(handlers).forEach(event => {
@@ -118,7 +142,7 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
       });
       gameSocket.disconnect();
     };
-  }, [initializeRoom, loggedIn, isTokenValid]);
+  }, [initializeGameRoom, loggedIn, isTokenValid, logout, checkAllPlayersReady]);
 
   // Manejar cambio de dificultad
   const handleDifficultyChange = useCallback(async (newDifficulty) => {

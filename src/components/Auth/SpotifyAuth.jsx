@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import PropTypes from 'prop-types';
 import { useSpotify } from "../../hooks/useSpotify";
+import { getStoredToken } from "../../lib/spotify";
 import { Card } from "../ui/card";
 import { Button } from "../ui/button";
 import { motion } from "framer-motion";
@@ -10,7 +11,14 @@ const SpotifyAuth = ({ onSuccess }) => {
 
   useEffect(() => {
     if (loggedIn && isTokenValid) {
-      onSuccess();
+      const tokenData = getStoredToken();
+      if (tokenData) {
+        onSuccess({
+          access_token: tokenData.access_token,
+          refresh_token: tokenData.refresh_token,
+          expires_in: Math.floor((parseInt(localStorage.getItem('spotify_token_expiration')) - Date.now()) / 1000)
+        });
+      }
     }
   }, [loggedIn, isTokenValid, onSuccess]);
 

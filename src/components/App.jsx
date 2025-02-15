@@ -17,7 +17,8 @@ function App() {
     playerName: '',
     roomCode: '',
     difficulty: 'principiante',
-    error: null
+    error: null,
+    spotifyTokens: null
   });
 
   const handleError = useCallback((errorMessage) => {
@@ -42,6 +43,15 @@ function App() {
       error: 'Sala no encontrada. Verifica el código e inténtalo de nuevo.'
     }));
   }, []);
+
+  const handleSpotifyAuthSuccess = (tokens) => {
+    setGameState(prev => ({
+      ...prev,
+      phase: 'name-input',
+      error: null,
+      spotifyTokens: tokens
+    }));
+  };
 
   const handleRoleSelect = (role) => {
     if (role === 'master') {
@@ -112,7 +122,8 @@ function App() {
       playerName: '',
       roomCode: '',
       difficulty: 'principiante',
-      error: null
+      error: null,
+      spotifyTokens: null
     });
   };
 
@@ -201,6 +212,7 @@ function App() {
           roomCode={gameState.roomCode}
           difficulty={gameState.difficulty}
           onError={handleConnectionError}
+          spotifyTokens={gameState.spotifyTokens}
         />
       );
     }
@@ -321,13 +333,7 @@ function App() {
           )}
 
           {gameState.phase === 'spotify-auth' && (
-            <SpotifyAuth
-              onSuccess={() => setGameState(prev => ({
-                ...prev,
-                phase: 'name-input',
-                error: null
-              }))}
-            />
+            <SpotifyAuth onSuccess={handleSpotifyAuthSuccess} />
           )}
 
           {gameState.phase === 'name-input' && renderNameInput()}
@@ -340,6 +346,7 @@ function App() {
               onStartGame={handleStartGame}
               onError={handleConnectionError}
               onRoomNotFound={handleRoomNotFound}
+              spotifyTokens={gameState.spotifyTokens}
             />
           )}
           {gameState.phase === 'game' && renderGameComponent()}
