@@ -24,7 +24,7 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
   const validateLine = useCallback((line) => {
     const categoryCounts = {};
     let markedCount = 0;
-    
+
     line.forEach(cell => {
       if (cell.marked) {
         categoryCounts[cell.name] = (categoryCounts[cell.name] || 0) + 1;
@@ -68,7 +68,7 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
     // Verificar diagonales
     const diagonal1 = Array(BOARD_SIZE).fill(0).map((_, i) => board[i * BOARD_SIZE + i]);
     const diagonal2 = Array(BOARD_SIZE).fill(0).map((_, i) => board[i * BOARD_SIZE + (BOARD_SIZE - 1 - i)]);
-    
+
     return validateGeneratedLine(diagonal1) && validateGeneratedLine(diagonal2);
   }, [validateGeneratedLine]);
 
@@ -99,10 +99,10 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
     const MAX_ATTEMPTS = 100;
     let attempts = 0;
     let cells = [];
-    
+
     while (attempts < MAX_ATTEMPTS) {
       attempts++;
-      
+
       // Crear array con 5 instancias de cada categoría
       cells = [];
       categories.forEach(category => {
@@ -110,18 +110,18 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
           cells.push({ ...category, marked: false });
         }
       });
-      
+
       // Mezclar el array usando Fisher-Yates shuffle
       for (let i = cells.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [cells[i], cells[j]] = [cells[j], cells[i]];
       }
-      
+
       if (validateGeneratedBoard(cells)) {
         return cells;
       }
     }
-    
+
     console.warn('No se pudo generar un tablero perfectamente balanceado después de', MAX_ATTEMPTS, 'intentos');
     return cells;
   }, [difficulty, validateGeneratedBoard]);
@@ -131,7 +131,7 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
     try {
       console.log('Intentando conectar al juego:', { roomCode, playerName });
       await gameSocket.connect();
-      
+
       const joinResponse = await gameSocket.joinRoom(roomCode, {
         name: playerName,
         difficulty
@@ -230,29 +230,23 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
       },
       markingEnabled: ({ eligiblePlayers }) => {
         console.log('Recibido evento markingEnabled con elegibles:', eligiblePlayers);
-        console.log('Jugadores conectados:', connectedPlayers);
-        console.log('Nombre del jugador actual:', playerName);
-      
         setCanMark(true);
-        
-        // Buscar el jugador actual por nombre y ID
-        const player = connectedPlayers.find(p => 
-          p.name === playerName || eligiblePlayers.includes(p.id)
-        );
-        
-        console.log('Datos del jugador encontrado:', player);
-        
-        if (player) {
-          // Verificar elegibilidad por ID o nombre
-          const isEligible = eligiblePlayers.includes(player.id) || 
-                             (player.name === playerName && eligiblePlayers.length > 0);
-          
-          setIsEligibleToMark(isEligible);
-          console.log(`Jugador ${player.name}: ${isEligible ? 'elegible' : 'NO elegible'} para marcar`);
-        } else {
+
+        // Primero asegurarnos de que el jugador está en la lista de conectados
+        const currentPlayerInList = connectedPlayers.find(p => p.name === playerName);
+        console.log('Jugador actual en lista:', currentPlayerInList);
+
+        if (!currentPlayerInList) {
           console.log('Jugador no encontrado en la lista de conectados');
           setIsEligibleToMark(false);
+          return;
         }
+
+        // Verificar si el jugador está en la lista de elegibles
+        const isEligible = eligiblePlayers.includes(currentPlayerInList.id);
+        console.log(`Jugador ${playerName} (${currentPlayerInList.id}): ${isEligible ? 'elegible' : 'NO elegible'} para marcar`);
+
+        setIsEligibleToMark(isEligible);
       },
       markingDisabled: () => {
         setCanMark(false);
