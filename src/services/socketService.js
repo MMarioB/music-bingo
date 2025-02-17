@@ -218,6 +218,58 @@ class GameWebSocket {
     });
   }
 
+  async markPlayerCorrect(data) {
+    await this.ensureConnection();
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        reject(new Error('Timeout marking player'));
+      }, 5000);
+
+      const handlePlayerMarked = (response) => {
+        clearTimeout(timeout);
+        this.socket.off('error', handleError);
+        resolve(response);
+      };
+
+      const handleError = (error) => {
+        clearTimeout(timeout);
+        this.socket.off('playerMarked', handlePlayerMarked);
+        reject(error);
+      };
+
+      console.log('Marcando jugador:', data);
+      this.socket.emit('markPlayerCorrect', data);
+      this.socket.once('playerMarked', handlePlayerMarked);
+      this.socket.once('error', handleError);
+    });
+  }
+
+  async confirmCorrect(data) {
+    await this.ensureConnection();
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        reject(new Error('Timeout confirming correct'));
+      }, 5000);
+
+      const handleConfirmed = (response) => {
+        clearTimeout(timeout);
+        this.socket.off('error', handleError);
+        resolve(response);
+      };
+
+      const handleError = (error) => {
+        clearTimeout(timeout);
+        this.socket.off('playerConfirmed', handleConfirmed);
+        reject(error);
+      };
+
+      console.log('Confirmando acierto:', data);
+      this.socket.emit('confirmCorrect', data);
+      this.socket.once('playerConfirmed', handleConfirmed);
+      this.socket.once('error', handleError);
+    });
+  }
+
   processConnectionQueue() {
     while (this.connectionQueue.length > 0) {
       const { resolve, reject, fn } = this.connectionQueue.shift();
@@ -315,13 +367,53 @@ class GameWebSocket {
   async enableMarking(data) {
     await this.ensureConnection();
     console.log('Habilitando marcado:', data);
-    this.socket.emit('enableMarking', data);
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        reject(new Error('Timeout enabling marking'));
+      }, 5000);
+
+      const handleMarkingEnabled = (response) => {
+        clearTimeout(timeout);
+        this.socket.off('error', handleError);
+        resolve(response);
+      };
+
+      const handleError = (error) => {
+        clearTimeout(timeout);
+        this.socket.off('markingEnabled', handleMarkingEnabled);
+        reject(error);
+      };
+
+      this.socket.emit('enableMarking', data);
+      this.socket.once('markingEnabled', handleMarkingEnabled);
+      this.socket.once('error', handleError);
+    });
   }
 
   async disableMarking(data) {
     await this.ensureConnection();
     console.log('Deshabilitando marcado:', data);
-    this.socket.emit('disableMarking', data);
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        reject(new Error('Timeout disabling marking'));
+      }, 5000);
+
+      const handleMarkingDisabled = (response) => {
+        clearTimeout(timeout);
+        this.socket.off('error', handleError);
+        resolve(response);
+      };
+
+      const handleError = (error) => {
+        clearTimeout(timeout);
+        this.socket.off('markingDisabled', handleMarkingDisabled);
+        reject(error);
+      };
+
+      this.socket.emit('disableMarking', data);
+      this.socket.once('markingDisabled', handleMarkingDisabled);
+      this.socket.once('error', handleError);
+    });
   }
 
   async winner(data) {
@@ -334,32 +426,6 @@ class GameWebSocket {
     await this.ensureConnection();
     console.log('Actualizando sala:', data);
     this.socket.emit('updateRoom', data);
-  }
-
-  async markPlayerCorrect(data) {
-    await this.ensureConnection();
-    return new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        reject(new Error('Timeout marking player'));
-      }, 5000);
-
-      const handlePlayerMarked = (response) => {
-        clearTimeout(timeout);
-        this.socket.off('error', handleError);
-        resolve(response);
-      };
-
-      const handleError = (error) => {
-        clearTimeout(timeout);
-        this.socket.off('playerMarked', handlePlayerMarked);
-        reject(error);
-      };
-
-      console.log('Marcando jugador:', data);
-      this.socket.emit('markPlayerCorrect', data);
-      this.socket.once('playerMarked', handlePlayerMarked);
-      this.socket.once('error', handleError);
-    });
   }
 
   restoreEventHandlers() {
