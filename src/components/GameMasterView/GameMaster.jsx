@@ -60,13 +60,17 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
         console.log('Marcado ya utilizado en esta ronda');
         return;
       }
+      if (!Object.values(playerCorrect).some(correct => correct)) {
+        console.log('No hay jugadores marcados como correctos');
+        return;
+      }
       console.log('Habilitando marcado por primera vez en esta ronda');
       setMarkingEnabledThisRound(true);
     } else {
       console.log('Deshabilitando marcado');
     }
     handleMarkingToggle();
-  }, [isMarkingEnabled, markingEnabledThisRound, handleMarkingToggle]);
+  }, [isMarkingEnabled, markingEnabledThisRound, handleMarkingToggle, playerCorrect]);
 
   // Manejo de nueva ronda
   const handleNewRound = useCallback(() => {
@@ -87,7 +91,7 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
 
   // Función para manejar el toggle de aciertos de jugadores
   const handlePlayerCorrectToggle = (playerId) => {
-    if (!isMarkingEnabled) return;
+    if (isMarkingEnabled) return; // Solo permitimos marcar antes de habilitar el marcado
     setPlayerCorrect(prev => ({
       ...prev,
       [playerId]: !prev[playerId]
@@ -150,24 +154,28 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
           <div className="space-y-2">
             <Button
               onClick={handleMarkingControl}
-              disabled={markingEnabledThisRound && !isMarkingEnabled}
+              disabled={!Object.values(playerCorrect).some(correct => correct) || (markingEnabledThisRound && !isMarkingEnabled)}
               className={`w-full h-12 transition-all duration-300 ${isMarkingEnabled
                   ? 'bg-yellow-500/80 hover:bg-yellow-500 border-yellow-400'
-                  : markingEnabledThisRound && !isMarkingEnabled
+                  : markingEnabledThisRound
                     ? 'bg-gray-500/50 border-gray-400 cursor-not-allowed'
-                    : 'bg-green-500/80 hover:bg-green-500 border-green-400'
+                    : Object.values(playerCorrect).some(correct => correct)
+                      ? 'bg-green-500/80 hover:bg-green-500 border-green-400'
+                      : 'bg-gray-500/50 border-gray-400 cursor-not-allowed'
                 } border`}
               style={
-                !markingEnabledThisRound || isMarkingEnabled
-                  ? { boxShadow: '0 0 15px rgba(34,197,94,0.3)' }
-                  : {}
+                !Object.values(playerCorrect).some(correct => correct) || markingEnabledThisRound || isMarkingEnabled
+                  ? {}
+                  : { boxShadow: '0 0 15px rgba(34,197,94,0.3)' }
               }
             >
               {isMarkingEnabled
                 ? 'Deshabilitar Marcado'
                 : markingEnabledThisRound
                   ? 'Marcado Ya Utilizado'
-                  : 'Habilitar Marcado'
+                  : Object.values(playerCorrect).some(correct => correct)
+                    ? 'Habilitar Marcado'
+                    : 'Marca jugadores primero'
               }
             </Button>
 
@@ -311,7 +319,9 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
                 <span>Jugadores Conectados</span>
                 {currentCard?.revealed && (
                   <span className="text-sm text-white/60">
-                    {isMarkingEnabled ? 'Marcado habilitado' : 'Esperando marcado'}
+                    {isMarkingEnabled
+                      ? 'Marcado habilitado para jugadores con acierto'
+                      : 'Marca los jugadores que acertaron'}
                   </span>
                 )}
               </h3>
@@ -323,14 +333,12 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
                       }`}
                   >
                     <div className="flex items-center gap-3">
-                      {currentCard?.revealed && (
+                      {currentCard?.revealed && !isMarkingEnabled && (
                         <div
                           onClick={() => handlePlayerCorrectToggle(player.id)}
-                          className={`w-5 h-5 rounded border flex items-center justify-center transition-all duration-200 
-                            ${isMarkingEnabled ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'}
+                          className={`w-5 h-5 rounded border flex items-center justify-center cursor-pointer
                             ${playerCorrect[player.id]
-                              ? 'bg-green-500 border-green-500'
-                              : 'border-white/50 hover:border-white/80'}`}
+                              ? 'bg-green-500 border-green-500' : 'border-white/50 hover:border-white/80'}`}
                         >
                           {playerCorrect[player.id] && (
                             <motion.div
