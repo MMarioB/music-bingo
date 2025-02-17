@@ -230,14 +230,31 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
       },
       markingEnabled: ({ eligiblePlayers }) => {
         console.log('Recibido evento markingEnabled con elegibles:', eligiblePlayers);
+        
+        // Añadir logs para depuración
+        console.log('Jugadores conectados:', connectedPlayers);
+        console.log('Nombre del jugador actual:', playerName);
+      
         setCanMark(true);
+        
+        // Buscar el jugador por nombre en lugar de por ID
         const player = connectedPlayers.find(p => p.name === playerName);
-        console.log('Datos del jugador actual:', player);
+        
+        console.log('Datos del jugador encontrado:', player);
+        
         if (player && eligiblePlayers.includes(player.id)) {
           setIsEligibleToMark(true);
           console.log('Jugador marcado como elegible');
         } else {
-          console.log('Jugador NO elegible para marcar');
+          // Si no se encuentra por ID, intentar por nombre
+          if (eligiblePlayers.length === 0 || 
+              (player && eligiblePlayers.includes(playerName))) {
+            setIsEligibleToMark(true);
+            console.log('Jugador marcado como elegible por nombre');
+          } else {
+            console.log('Jugador NO elegible para marcar');
+            setIsEligibleToMark(false);
+          }
         }
       },
       markingDisabled: () => {
