@@ -235,7 +235,7 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
       
         setCanMark(true);
         
-        // Buscar el jugador por nombre o ID
+        // Buscar el jugador actual por nombre y ID
         const player = connectedPlayers.find(p => 
           p.name === playerName || eligiblePlayers.includes(p.id)
         );
@@ -243,12 +243,12 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
         console.log('Datos del jugador encontrado:', player);
         
         if (player) {
-          // Verificar si el jugador está en la lista de elegibles por nombre o ID
+          // Verificar elegibilidad por ID o nombre
           const isEligible = eligiblePlayers.includes(player.id) || 
-                             (player.name === playerName && eligiblePlayers.length === 0);
+                             (player.name === playerName && eligiblePlayers.length > 0);
           
           setIsEligibleToMark(isEligible);
-          console.log(`Jugador ${isEligible ? 'marcado como elegible' : 'NO elegible para marcar'}`);
+          console.log(`Jugador ${player.name}: ${isEligible ? 'elegible' : 'NO elegible'} para marcar`);
         } else {
           console.log('Jugador no encontrado en la lista de conectados');
           setIsEligibleToMark(false);

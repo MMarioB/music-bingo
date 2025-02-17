@@ -84,21 +84,27 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
     if (isMarkingEnabled) return; // Solo permitimos marcar antes de habilitar el marcado
     
     setPlayerCorrect(prev => {
-      // Asegurarnos de que el valor sea un booleano explícito
+      // Encontrar el jugador por ID
+      const player = connectedPlayers.find(p => p.id === playerId);
+      
+      // Crear nuevo estado de correcto
       const newState = {
         ...prev,
         [playerId]: prev[playerId] ? false : true
       };
       
-      console.log('Estado de playerCorrect actualizado:', newState);
-      console.log('Detalles de jugadores marcados:', 
-        Object.entries(newState)
-          .filter(([, isCorrect]) => isCorrect)
-          .map(([id]) => {
-            const player = connectedPlayers.find(p => p.id === id);
-            return player ? player.name : 'Jugador desconocido';
-          })
-      );
+      console.log('Jugador marcado:', player ? player.name : 'Jugador desconocido');
+      console.log('Estado completo de playerCorrect:', newState);
+      
+      // Log detallado de jugadores marcados
+      const markedPlayers = Object.entries(newState)
+        .filter(([, isCorrect]) => isCorrect)
+        .map(([id]) => {
+          const markedPlayer = connectedPlayers.find(p => p.id === id);
+          return markedPlayer ? markedPlayer.name : 'Jugador desconocido';
+        });
+      
+      console.log('Nombres de jugadores marcados:', markedPlayers);
       
       return newState;
     });
@@ -295,10 +301,11 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
         await gameSocket.disableMarking({ roomCode });
         setIsMarkingEnabled(false);
       } else {
+        // Log detallado del estado actual
         console.log('Estado completo de playerCorrect antes de habilitar:', playerCorrect);
         console.log('Jugadores conectados:', connectedPlayers);
   
-        // Convertir playerCorrect a un array de IDs de jugadores marcados
+        // Obtener los IDs de jugadores marcados
         const markedPlayerIds = Object.entries(playerCorrect)
           .filter(([, isCorrect]) => isCorrect)
           .map(([playerId]) => playerId);
@@ -312,9 +319,14 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
   
         console.log('Nombres de jugadores marcados:', markedPlayerNames);
   
-        // Buscar los IDs de los jugadores marcados por nombre
+        // Obtener los IDs de los jugadores marcados por nombre
         const eligiblePlayers = connectedPlayers
-          .filter(player => markedPlayerNames.includes(player.name))
+          .filter(player => {
+            // Marcar si el ID está en markedPlayerIds o si el nombre está en markedPlayerNames
+            const isMarkedById = markedPlayerIds.includes(player.id);
+            const isMarkedByName = markedPlayerNames.includes(player.name);
+            return isMarkedById || isMarkedByName;
+          })
           .map(player => player.id);
   
         console.log('Jugadores elegibles para marcar:', eligiblePlayers);
