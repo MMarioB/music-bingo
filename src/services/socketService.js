@@ -336,6 +336,32 @@ class GameWebSocket {
     this.socket.emit('updateRoom', data);
   }
 
+  async markPlayerCorrect(data) {
+    await this.ensureConnection();
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        reject(new Error('Timeout marking player'));
+      }, 5000);
+
+      const handlePlayerMarked = (response) => {
+        clearTimeout(timeout);
+        this.socket.off('error', handleError);
+        resolve(response);
+      };
+
+      const handleError = (error) => {
+        clearTimeout(timeout);
+        this.socket.off('playerMarked', handlePlayerMarked);
+        reject(error);
+      };
+
+      console.log('Marcando jugador:', data);
+      this.socket.emit('markPlayerCorrect', data);
+      this.socket.once('playerMarked', handlePlayerMarked);
+      this.socket.once('error', handleError);
+    });
+  }
+
   restoreEventHandlers() {
     if (!this.socket) return;
     this.eventHandlers.forEach((handler, event) => {

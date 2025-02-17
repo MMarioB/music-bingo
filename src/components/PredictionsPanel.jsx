@@ -2,41 +2,61 @@ import { useState } from 'react';
 import PropTypes from 'prop-types';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ScrollArea } from './ui/scroll-area';
-import { Music2Icon, Trophy, ChevronRight, ChevronLeft, ChevronDown } from 'lucide-react';
+import { Music2Icon, Trophy, ChevronRight, ChevronLeft, ChevronDown, Check } from 'lucide-react';
 import { Button } from './ui/button';
 
 const PredictionsPanel = ({ predictions, currentSong, songPlaying }) => {
     const [isExpanded, setIsExpanded] = useState(false);
     const [showFullHistory, setShowFullHistory] = useState(false);
+    const [markingEnabled, setMarkingEnabled] = useState(false);
+    const [markedCorrect, setMarkedCorrect] = useState({});
 
     // Calcular estadísticas
     const getPlayerStats = () => {
         if (!currentSong?.revealed) return null;
 
         return Object.entries(predictions).map(([player, preds]) => {
-            const lastPrediction = preds[preds.length - 1]?.toLowerCase() || '';
-            const correctTitle = currentSong.title.toLowerCase();
-            const correctArtist = currentSong.artist.toLowerCase();
-            const isCorrect = lastPrediction.includes(correctTitle) || lastPrediction.includes(correctArtist);
+            const isCorrect = markedCorrect[player] || false;
 
             return {
                 player,
                 predictions: preds,
                 isCorrect,
-                predictionCount: preds.length
+                predictionCount: preds.length,
+                lastPrediction: preds[preds.length - 1] || ''
             };
         }).sort((a, b) => b.isCorrect - a.isCorrect || b.predictionCount - a.predictionCount);
     };
 
     const stats = getPlayerStats();
 
+    const handleToggleCorrect = (player) => {
+        if (!markingEnabled) return;
+        setMarkedCorrect(prev => ({
+            ...prev,
+            [player]: !prev[player]
+        }));
+    };
+
     const renderPredictionsList = () => (
         <div>
-            <div className="flex items-center gap-2 mb-4">
-                <Music2Icon className="w-4 h-4 text-purple-300" />
-                <h4 className="text-sm font-semibold text-white/80">
-                    Últimas predicciones
-                </h4>
+            <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                    <Music2Icon className="w-4 h-4 text-purple-300" />
+                    <h4 className="text-sm font-semibold text-white/80">
+                        Predicciones actuales
+                    </h4>
+                </div>
+                {currentSong?.revealed && (
+                    <Button
+                        size="sm"
+                        variant={markingEnabled ? "destructive" : "default"}
+                        onClick={() => setMarkingEnabled(!markingEnabled)}
+                        className="text-xs"
+                    >
+                        {markingEnabled ? "Deshabilitar marcado" : "Habilitar marcado"}
+                    </Button>
+                )}
             </div>
             <div className="space-y-2">
                 {Object.entries(predictions).map(([player, preds]) => {
@@ -46,13 +66,27 @@ const PredictionsPanel = ({ predictions, currentSong, songPlaying }) => {
                             key={player}
                             initial={{ opacity: 0, x: -20 }}
                             animate={{ opacity: 1, x: 0 }}
-                            className="flex items-center justify-between bg-black/20 p-3 rounded-lg border border-white/10"
+                            className={`flex items-center justify-between p-3 rounded-lg border 
+                                ${markedCorrect[player] 
+                                    ? 'bg-green-500/20 border-green-500/30' 
+                                    : 'bg-black/20 border-white/10'}`}
                         >
                             <div className="flex items-center gap-3">
+                                {markingEnabled && (
+                                    <div
+                                        onClick={() => handleToggleCorrect(player)}
+                                        className={`w-5 h-5 rounded border flex items-center justify-center cursor-pointer
+                                            ${markedCorrect[player] 
+                                                ? 'bg-green-500 border-green-500' 
+                                                : 'border-white/50 hover:border-white/80'}`}
+                                    >
+                                        {markedCorrect[player] && <Check className="w-4 h-4 text-white" />}
+                                    </div>
+                                )}
                                 <span className="text-sm font-medium text-white/90">{player}</span>
                             </div>
-                            <div>
-                                <span className="text-sm text-purple-300">{lastPrediction}</span>
+                            <div className="text-sm text-purple-300">
+                                {lastPrediction}
                             </div>
                         </motion.div>
                     );
@@ -63,7 +97,6 @@ const PredictionsPanel = ({ predictions, currentSong, songPlaying }) => {
 
     return (
         <>
-            {/* Botón de toggle para móvil */}
             <Button
                 onClick={() => setIsExpanded(!isExpanded)}
                 className="fixed lg:hidden z-50 right-4 top-24 bg-purple-600/80 hover:bg-purple-600 text-white rounded-full p-2 shadow-lg"
@@ -71,7 +104,6 @@ const PredictionsPanel = ({ predictions, currentSong, songPlaying }) => {
                 {isExpanded ? <ChevronRight /> : <ChevronLeft />}
             </Button>
 
-            {/* Panel principal */}
             <motion.div
                 initial={{ opacity: 0, x: 300 }}
                 animate={{
@@ -81,8 +113,7 @@ const PredictionsPanel = ({ predictions, currentSong, songPlaying }) => {
                 }}
                 exit={{ opacity: 0, x: 300 }}
                 className={`fixed right-0 top-0 lg:top-24 bg-black/40 backdrop-blur-lg shadow-xl border-l border-white/10 overflow-hidden
-          ${isExpanded ? 'h-screen w-full' : 'lg:w-80 hidden lg:block'}
-        `}
+                    ${isExpanded ? 'h-screen w-full' : 'lg:w-80 hidden lg:block'}`}
             >
                 <div className="p-4 bg-black/60 border-b border-white/10">
                     <h3 className="text-lg font-semibold text-white flex items-center justify-between">
@@ -104,7 +135,6 @@ const PredictionsPanel = ({ predictions, currentSong, songPlaying }) => {
                 </div>
 
                 <ScrollArea className="h-[calc(100vh-120px)] lg:h-[calc(100vh-250px)] p-4">
-                    {/* Panel de Estadísticas */}
                     {stats && (
                         <div className="mb-6">
                             <h4 className="text-sm font-semibold text-white/80 mb-2 flex items-center gap-2">
@@ -112,22 +142,21 @@ const PredictionsPanel = ({ predictions, currentSong, songPlaying }) => {
                                 Resultados
                             </h4>
                             <div className="space-y-2">
-                                {stats.map(({ player, isCorrect, predictionCount }) => (
+                                {stats.map(({ player, isCorrect, lastPrediction }) => (
                                     <motion.div
                                         key={player}
                                         initial={{ opacity: 0, y: 20 }}
                                         animate={{ opacity: 1, y: 0 }}
-                                        className={`p-2 rounded-lg ${isCorrect
-                                            ? 'bg-green-500/20 border-green-500/30'
-                                            : 'bg-white/5 border-white/10'
-                                            } border`}
+                                        className={`p-2 rounded-lg ${
+                                            isCorrect
+                                                ? 'bg-green-500/20 border-green-500/30'
+                                                : 'bg-white/5 border-white/10'
+                                        } border`}
                                     >
                                         <div className="flex justify-between items-center">
                                             <span className="font-medium text-white">{player}</span>
                                             <div className="flex items-center gap-2">
-                                                <span className="text-xs text-white/60">
-                                                    {predictionCount} prediccion{predictionCount !== 1 ? 'es' : ''}
-                                                </span>
+                                                <span className="text-sm text-purple-300">{lastPrediction}</span>
                                                 {isCorrect && (
                                                     <span className="text-xs bg-green-500/30 text-green-300 px-2 py-1 rounded-full">
                                                         ¡Acierto!
@@ -141,7 +170,6 @@ const PredictionsPanel = ({ predictions, currentSong, songPlaying }) => {
                         </div>
                     )}
 
-                    {/* Predicciones en tiempo real */}
                     {songPlaying && (
                         <div className="space-y-4">
                             {renderPredictionsList()}
@@ -189,7 +217,6 @@ const PredictionsPanel = ({ predictions, currentSong, songPlaying }) => {
                         </div>
                     )}
 
-                    {/* Mensaje cuando no hay predicciones */}
                     {(!songPlaying && !stats) && (
                         <div className="text-center text-white/50 py-8">
                             No hay predicciones aún

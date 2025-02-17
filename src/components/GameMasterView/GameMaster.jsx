@@ -10,7 +10,8 @@ import {
   CalendarIcon,
   RefreshCwIcon,
   Users,
-  AlertCircle
+  AlertCircle,
+  Check
 } from 'lucide-react';
 import CategoryWheel from '../CategoryWheel';
 import PredictionsPanel from '../PredictionsPanel';
@@ -19,6 +20,7 @@ import { useGameMasterLogic } from './GameMasterLogic';
 
 const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
   const [markingEnabledThisRound, setMarkingEnabledThisRound] = useState(false);
+  const [playerCorrect, setPlayerCorrect] = useState({});
 
   const {
     currentCard,
@@ -70,6 +72,7 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
   const handleNewRound = useCallback(() => {
     console.log('Iniciando nueva ronda');
     setMarkingEnabledThisRound(false);
+    setPlayerCorrect({}); // Resetear los aciertos al iniciar nueva ronda
     startNewRound();
   }, [startNewRound]);
 
@@ -78,8 +81,18 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
     if (!currentCard) {
       console.log('Reseteando estado de marcado por nueva carta');
       setMarkingEnabledThisRound(false);
+      setPlayerCorrect({}); // Resetear los aciertos cuando cambia la carta
     }
   }, [currentCard]);
+
+  // Función para manejar el toggle de aciertos de jugadores
+  const handlePlayerCorrectToggle = (playerId) => {
+    if (!isMarkingEnabled) return;
+    setPlayerCorrect(prev => ({
+      ...prev,
+      [playerId]: !prev[playerId]
+    }));
+  };
 
   // Renderizado del contenido de la carta
   const renderCardContent = () => {
@@ -294,21 +307,56 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
 
           {connectedPlayers.length > 0 && (
             <div className="mt-6">
-              <h3 className="font-semibold text-lg text-white mb-3">
-                Jugadores Conectados
+              <h3 className="font-semibold text-lg text-white mb-3 flex items-center justify-between">
+                <span>Jugadores Conectados</span>
+                {currentCard?.revealed && (
+                  <span className="text-sm text-white/60">
+                    {isMarkingEnabled ? 'Marcado habilitado' : 'Esperando marcado'}
+                  </span>
+                )}
               </h3>
               <div className="bg-black/30 rounded-lg divide-y divide-white/10 border border-white/20">
                 {connectedPlayers.map((player) => (
                   <div
                     key={player.id}
-                    className="flex items-center justify-between p-3"
+                    className={`flex items-center justify-between p-3 transition-colors duration-200 ${playerCorrect[player.id] ? 'bg-green-500/20' : ''
+                      }`}
                   >
-                    <span className="font-medium text-white">{player.name}</span>
-                    {player.isHost && (
-                      <span className="text-xs bg-purple-500/30 text-purple-300 px-2 py-1 rounded-full border border-purple-400/50">
-                        Game Master
-                      </span>
-                    )}
+                    <div className="flex items-center gap-3">
+                      {currentCard?.revealed && (
+                        <div
+                          onClick={() => handlePlayerCorrectToggle(player.id)}
+                          className={`w-5 h-5 rounded border flex items-center justify-center transition-all duration-200 
+                            ${isMarkingEnabled ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'}
+                            ${playerCorrect[player.id]
+                              ? 'bg-green-500 border-green-500'
+                              : 'border-white/50 hover:border-white/80'}`}
+                        >
+                          {playerCorrect[player.id] && (
+                            <motion.div
+                              initial={{ scale: 0 }}
+                              animate={{ scale: 1 }}
+                              exit={{ scale: 0 }}
+                            >
+                              <Check className="w-4 h-4 text-white" />
+                            </motion.div>
+                          )}
+                        </div>
+                      )}
+                      <span className="font-medium text-white">{player.name}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {playerCorrect[player.id] && (
+                        <span className="text-xs bg-green-500/30 text-green-300 px-2 py-1 rounded-full">
+                          ¡Acierto!
+                        </span>
+                      )}
+                      {player.isHost && (
+                        <span className="text-xs bg-purple-500/30 text-purple-300 px-2 py-1 rounded-full border border-purple-400/50">
+                          Game Master
+                        </span>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -322,6 +370,7 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
         predictions={playerPredictions}
         currentSong={currentCard}
         songPlaying={songPlaying}
+        markedCorrect={playerCorrect}
       />
     </div>
   );
