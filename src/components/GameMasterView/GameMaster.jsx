@@ -92,10 +92,15 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
   // Función para manejar el toggle de aciertos de jugadores
   const handlePlayerCorrectToggle = (playerId) => {
     if (isMarkingEnabled) return; // Solo permitimos marcar antes de habilitar el marcado
-    setPlayerCorrect(prev => ({
-      ...prev,
-      [playerId]: !prev[playerId]
-    }));
+    
+    setPlayerCorrect(prev => {
+      const newState = {
+        ...prev,
+        [playerId]: !prev[playerId]
+      };
+      console.log('Estado de playerCorrect actualizado:', newState);
+      return newState;
+    });
   };
 
   // Renderizado del contenido de la carta

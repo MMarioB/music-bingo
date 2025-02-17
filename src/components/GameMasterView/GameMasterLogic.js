@@ -293,27 +293,33 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
   // Manejar marcado
   const handleMarkingToggle = useCallback(async () => {
     if (!loggedIn || !isTokenValid) return;
-
+  
     try {
       if (isMarkingEnabled) {
         await gameSocket.disableMarking({ roomCode });
         setIsMarkingEnabled(false);
       } else {
-        // Logs detallados para depuración
-        console.log('ConnectedPlayers actuales:', connectedPlayers);
-        console.log('Estado actual de playerCorrect:', playerCorrect);
-
-        // Obtener jugadores elegibles basándonos en los jugadores conectados
+        // Log detallado del estado actual
+        console.log('Estado completo de playerCorrect:', playerCorrect);
+        console.log('Jugadores conectados:', connectedPlayers);
+  
+        // Obtener jugadores elegibles basándose en los jugadores marcados como correctos
         const eligiblePlayers = connectedPlayers
-          .filter(player => playerCorrect[player.id])
+          .filter(player => {
+            const isPlayerCorrect = playerCorrect[player.id] === true;
+            console.log(`Jugador ${player.name} (${player.id}): correcto = ${isPlayerCorrect}`);
+            return isPlayerCorrect;
+          })
           .map(player => player.id);
-
-        console.log('Jugadores elegibles que se van a enviar:', eligiblePlayers);
-
+  
+        console.log('Jugadores elegibles para marcar:', eligiblePlayers);
+  
+        // Enviar jugadores elegibles
         await gameSocket.enableMarking({
           roomCode,
           eligiblePlayers
         });
+  
         setIsMarkingEnabled(true);
       }
     } catch (error) {
