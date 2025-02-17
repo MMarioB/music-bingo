@@ -300,10 +300,10 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
         setIsMarkingEnabled(false);
       } else {
         // Log detallado del estado actual
-        console.log('Estado completo de playerCorrect:', playerCorrect);
+        console.log('Estado completo de playerCorrect antes de habilitar:', playerCorrect);
         console.log('Jugadores conectados:', connectedPlayers);
   
-        // Obtener jugadores elegibles basándose en los jugadores marcados como correctos
+        // Obtener jugadores elegibles que están marcados como correctos
         const eligiblePlayers = connectedPlayers
           .filter(player => {
             const isPlayerCorrect = playerCorrect[player.id] === true;

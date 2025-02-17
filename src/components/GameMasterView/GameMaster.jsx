@@ -92,13 +92,24 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
   // Función para manejar el toggle de aciertos de jugadores
   const handlePlayerCorrectToggle = (playerId) => {
     if (isMarkingEnabled) return; // Solo permitimos marcar antes de habilitar el marcado
-    
+
     setPlayerCorrect(prev => {
+      // Asegúrate de que el valor booleano cambie correctamente
       const newState = {
         ...prev,
-        [playerId]: !prev[playerId]
+        [playerId]: prev[playerId] !== true  // Cambio clave aquí
       };
+
       console.log('Estado de playerCorrect actualizado:', newState);
+      console.log('Detalles de jugadores marcados:',
+        Object.entries(newState)
+          .filter(([_, isCorrect]) => isCorrect)
+          .map(([id]) => {
+            const player = connectedPlayers.find(p => p.id === id);
+            return player ? player.name : 'Jugador desconocido';
+          })
+      );
+
       return newState;
     });
   };
@@ -161,12 +172,12 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
               onClick={handleMarkingControl}
               disabled={!Object.values(playerCorrect).some(correct => correct) || (markingEnabledThisRound && !isMarkingEnabled)}
               className={`w-full h-12 transition-all duration-300 ${isMarkingEnabled
-                  ? 'bg-yellow-500/80 hover:bg-yellow-500 border-yellow-400'
-                  : markingEnabledThisRound
-                    ? 'bg-gray-500/50 border-gray-400 cursor-not-allowed'
-                    : Object.values(playerCorrect).some(correct => correct)
-                      ? 'bg-green-500/80 hover:bg-green-500 border-green-400'
-                      : 'bg-gray-500/50 border-gray-400 cursor-not-allowed'
+                ? 'bg-yellow-500/80 hover:bg-yellow-500 border-yellow-400'
+                : markingEnabledThisRound
+                  ? 'bg-gray-500/50 border-gray-400 cursor-not-allowed'
+                  : Object.values(playerCorrect).some(correct => correct)
+                    ? 'bg-green-500/80 hover:bg-green-500 border-green-400'
+                    : 'bg-gray-500/50 border-gray-400 cursor-not-allowed'
                 } border`}
               style={
                 !Object.values(playerCorrect).some(correct => correct) || markingEnabledThisRound || isMarkingEnabled
@@ -342,7 +353,7 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
                         <div
                           onClick={() => handlePlayerCorrectToggle(player.id)}
                           className={`w-5 h-5 rounded border flex items-center justify-center cursor-pointer
-                            ${playerCorrect[player.id]
+      ${playerCorrect[player.id]
                               ? 'bg-green-500 border-green-500' : 'border-white/50 hover:border-white/80'}`}
                         >
                           {playerCorrect[player.id] && (
