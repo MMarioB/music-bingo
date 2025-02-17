@@ -161,7 +161,7 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
   // Manejo de click en casillas
   const handleCellClick = useCallback((index, isUnmarking = false) => {
     if (!canMark && !isUnmarking) return;
-    if (!isEligibleToMark) return;
+    if (!isEligibleToMark && !isUnmarking) return;
 
     setBoard(prev => {
       const newBoard = [...prev];
@@ -199,6 +199,7 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
     gameSocket.off('markingDisabled');
     gameSocket.off('gameStarted');
     gameSocket.off('gameStartFailed');
+    gameSocket.off('playerMarked');
     gameSocket.off('error');
   }, []);
 
@@ -252,6 +253,17 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
         setCanMark(false);
         setIsEligibleToMark(false);
       },
+      playerMarked: ({ playerId, isCorrect }) => {
+        // Encontrar el jugador actual en la lista de conectados
+        const currentPlayer = connectedPlayers.find(p => p.name === playerName);
+        if (currentPlayer && currentPlayer.id === playerId) {
+          console.log(`Jugador ${playerName} marcado como: ${isCorrect ? 'correcto' : 'incorrecto'}`);
+          setIsEligibleToMark(isCorrect);
+          if (!isCorrect) {
+            setCanMark(false);
+          }
+        }
+      },
       gameStarted: () => {
         setGamePhase('playing');
         if (board.length === 0) {
@@ -279,7 +291,7 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
         gameSocket.off(event);
       });
     };
-  }, [joinGame, playerName]);
+  }, [joinGame, playerName, connectedPlayers, generateValidBoard, board.length]);
 
   return {
     board,
