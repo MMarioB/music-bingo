@@ -19,7 +19,16 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
   const [playerPredictions, setPlayerPredictions] = useState({});
   const [playerCorrect, setPlayerCorrect] = useState({});
 
-  // Verificar estado de autenticación al inicio y cuando cambie el token
+  // Inicializar playerCorrect cuando cambian los jugadores conectados
+  useEffect(() => {
+    const initialPlayerCorrect = connectedPlayers.reduce((acc, player) => {
+      acc[player.id] = false;
+      return acc;
+    }, {});
+    setPlayerCorrect(initialPlayerCorrect);
+  }, [connectedPlayers]);
+
+  // Verificar estado de autenticación
   useEffect(() => {
     const checkAuthState = () => {
       if (!token) {
@@ -310,9 +319,9 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
         console.log('Jugadores conectados:', connectedPlayers);
 
         // Obtener IDs de jugadores marcados como correctos
-        const eligiblePlayers = connectedPlayers
-          .filter(player => playerCorrect[player.id] === true)
-          .map(player => player.id);
+        const eligiblePlayers = Object.entries(playerCorrect)
+          .filter(([, isCorrect]) => isCorrect === true)
+          .map(([playerId]) => playerId);
 
         console.log('Jugadores elegibles a enviar:', eligiblePlayers);
         
@@ -324,18 +333,28 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
 
         if (eligiblePlayers.length === 0) {
           console.log('⚠️ Advertencia: No hay jugadores elegibles para marcar');
+          return;
+        }
+
+        // Validar que los IDs existen en connectedPlayers
+        const validEligiblePlayers = eligiblePlayers.filter(id => 
+          connectedPlayers.some(player => player.id === id)
+        );
+
+        if (validEligiblePlayers.length === 0) {
+          console.log('⚠️ Error: Ninguno de los jugadores elegibles está conectado');
+          setConnectionError('Error: No hay jugadores válidos para marcar');
+          return;
         }
 
         // Enviar al servidor
-        const response = await gameSocket.enableMarking({ 
+        await gameSocket.enableMarking({ 
           roomCode,
-          eligiblePlayers 
+          eligiblePlayers: validEligiblePlayers 
         });
 
         setIsMarkingEnabled(true);
-
-        // Log de respuesta del servidor
-        console.log('Respuesta del servidor al habilitar marcado:', response);
+        console.log('Marcado habilitado exitosamente para:', validEligiblePlayers);
       }
     } catch (error) {
       console.error('Error al cambiar estado de marcado:', error);
