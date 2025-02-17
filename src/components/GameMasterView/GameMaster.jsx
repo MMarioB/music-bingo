@@ -10,14 +10,17 @@ import {
   CalendarIcon,
   RefreshCwIcon,
   Users,
-  AlertCircle
+  AlertCircle,
+  Check
 } from 'lucide-react';
 import CategoryWheel from '../CategoryWheel';
+import PredictionsPanel from '../PredictionsPanel';
 import PropTypes from 'prop-types';
 import { useGameMasterLogic } from './GameMasterLogic';
 
 const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
   const [markingEnabledThisRound, setMarkingEnabledThisRound] = useState(false);
+  const [localPlayerCorrect, setLocalPlayerCorrect] = useState({}); // Cambiado el nombre
 
   const {
     currentCard,
@@ -29,12 +32,16 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
     connectionError,
     setConnectionError,
     isMarkingEnabled,
+    playerPredictions,
+    songPlaying,
+    handlePlayerCorrectToggle,
     handleDifficultyChange,
     handleCategorySelected,
     generateNewCard,
     handleRevealSong,
     handleMarkingToggle,
-    startNewRound
+    startNewRound,
+    playerCorrect  // Estado del hook
   } = useGameMasterLogic({ roomCode, initialDifficulty });
 
   // Efecto para auto-dismiss del error de conexión
@@ -55,13 +62,17 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
         console.log('Marcado ya utilizado en esta ronda');
         return;
       }
+      if (!Object.values(localPlayerCorrect).some(correct => correct)) {
+        console.log('No hay jugadores marcados como correctos');
+        return;
+      }
       console.log('Habilitando marcado por primera vez en esta ronda');
       setMarkingEnabledThisRound(true);
     } else {
       console.log('Deshabilitando marcado');
     }
     handleMarkingToggle();
-  }, [isMarkingEnabled, markingEnabledThisRound, handleMarkingToggle]);
+  }, [isMarkingEnabled, markingEnabledThisRound, handleMarkingToggle, localPlayerCorrect]);
 
   // Manejo de nueva ronda
   const handleNewRound = useCallback(() => {
@@ -77,6 +88,34 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
       setMarkingEnabledThisRound(false);
     }
   }, [currentCard]);
+
+  // Función para manejar el toggle de aciertos de jugadores
+  const handleLocalPlayerToggle = async (playerId) => {
+    if (isMarkingEnabled) return;
+
+    // Primero actualizamos el estado local
+    setLocalPlayerCorrect(prev => {
+      const newState = {
+        ...prev,
+        [playerId]: !prev[playerId]
+      };
+      console.log('Nuevo estado local:', newState);
+      return newState;
+    });
+
+    // Luego comunicamos con el servidor
+    try {
+      await handlePlayerCorrectToggle(playerId);
+      console.log(`Jugador ${playerId} marcado en el servidor`);
+    } catch (error) {
+      console.error('Error al marcar jugador:', error);
+      // Revertir el estado local si hay error
+      setLocalPlayerCorrect(prev => ({
+        ...prev,
+        [playerId]: !prev[playerId]
+      }));
+    }
+  };
 
   // Renderizado del contenido de la carta
   const renderCardContent = () => {
@@ -134,24 +173,28 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
           <div className="space-y-2">
             <Button
               onClick={handleMarkingControl}
-              disabled={markingEnabledThisRound && !isMarkingEnabled}
+              disabled={!Object.values(playerCorrect).some(correct => correct) || (markingEnabledThisRound && !isMarkingEnabled)}
               className={`w-full h-12 transition-all duration-300 ${isMarkingEnabled
-                  ? 'bg-yellow-500/80 hover:bg-yellow-500 border-yellow-400'
-                  : markingEnabledThisRound && !isMarkingEnabled
-                    ? 'bg-gray-500/50 border-gray-400 cursor-not-allowed'
-                    : 'bg-green-500/80 hover:bg-green-500 border-green-400'
+                ? 'bg-yellow-500/80 hover:bg-yellow-500 border-yellow-400'
+                : markingEnabledThisRound
+                  ? 'bg-gray-500/50 border-gray-400 cursor-not-allowed'
+                  : Object.values(playerCorrect).some(correct => correct)
+                    ? 'bg-green-500/80 hover:bg-green-500 border-green-400'
+                    : 'bg-gray-500/50 border-gray-400 cursor-not-allowed'
                 } border`}
               style={
-                !markingEnabledThisRound || isMarkingEnabled
-                  ? { boxShadow: '0 0 15px rgba(34,197,94,0.3)' }
-                  : {}
+                !Object.values(playerCorrect).some(correct => correct) || markingEnabledThisRound || isMarkingEnabled
+                  ? {}
+                  : { boxShadow: '0 0 15px rgba(34,197,94,0.3)' }
               }
             >
               {isMarkingEnabled
                 ? 'Deshabilitar Marcado'
                 : markingEnabledThisRound
                   ? 'Marcado Ya Utilizado'
-                  : 'Habilitar Marcado'
+                  : Object.values(playerCorrect).some(correct => correct)
+                    ? 'Habilitar Marcado'
+                    : 'Marca jugadores primero'
               }
             </Button>
 
@@ -291,21 +334,57 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
 
           {connectedPlayers.length > 0 && (
             <div className="mt-6">
-              <h3 className="font-semibold text-lg text-white mb-3">
-                Jugadores Conectados
+              <h3 className="font-semibold text-lg text-white mb-3 flex items-center justify-between">
+                <span>Jugadores Conectados</span>
+                {currentCard?.revealed && (
+                  <span className="text-sm text-white/60">
+                    {isMarkingEnabled
+                      ? 'Marcado habilitado para jugadores con acierto'
+                      : 'Marca los jugadores que acertaron'}
+                  </span>
+                )}
               </h3>
               <div className="bg-black/30 rounded-lg divide-y divide-white/10 border border-white/20">
                 {connectedPlayers.map((player) => (
                   <div
                     key={player.id}
-                    className="flex items-center justify-between p-3"
+                    className={`flex items-center justify-between p-3 transition-colors duration-200 ${playerCorrect[player.id] ? 'bg-green-500/20' : ''
+                      }`}
                   >
-                    <span className="font-medium text-white">{player.name}</span>
-                    {player.isHost && (
-                      <span className="text-xs bg-purple-500/30 text-purple-300 px-2 py-1 rounded-full border border-purple-400/50">
-                        Game Master
-                      </span>
-                    )}
+                    <div className="flex items-center gap-3">
+                      {currentCard?.revealed && !isMarkingEnabled && (
+                        <div
+                          onClick={() => handleLocalPlayerToggle(player.id)}
+                          className={`w-5 h-5 rounded border flex items-center justify-center cursor-pointer
+      ${localPlayerCorrect[player.id]
+                              ? 'bg-green-500 border-green-500'
+                              : 'border-white/50 hover:border-white/80'}`}
+                        >
+                          {localPlayerCorrect[player.id] && (
+                            <motion.div
+                              initial={{ scale: 0 }}
+                              animate={{ scale: 1 }}
+                              exit={{ scale: 0 }}
+                            >
+                              <Check className="w-4 h-4 text-white" />
+                            </motion.div>
+                          )}
+                        </div>
+                      )}
+                      <span className="font-medium text-white">{player.name}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {playerCorrect[player.id] && (
+                        <span className="text-xs bg-green-500/30 text-green-300 px-2 py-1 rounded-full">
+                          ¡Acierto!
+                        </span>
+                      )}
+                      {player.isHost && (
+                        <span className="text-xs bg-purple-500/30 text-purple-300 px-2 py-1 rounded-full border border-purple-400/50">
+                          Game Master
+                        </span>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -313,6 +392,14 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
           )}
         </div>
       </div>
+
+      {/* Panel de predicciones */}
+      <PredictionsPanel
+        predictions={playerPredictions}
+        currentSong={currentCard}
+        songPlaying={songPlaying}
+        markedCorrect={playerCorrect}
+      />
     </div>
   );
 };
