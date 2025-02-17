@@ -2,8 +2,27 @@ import { useState } from 'react';
 import { ChevronLeft, Music2, Trophy, Check, X } from 'lucide-react';
 import PropTypes from 'prop-types';
 
-const PredictionsPanel = ({ predictions = [], results = [], onClose }) => {
+const PredictionsPanel = ({ 
+    predictions, 
+    currentSong, 
+    markedCorrect,
+    onClose 
+}) => {
     const [activeTab, setActiveTab] = useState('predictions');
+
+    // Convertir las predicciones del objeto a array
+    const predictionsList = Object.entries(predictions).reduce((acc, [playerName, playerPredictions]) => {
+        return [...acc, ...playerPredictions.map(pred => ({
+            player: playerName,
+            prediction: pred
+        }))];
+    }, []);
+
+    // Crear lista de resultados cuando la canción está revelada
+    const resultsList = currentSong?.revealed ? predictionsList.map(pred => ({
+        ...pred,
+        correct: markedCorrect[pred.player] || false
+    })) : [];
 
     return (
         <div className="fixed bottom-4 left-4 right-4 bg-black/80 backdrop-blur-lg rounded-2xl border border-white/10 overflow-hidden shadow-xl">
@@ -31,7 +50,7 @@ const PredictionsPanel = ({ predictions = [], results = [], onClose }) => {
             <div className="max-h-64 overflow-y-auto">
                 {activeTab === 'predictions' ? (
                     <div className="p-4 space-y-3">
-                        {predictions.map((prediction, index) => (
+                        {predictionsList.map((item, index) => (
                             <div
                                 key={index}
                                 className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/10"
@@ -39,10 +58,13 @@ const PredictionsPanel = ({ predictions = [], results = [], onClose }) => {
                                 <div className="w-8 h-8 flex items-center justify-center rounded-full bg-purple-500/20 text-purple-300 text-sm">
                                     {index + 1}
                                 </div>
-                                <span className="flex-1 text-white font-medium">{prediction}</span>
+                                <div className="flex-1">
+                                    <span className="text-white font-medium">{item.prediction}</span>
+                                    <div className="text-xs text-purple-300 mt-1">{item.player}</div>
+                                </div>
                             </div>
                         ))}
-                        {predictions.length === 0 && (
+                        {predictionsList.length === 0 && (
                             <div className="text-center text-white/60 py-8">
                                 No hay predicciones aún
                             </div>
@@ -50,7 +72,7 @@ const PredictionsPanel = ({ predictions = [], results = [], onClose }) => {
                     </div>
                 ) : (
                     <div className="p-4 space-y-3">
-                        {results.map((result, index) => (
+                        {resultsList.map((result, index) => (
                             <div
                                 key={index}
                                 className={`flex items-center gap-3 p-3 rounded-xl border 
@@ -63,12 +85,18 @@ const PredictionsPanel = ({ predictions = [], results = [], onClose }) => {
                                 ) : (
                                     <X className="w-5 h-5 text-red-400" />
                                 )}
-                                <span className="flex-1 font-medium">{result.prediction}</span>
+                                <div className="flex-1">
+                                    <span className="font-medium">{result.prediction}</span>
+                                    <div className="text-xs mt-1 opacity-75">{result.player}</div>
+                                </div>
                             </div>
                         ))}
-                        {results.length === 0 && (
+                        {resultsList.length === 0 && (
                             <div className="text-center text-white/60 py-8">
-                                Aún no hay resultados
+                                {currentSong?.revealed 
+                                    ? 'No hubo predicciones'
+                                    : 'Aún no se ha revelado la canción'
+                                }
                             </div>
                         )}
                     </div>
@@ -86,8 +114,8 @@ const PredictionsPanel = ({ predictions = [], results = [], onClose }) => {
                 </button>
                 <div className="text-sm text-white/60">
                     {activeTab === 'predictions' ?
-                        `${predictions.length} predicciones` :
-                        `${results.length} resultados`}
+                        `${predictionsList.length} predicciones` :
+                        `${resultsList.length} resultados`}
                 </div>
             </div>
         </div>
@@ -95,19 +123,24 @@ const PredictionsPanel = ({ predictions = [], results = [], onClose }) => {
 };
 
 PredictionsPanel.propTypes = {
-    predictions: PropTypes.arrayOf(PropTypes.string),
-    results: PropTypes.arrayOf(
-        PropTypes.shape({
-            prediction: PropTypes.string.isRequired,
-            correct: PropTypes.bool.isRequired
-        })
-    ),
-    onClose: PropTypes.func.isRequired
+    predictions: PropTypes.object,
+    currentSong: PropTypes.shape({
+        revealed: PropTypes.bool,
+        title: PropTypes.string,
+        artist: PropTypes.string,
+        year: PropTypes.number
+    }),
+    songPlaying: PropTypes.bool,
+    markedCorrect: PropTypes.object,
+    onClose: PropTypes.func
 };
 
 PredictionsPanel.defaultProps = {
-    predictions: [],
-    results: []
+    predictions: {},
+    currentSong: null,
+    songPlaying: false,
+    markedCorrect: {},
+    onClose: () => {}
 };
 
 export default PredictionsPanel;
