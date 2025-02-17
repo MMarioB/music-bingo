@@ -96,16 +96,6 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
       console.log('Jugador marcado:', player ? player.name : 'Jugador desconocido');
       console.log('Estado completo de playerCorrect:', newState);
       
-      // Log detallado de jugadores marcados
-      const markedPlayers = Object.entries(newState)
-        .filter(([, isCorrect]) => isCorrect)
-        .map(([id]) => {
-          const markedPlayer = connectedPlayers.find(p => p.id === id);
-          return markedPlayer ? markedPlayer.name : 'Jugador desconocido';
-        });
-      
-      console.log('Nombres de jugadores marcados:', markedPlayers);
-      
       return newState;
     });
   };
@@ -301,32 +291,23 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
         await gameSocket.disableMarking({ roomCode });
         setIsMarkingEnabled(false);
       } else {
-        // Log detallado del estado actual
         console.log('Estado completo de playerCorrect antes de habilitar:', playerCorrect);
         console.log('Jugadores conectados:', connectedPlayers);
   
-        // Obtener los IDs de jugadores marcados
-        const markedPlayerIds = Object.entries(playerCorrect)
-          .filter(([, isCorrect]) => isCorrect)
-          .map(([playerId]) => playerId);
-  
-        console.log('IDs de jugadores marcados:', markedPlayerIds);
-  
         // Obtener los nombres de los jugadores marcados
-        const markedPlayerNames = markedPlayerIds
-          .map(id => connectedPlayers.find(p => p.id === id)?.name)
+        const markedPlayerNames = Object.entries(playerCorrect)
+          .filter(([, isCorrect]) => isCorrect)
+          .map(([playerId]) => {
+            const player = connectedPlayers.find(p => p.id === playerId);
+            return player ? player.name : null;
+          })
           .filter(Boolean);
   
         console.log('Nombres de jugadores marcados:', markedPlayerNames);
   
         // Obtener los IDs de los jugadores marcados por nombre
         const eligiblePlayers = connectedPlayers
-          .filter(player => {
-            // Marcar si el ID está en markedPlayerIds o si el nombre está en markedPlayerNames
-            const isMarkedById = markedPlayerIds.includes(player.id);
-            const isMarkedByName = markedPlayerNames.includes(player.name);
-            return isMarkedById || isMarkedByName;
-          })
+          .filter(player => markedPlayerNames.includes(player.name))
           .map(player => player.id);
   
         console.log('Jugadores elegibles para marcar:', eligiblePlayers);
