@@ -103,7 +103,7 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
       console.log('Estado de playerCorrect actualizado:', newState);
       console.log('Detalles de jugadores marcados:',
         Object.entries(newState)
-          .filter(([_, isCorrect]) => isCorrect)
+          .filter(([, isCorrect]) => isCorrect)
           .map(([id]) => {
             const player = connectedPlayers.find(p => p.id === id);
             return player ? player.name : 'Jugador desconocido';

@@ -80,33 +80,29 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
   }, []);
 
   // Manejar toggle de aciertos
-  const handlePlayerCorrectToggle = useCallback(async (playerId) => {
-    if (!loggedIn || !isTokenValid) return;
-
-    try {
-      const newCorrectState = !playerCorrect[playerId];
-      const player = connectedPlayers.find(p => p.id === playerId);
-      console.log('Marcando jugador:', player?.name, '(ID:', playerId, ') como:', newCorrectState);
-
-      await gameSocket.markPlayerCorrect({
-        roomCode,
-        playerId,
-        isCorrect: newCorrectState
-      });
-
-      setPlayerCorrect(prev => {
-        const newState = {
-          ...prev,
-          [playerId]: newCorrectState
-        };
-        console.log('Nuevo estado de playerCorrect:', newState);
-        return newState;
-      });
-    } catch (error) {
-      console.error('Error al marcar jugador:', error);
-      setConnectionError('Error al marcar el acierto del jugador');
-    }
-  }, [roomCode, loggedIn, isTokenValid, playerCorrect, connectedPlayers]);
+  const handlePlayerCorrectToggle = (playerId) => {
+    if (isMarkingEnabled) return; // Solo permitimos marcar antes de habilitar el marcado
+    
+    setPlayerCorrect(prev => {
+      // Asegurarnos de que el valor sea un booleano explícito
+      const newState = {
+        ...prev,
+        [playerId]: prev[playerId] ? false : true
+      };
+      
+      console.log('Estado de playerCorrect actualizado:', newState);
+      console.log('Detalles de jugadores marcados:', 
+        Object.entries(newState)
+          .filter(([, isCorrect]) => isCorrect)
+          .map(([id]) => {
+            const player = connectedPlayers.find(p => p.id === id);
+            return player ? player.name : 'Jugador desconocido';
+          })
+      );
+      
+      return newState;
+    });
+  };
 
   // Efecto para eventos del socket
   useEffect(() => {
@@ -303,10 +299,12 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
         console.log('Estado completo de playerCorrect antes de habilitar:', playerCorrect);
         console.log('Jugadores conectados:', connectedPlayers);
   
-        // Obtener jugadores elegibles que están marcados como correctos
+        // Obtener jugadores elegibles basándose en los jugadores marcados como correctos
         const eligiblePlayers = connectedPlayers
           .filter(player => {
-            const isPlayerCorrect = playerCorrect[player.id] === true;
+            // Cambiamos la comparación para manejar diferentes formas de representación booleana
+            const isPlayerCorrect = playerCorrect[player.id] === true || 
+                                     playerCorrect[player.id] === 'true';
             console.log(`Jugador ${player.name} (${player.id}): correcto = ${isPlayerCorrect}`);
             return isPlayerCorrect;
           })
