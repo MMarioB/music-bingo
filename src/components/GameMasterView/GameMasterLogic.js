@@ -285,7 +285,7 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
         setIsMarkingEnabled(false);
       } else {
         const eligiblePlayers = Object.keys(playerCorrect).filter(id => playerCorrect[id]);
-  
+        console.log('Jugadores elegibles al habilitar marcado:', eligiblePlayers);
         await gameSocket.enableMarking({ 
           roomCode,
           eligiblePlayers 
