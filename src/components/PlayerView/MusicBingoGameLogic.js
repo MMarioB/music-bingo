@@ -268,7 +268,7 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
       });
       gameSocket.disconnect();
     };
-  }, [joinGame, generateValidBoard, board.length, connectedPlayers, playerName]);
+  }, [joinGame, generateValidBoard, board.length]);
 
   return {
     board,
