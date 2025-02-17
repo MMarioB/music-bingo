@@ -80,25 +80,39 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
   }, []);
 
   // Manejar toggle de aciertos
-  const handlePlayerCorrectToggle = (playerId) => {
-    if (isMarkingEnabled) return; // Solo permitimos marcar antes de habilitar el marcado
-    
-    setPlayerCorrect(prev => {
-      // Encontrar el jugador por ID
+  const handlePlayerCorrectToggle = useCallback(async (playerId) => {
+    if (!loggedIn || !isTokenValid) return;
+
+    try {
+      // Obtener el estado actual del jugador
+      const newCorrectState = !playerCorrect[playerId];
+      
+      // Encontrar el jugador por ID para logging
       const player = connectedPlayers.find(p => p.id === playerId);
-      
-      // Crear nuevo estado de correcto
-      const newState = {
-        ...prev,
-        [playerId]: prev[playerId] ? false : true
-      };
-      
-      console.log('Jugador marcado:', player ? player.name : 'Jugador desconocido');
-      console.log('Estado completo de playerCorrect:', newState);
-      
-      return newState;
-    });
-  };
+      console.log('Marcando jugador:', player?.name, '(ID:', playerId, ') como:', newCorrectState);
+
+      // Primero intentamos la comunicación con el servidor
+      await gameSocket.markPlayerCorrect({
+        roomCode,
+        playerId,
+        isCorrect: newCorrectState
+      });
+
+      // Si la comunicación fue exitosa, actualizamos el estado local
+      setPlayerCorrect(prev => {
+        const newState = {
+          ...prev,
+          [playerId]: newCorrectState
+        };
+        console.log('Nuevo estado de playerCorrect:', newState);
+        return newState;
+      });
+
+    } catch (error) {
+      console.error('Error al marcar jugador:', error);
+      setConnectionError('Error al marcar el acierto del jugador');
+    }
+  }, [roomCode, loggedIn, isTokenValid, playerCorrect, connectedPlayers]);
 
   // Efecto para eventos del socket
   useEffect(() => {
@@ -285,40 +299,43 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
   // Manejar marcado
   const handleMarkingToggle = useCallback(async () => {
     if (!loggedIn || !isTokenValid) return;
-  
+
     try {
       if (isMarkingEnabled) {
         await gameSocket.disableMarking({ roomCode });
         setIsMarkingEnabled(false);
       } else {
-        console.log('Estado completo de playerCorrect antes de habilitar:', playerCorrect);
+        // Log del estado actual
+        console.log('Estado actual de playerCorrect:', playerCorrect);
         console.log('Jugadores conectados:', connectedPlayers);
-  
-        // Obtener los nombres de los jugadores marcados
-        const markedPlayerNames = Object.entries(playerCorrect)
-          .filter(([, isCorrect]) => isCorrect)
-          .map(([playerId]) => {
-            const player = connectedPlayers.find(p => p.id === playerId);
-            return player ? player.name : null;
-          })
-          .filter(Boolean);
-  
-        console.log('Nombres de jugadores marcados:', markedPlayerNames);
-  
-        // Obtener los IDs de los jugadores marcados por nombre
+
+        // Obtener IDs de jugadores marcados como correctos
         const eligiblePlayers = connectedPlayers
-          .filter(player => markedPlayerNames.includes(player.name))
+          .filter(player => playerCorrect[player.id] === true)
           .map(player => player.id);
-  
-        console.log('Jugadores elegibles para marcar:', eligiblePlayers);
-  
-        // Enviar jugadores elegibles
-        await gameSocket.enableMarking({
-          roomCode,
-          eligiblePlayers
+
+        console.log('Jugadores elegibles a enviar:', eligiblePlayers);
+        
+        // Log de detalle de cada jugador elegible
+        eligiblePlayers.forEach(id => {
+          const player = connectedPlayers.find(p => p.id === id);
+          console.log(`Jugador elegible: ${player?.name} (ID: ${id})`);
         });
-  
+
+        if (eligiblePlayers.length === 0) {
+          console.log('⚠️ Advertencia: No hay jugadores elegibles para marcar');
+        }
+
+        // Enviar al servidor
+        const response = await gameSocket.enableMarking({ 
+          roomCode,
+          eligiblePlayers 
+        });
+
         setIsMarkingEnabled(true);
+
+        // Log de respuesta del servidor
+        console.log('Respuesta del servidor al habilitar marcado:', response);
       }
     } catch (error) {
       console.error('Error al cambiar estado de marcado:', error);

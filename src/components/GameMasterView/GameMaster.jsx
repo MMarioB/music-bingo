@@ -20,7 +20,7 @@ import { useGameMasterLogic } from './GameMasterLogic';
 
 const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
   const [markingEnabledThisRound, setMarkingEnabledThisRound] = useState(false);
-  const [playerCorrect, setPlayerCorrect] = useState({});
+  const [localPlayerCorrect, setLocalPlayerCorrect] = useState({}); // Cambiado el nombre
 
   const {
     currentCard,
@@ -34,12 +34,14 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
     isMarkingEnabled,
     playerPredictions,
     songPlaying,
+    handlePlayerCorrectToggle,
     handleDifficultyChange,
     handleCategorySelected,
     generateNewCard,
     handleRevealSong,
     handleMarkingToggle,
-    startNewRound
+    startNewRound,
+    playerCorrect  // Estado del hook
   } = useGameMasterLogic({ roomCode, initialDifficulty });
 
   // Efecto para auto-dismiss del error de conexión
@@ -60,7 +62,7 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
         console.log('Marcado ya utilizado en esta ronda');
         return;
       }
-      if (!Object.values(playerCorrect).some(correct => correct)) {
+      if (!Object.values(localPlayerCorrect).some(correct => correct)) {
         console.log('No hay jugadores marcados como correctos');
         return;
       }
@@ -70,13 +72,12 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
       console.log('Deshabilitando marcado');
     }
     handleMarkingToggle();
-  }, [isMarkingEnabled, markingEnabledThisRound, handleMarkingToggle, playerCorrect]);
+  }, [isMarkingEnabled, markingEnabledThisRound, handleMarkingToggle, localPlayerCorrect]);
 
   // Manejo de nueva ronda
   const handleNewRound = useCallback(() => {
     console.log('Iniciando nueva ronda');
     setMarkingEnabledThisRound(false);
-    setPlayerCorrect({}); // Resetear los aciertos al iniciar nueva ronda
     startNewRound();
   }, [startNewRound]);
 
@@ -85,33 +86,35 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
     if (!currentCard) {
       console.log('Reseteando estado de marcado por nueva carta');
       setMarkingEnabledThisRound(false);
-      setPlayerCorrect({}); // Resetear los aciertos cuando cambia la carta
     }
   }, [currentCard]);
 
   // Función para manejar el toggle de aciertos de jugadores
-  const handlePlayerCorrectToggle = (playerId) => {
-    if (isMarkingEnabled) return; // Solo permitimos marcar antes de habilitar el marcado
+  const handleLocalPlayerToggle = async (playerId) => {
+    if (isMarkingEnabled) return;
 
-    setPlayerCorrect(prev => {
-      // Asegúrate de que el valor booleano cambie correctamente
+    // Primero actualizamos el estado local
+    setLocalPlayerCorrect(prev => {
       const newState = {
         ...prev,
-        [playerId]: prev[playerId] !== true  // Cambio clave aquí
+        [playerId]: !prev[playerId]
       };
-
-      console.log('Estado de playerCorrect actualizado:', newState);
-      console.log('Detalles de jugadores marcados:',
-        Object.entries(newState)
-          .filter(([, isCorrect]) => isCorrect)
-          .map(([id]) => {
-            const player = connectedPlayers.find(p => p.id === id);
-            return player ? player.name : 'Jugador desconocido';
-          })
-      );
-
+      console.log('Nuevo estado local:', newState);
       return newState;
     });
+
+    // Luego comunicamos con el servidor
+    try {
+      await handlePlayerCorrectToggle(playerId);
+      console.log(`Jugador ${playerId} marcado en el servidor`);
+    } catch (error) {
+      console.error('Error al marcar jugador:', error);
+      // Revertir el estado local si hay error
+      setLocalPlayerCorrect(prev => ({
+        ...prev,
+        [playerId]: !prev[playerId]
+      }));
+    }
   };
 
   // Renderizado del contenido de la carta
@@ -351,12 +354,13 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
                     <div className="flex items-center gap-3">
                       {currentCard?.revealed && !isMarkingEnabled && (
                         <div
-                          onClick={() => handlePlayerCorrectToggle(player.id)}
+                          onClick={() => handleLocalPlayerToggle(player.id)}
                           className={`w-5 h-5 rounded border flex items-center justify-center cursor-pointer
-      ${playerCorrect[player.id]
-                              ? 'bg-green-500 border-green-500' : 'border-white/50 hover:border-white/80'}`}
+      ${localPlayerCorrect[player.id]
+                              ? 'bg-green-500 border-green-500'
+                              : 'border-white/50 hover:border-white/80'}`}
                         >
-                          {playerCorrect[player.id] && (
+                          {localPlayerCorrect[player.id] && (
                             <motion.div
                               initial={{ scale: 0 }}
                               animate={{ scale: 1 }}
