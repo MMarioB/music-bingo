@@ -137,29 +137,26 @@ class GameWebSocket {
 
   async joinRoom(roomCode, playerInfo) {
     await this.ensureConnection();
-
+  
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
         reject(new Error('Timeout joining room'));
       }, 10000);
-
+  
       const handleRoomJoined = (roomInfo) => {
         clearTimeout(timeout);
         this.socket.off('error', handleError);
         
-        if (roomInfo.isReconnecting && roomInfo.phase === 'playing') {
-          this.setPlayerReady(roomCode).catch(console.error);
-        }
-        
+        // Eliminé la condición de reconexión temporal
         resolve(roomInfo);
       };
-
+  
       const handleError = (error) => {
         clearTimeout(timeout);
         this.socket.off('roomJoined', handleRoomJoined);
         reject(error);
       };
-
+  
       console.log('Intentando unirse a sala:', roomCode, playerInfo);
       this.socket.emit('joinRoom', { roomCode, ...playerInfo });
       this.socket.once('roomJoined', handleRoomJoined);
