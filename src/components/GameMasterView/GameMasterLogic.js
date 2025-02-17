@@ -54,7 +54,7 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
     try {
       console.log('Iniciando sala:', roomCode);
       await gameSocket.connect();
-      
+
       const roomResponse = await gameSocket.createRoom({
         roomCode,
         difficulty,
@@ -85,7 +85,8 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
 
     try {
       const newCorrectState = !playerCorrect[playerId];
-      console.log('Marcando jugador:', playerId, 'como:', newCorrectState);
+      const player = connectedPlayers.find(p => p.id === playerId);
+      console.log('Marcando jugador:', player?.name, '(ID:', playerId, ') como:', newCorrectState);
 
       await gameSocket.markPlayerCorrect({
         roomCode,
@@ -105,7 +106,7 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
       console.error('Error al marcar jugador:', error);
       setConnectionError('Error al marcar el acierto del jugador');
     }
-  }, [roomCode, loggedIn, isTokenValid, playerCorrect]);
+  }, [roomCode, loggedIn, isTokenValid, playerCorrect, connectedPlayers]);
 
   // Efecto para eventos del socket
   useEffect(() => {
@@ -122,6 +123,7 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
 
     const handlers = {
       playersUpdate: ({ players }) => {
+        console.log('Actualización de jugadores recibida:', players);
         setConnectedPlayers(players);
         checkAllPlayersReady(players);
       },
@@ -247,11 +249,11 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
       };
 
       setCurrentCard(newCard);
-      
+
       await gameSocket.startSong({ roomCode });
       setSongPlaying(true);
       setPlayerCorrect({});
-      
+
     } catch (error) {
       console.error("Error generando tarjeta:", error);
       if (error.status === 401) {
@@ -297,16 +299,20 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
         await gameSocket.disableMarking({ roomCode });
         setIsMarkingEnabled(false);
       } else {
+        // Logs detallados para depuración
+        console.log('ConnectedPlayers actuales:', connectedPlayers);
         console.log('Estado actual de playerCorrect:', playerCorrect);
-        const eligiblePlayers = Object.entries(playerCorrect)
-          .filter(entry => entry[1]) // Si el valor es true, el jugador está marcado como correcto
-          .map(entry => entry[0]); // Obtener el ID del jugador
 
-        console.log('Jugadores elegibles a enviar:', eligiblePlayers);
+        // Obtener jugadores elegibles basándonos en los jugadores conectados
+        const eligiblePlayers = connectedPlayers
+          .filter(player => playerCorrect[player.id])
+          .map(player => player.id);
 
-        await gameSocket.enableMarking({ 
+        console.log('Jugadores elegibles que se van a enviar:', eligiblePlayers);
+
+        await gameSocket.enableMarking({
           roomCode,
-          eligiblePlayers 
+          eligiblePlayers
         });
         setIsMarkingEnabled(true);
       }
@@ -314,7 +320,7 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
       console.error('Error al cambiar estado de marcado:', error);
       setConnectionError('Error al cambiar estado de marcado');
     }
-  }, [isMarkingEnabled, roomCode, loggedIn, isTokenValid, playerCorrect]);
+  }, [isMarkingEnabled, roomCode, loggedIn, isTokenValid, playerCorrect, connectedPlayers]);
 
   // Iniciar nueva ronda
   const startNewRound = useCallback(async () => {
