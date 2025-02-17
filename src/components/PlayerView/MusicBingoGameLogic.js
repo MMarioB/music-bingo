@@ -230,31 +230,28 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
       },
       markingEnabled: ({ eligiblePlayers }) => {
         console.log('Recibido evento markingEnabled con elegibles:', eligiblePlayers);
-        
-        // Añadir logs para depuración
         console.log('Jugadores conectados:', connectedPlayers);
         console.log('Nombre del jugador actual:', playerName);
       
         setCanMark(true);
         
-        // Buscar el jugador por nombre en lugar de por ID
-        const player = connectedPlayers.find(p => p.name === playerName);
+        // Buscar el jugador por nombre o ID
+        const player = connectedPlayers.find(p => 
+          p.name === playerName || eligiblePlayers.includes(p.id)
+        );
         
         console.log('Datos del jugador encontrado:', player);
         
-        if (player && eligiblePlayers.includes(player.id)) {
-          setIsEligibleToMark(true);
-          console.log('Jugador marcado como elegible');
+        if (player) {
+          // Verificar si el jugador está en la lista de elegibles por nombre o ID
+          const isEligible = eligiblePlayers.includes(player.id) || 
+                             (player.name === playerName && eligiblePlayers.length === 0);
+          
+          setIsEligibleToMark(isEligible);
+          console.log(`Jugador ${isEligible ? 'marcado como elegible' : 'NO elegible para marcar'}`);
         } else {
-          // Si no se encuentra por ID, intentar por nombre
-          if (eligiblePlayers.length === 0 || 
-              (player && eligiblePlayers.includes(playerName))) {
-            setIsEligibleToMark(true);
-            console.log('Jugador marcado como elegible por nombre');
-          } else {
-            console.log('Jugador NO elegible para marcar');
-            setIsEligibleToMark(false);
-          }
+          console.log('Jugador no encontrado en la lista de conectados');
+          setIsEligibleToMark(false);
         }
       },
       markingDisabled: () => {

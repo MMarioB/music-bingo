@@ -295,19 +295,26 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
         await gameSocket.disableMarking({ roomCode });
         setIsMarkingEnabled(false);
       } else {
-        // Log detallado del estado actual
         console.log('Estado completo de playerCorrect antes de habilitar:', playerCorrect);
         console.log('Jugadores conectados:', connectedPlayers);
   
-        // Obtener jugadores elegibles basándose en los jugadores marcados como correctos
+        // Convertir playerCorrect a un array de IDs de jugadores marcados
+        const markedPlayerIds = Object.entries(playerCorrect)
+          .filter(([, isCorrect]) => isCorrect)
+          .map(([playerId]) => playerId);
+  
+        console.log('IDs de jugadores marcados:', markedPlayerIds);
+  
+        // Obtener los nombres de los jugadores marcados
+        const markedPlayerNames = markedPlayerIds
+          .map(id => connectedPlayers.find(p => p.id === id)?.name)
+          .filter(Boolean);
+  
+        console.log('Nombres de jugadores marcados:', markedPlayerNames);
+  
+        // Buscar los IDs de los jugadores marcados por nombre
         const eligiblePlayers = connectedPlayers
-          .filter(player => {
-            // Cambiamos la comparación para manejar diferentes formas de representación booleana
-            const isPlayerCorrect = playerCorrect[player.id] === true || 
-                                     playerCorrect[player.id] === 'true';
-            console.log(`Jugador ${player.name} (${player.id}): correcto = ${isPlayerCorrect}`);
-            return isPlayerCorrect;
-          })
+          .filter(player => markedPlayerNames.includes(player.name))
           .map(player => player.id);
   
         console.log('Jugadores elegibles para marcar:', eligiblePlayers);
