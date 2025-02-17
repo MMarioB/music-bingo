@@ -18,8 +18,6 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
   const [songPlaying, setSongPlaying] = useState(false);
   const [playerPredictions, setPlayerPredictions] = useState({});
   const [playerCorrect, setPlayerCorrect] = useState({});
-  const [eligiblePlayers, setEligiblePlayers] = useState([]);
-  const [confirmedPlayers, setConfirmedPlayers] = useState({});
 
   // Verificar estado de autenticación al inicio y cuando cambie el token
   useEffect(() => {
@@ -81,11 +79,13 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
     setAllPlayersReady(ready);
   }, []);
 
-  // Manejar toggle de aciertos (fase de revisión)
+  // Manejar toggle de aciertos
   const handlePlayerCorrectToggle = useCallback(async (playerId) => {
     if (!loggedIn || !isTokenValid) return;
 
     try {
+      if (isMarkingEnabled) return; // No permitir marcar durante el marcado activo
+
       await gameSocket.markPlayerCorrect({
         roomCode,
         playerId,
@@ -100,19 +100,7 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
       console.error('Error al marcar jugador:', error);
       setConnectionError('Error al marcar el acierto del jugador');
     }
-  }, [roomCode, loggedIn, isTokenValid, playerCorrect]);
-
-  // Manejar confirmación de acierto por parte del jugador
-  const handleConfirmCorrect = useCallback(async () => {
-    if (!loggedIn || !isTokenValid || !isMarkingEnabled) return;
-
-    try {
-      await gameSocket.confirmCorrect({ roomCode });
-    } catch (error) {
-      console.error('Error al confirmar acierto:', error);
-      setConnectionError('Error al confirmar acierto');
-    }
-  }, [roomCode, loggedIn, isTokenValid, isMarkingEnabled]);
+  }, [roomCode, loggedIn, isTokenValid, playerCorrect, isMarkingEnabled]);
 
   // Efecto para eventos del socket
   useEffect(() => {
@@ -138,24 +126,11 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
           [playerId]: isCorrect
         }));
       },
-      markingEnabled: ({ eligiblePlayers }) => {
-        console.log('Marcado habilitado para:', eligiblePlayers);
+      markingEnabled: () => {
         setIsMarkingEnabled(true);
-        setEligiblePlayers(eligiblePlayers);
       },
-      markingDisabled: ({ correctPlayers }) => {
-        console.log('Marcado deshabilitado, aciertos:', correctPlayers);
+      markingDisabled: () => {
         setIsMarkingEnabled(false);
-        setConfirmedPlayers(
-          correctPlayers.reduce((acc, id) => ({ ...acc, [id]: true }), {})
-        );
-      },
-      playerConfirmed: ({ playerId, confirmed }) => {
-        console.log('Jugador confirmó acierto:', playerId);
-        setConfirmedPlayers(prev => ({
-          ...prev,
-          [playerId]: confirmed
-        }));
       },
       gameStartFailed: (error) => {
         console.error('Error al iniciar juego:', error);
@@ -220,8 +195,6 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
       setSongPlaying(false);
       setPlayerPredictions({});
       setPlayerCorrect({});
-      setEligiblePlayers([]);
-      setConfirmedPlayers({});
     } catch (error) {
       console.error('Error al seleccionar categoría:', error);
       setConnectionError(error.message);
@@ -265,8 +238,6 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
       await gameSocket.startSong({ roomCode });
       setSongPlaying(true);
       setPlayerCorrect({});
-      setEligiblePlayers([]);
-      setConfirmedPlayers({});
       
     } catch (error) {
       console.error("Error generando tarjeta:", error);
@@ -298,8 +269,6 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
       setCurrentCard(prev => ({ ...prev, revealed: true }));
       setSongPlaying(false);
       setPlayerCorrect({});
-      setEligiblePlayers([]);
-      setConfirmedPlayers({});
     } catch (error) {
       console.error('Error al revelar canción:', error);
       setConnectionError('Error al revelar la canción');
@@ -309,23 +278,25 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
   // Manejar marcado
   const handleMarkingToggle = useCallback(async () => {
     if (!loggedIn || !isTokenValid) return;
-
+  
     try {
       if (isMarkingEnabled) {
         await gameSocket.disableMarking({ roomCode });
         setIsMarkingEnabled(false);
       } else {
-        const response = await gameSocket.enableMarking({ roomCode });
+        const eligiblePlayers = Object.keys(playerCorrect).filter(id => playerCorrect[id]);
+  
+        await gameSocket.enableMarking({ 
+          roomCode,
+          eligiblePlayers 
+        });
         setIsMarkingEnabled(true);
-        if (response?.eligiblePlayers) {
-          setEligiblePlayers(response.eligiblePlayers);
-        }
       }
     } catch (error) {
       console.error('Error al cambiar estado de marcado:', error);
       setConnectionError('Error al cambiar estado de marcado');
     }
-  }, [isMarkingEnabled, roomCode, loggedIn, isTokenValid]);
+  }, [isMarkingEnabled, roomCode, loggedIn, isTokenValid, playerCorrect]);
 
   // Iniciar nueva ronda
   const startNewRound = useCallback(async () => {
@@ -340,8 +311,6 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
       setSongPlaying(false);
       setPlayerPredictions({});
       setPlayerCorrect({});
-      setEligiblePlayers([]);
-      setConfirmedPlayers({});
     } catch (error) {
       console.error('Error al iniciar nueva ronda:', error);
       setConnectionError('Error al iniciar nueva ronda');
@@ -366,10 +335,7 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
     songPlaying,
     playerPredictions,
     playerCorrect,
-    eligiblePlayers,
-    confirmedPlayers,
     handlePlayerCorrectToggle,
-    handleConfirmCorrect,
     handleDifficultyChange,
     handleCategorySelected,
     generateNewCard,

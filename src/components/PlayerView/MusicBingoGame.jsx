@@ -5,7 +5,8 @@ import {
   CheckCircleIcon,
   AlertCircle,
   Users,
-  InfoIcon
+  InfoIcon,
+  XCircleIcon
 } from 'lucide-react';
 import PropTypes from 'prop-types';
 import { useState, useEffect } from 'react';
@@ -21,7 +22,7 @@ const MusicBingoGame = ({ playerName, roomCode, difficulty }) => {
     connectedPlayers,
     currentCategory,
     currentSong,
-    canMark: originalCanMark,
+    canMark,
     hasWinner,
     connectionError,
     predictions,
@@ -29,13 +30,12 @@ const MusicBingoGame = ({ playerName, roomCode, difficulty }) => {
     setConnectionError,
     handleCellClick,
     handlePrediction,
-    gamePhase
+    gamePhase,
+    isEligibleToMark
   } = useMusicBingoLogic({ playerName, roomCode, difficulty });
 
-  const canMark = originalCanMark && (!hasMarkedThisRound || lastMarkedIndex !== null);
-
   const handleMarkCell = (index) => {
-    if (!originalCanMark) return;
+    if (!canMark) return;
 
     if (lastMarkedIndex === index) {
       handleCellClick(index, true);
@@ -146,12 +146,24 @@ const MusicBingoGame = ({ playerName, roomCode, difficulty }) => {
             </div>
           )}
 
+          {currentSong && !canMark && !isEligibleToMark && (
+            <Alert className="bg-yellow-500/20 border border-yellow-400/50">
+              <XCircleIcon className="h-5 w-5 text-yellow-400 mr-2" />
+              <AlertDescription className="text-yellow-300">
+                No has acertado esta ronda. ¡Sigue intentándolo en la siguiente!
+              </AlertDescription>
+            </Alert>
+          )}
+
           {currentCategory && (
-            <Alert className={canMark
-              ? "bg-green-500/20 border border-green-400/50"
-              : "bg-blue-500/20 border border-blue-400/50"
+            <Alert className={
+              canMark
+                ? "bg-green-500/20 border border-green-400/50"
+                : isEligibleToMark
+                  ? "bg-yellow-500/20 border border-yellow-400/50"
+                  : "bg-blue-500/20 border border-blue-400/50"
             }>
-              {originalCanMark ? (
+              {canMark ? (
                 lastMarkedIndex !== null ? (
                   <>
                     <InfoIcon className="h-5 w-5 text-blue-400 mr-2" />
@@ -167,11 +179,20 @@ const MusicBingoGame = ({ playerName, roomCode, difficulty }) => {
                     </AlertDescription>
                   </>
                 )
+              ) : isEligibleToMark ? (
+                <>
+                  <InfoIcon className="h-5 w-5 text-yellow-400 mr-2" />
+                  <AlertDescription className="text-yellow-300">
+                    Espera a que el Game Master habilite el marcado
+                  </AlertDescription>
+                </>
               ) : (
                 <>
                   <InfoIcon className="h-5 w-5 text-blue-400 mr-2" />
                   <AlertDescription className="text-blue-300">
-                    Espera a que el Game Master habilite el marcado
+                    {currentSong
+                      ? 'Espera a ver si has acertado'
+                      : 'Espera a que el Game Master revele la canción'}
                   </AlertDescription>
                 </>
               )}
@@ -183,7 +204,7 @@ const MusicBingoGame = ({ playerName, roomCode, difficulty }) => {
               <div className="grid grid-cols-5 gap-1 md:gap-3">
                 {board.map((category, index) => {
                   const isSelected = index === lastMarkedIndex;
-                  const isMarkable = originalCanMark &&
+                  const isMarkable = canMark &&
                     category.name === currentCategory?.name &&
                     (!hasMarkedThisRound || isSelected);
 

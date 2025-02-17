@@ -18,12 +18,13 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
   const [gamePhase, setGamePhase] = useState('waiting');
   const [predictions, setPredictions] = useState([]);
   const [songStarted, setSongStarted] = useState(false);
+  const [isEligibleToMark, setIsEligibleToMark] = useState(false);
 
   // Función para validar la distribución de categorías
   const validateLine = useCallback((line) => {
     const categoryCounts = {};
     let markedCount = 0;
-    
+
     line.forEach(cell => {
       if (cell.marked) {
         categoryCounts[cell.name] = (categoryCounts[cell.name] || 0) + 1;
@@ -67,7 +68,7 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
     // Verificar diagonales
     const diagonal1 = Array(BOARD_SIZE).fill(0).map((_, i) => board[i * BOARD_SIZE + i]);
     const diagonal2 = Array(BOARD_SIZE).fill(0).map((_, i) => board[i * BOARD_SIZE + (BOARD_SIZE - 1 - i)]);
-    
+
     return validateGeneratedLine(diagonal1) && validateGeneratedLine(diagonal2);
   }, [validateGeneratedLine]);
 
@@ -98,10 +99,10 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
     const MAX_ATTEMPTS = 100;
     let attempts = 0;
     let cells = [];
-    
+
     while (attempts < MAX_ATTEMPTS) {
       attempts++;
-      
+
       // Crear array con 5 instancias de cada categoría
       cells = [];
       categories.forEach(category => {
@@ -109,18 +110,18 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
           cells.push({ ...category, marked: false });
         }
       });
-      
+
       // Mezclar el array usando Fisher-Yates shuffle
       for (let i = cells.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [cells[i], cells[j]] = [cells[j], cells[i]];
       }
-      
+
       if (validateGeneratedBoard(cells)) {
         return cells;
       }
     }
-    
+
     console.warn('No se pudo generar un tablero perfectamente balanceado después de', MAX_ATTEMPTS, 'intentos');
     return cells;
   }, [difficulty, validateGeneratedBoard]);
@@ -130,7 +131,7 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
     try {
       console.log('Intentando conectar al juego:', { roomCode, playerName });
       await gameSocket.connect();
-      
+
       const joinResponse = await gameSocket.joinRoom(roomCode, {
         name: playerName,
         difficulty
@@ -160,6 +161,7 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
   // Manejo de click en casillas
   const handleCellClick = useCallback((index, isUnmarking = false) => {
     if (!canMark && !isUnmarking) return;
+    if (!isEligibleToMark) return; // No permitir marcar si no es elegible
 
     setBoard(prev => {
       const newBoard = [...prev];
@@ -177,7 +179,7 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
       }
       return prev;
     });
-  }, [canMark, currentCategory, checkWinner, roomCode, playerName]);
+  }, [canMark, isEligibleToMark, currentCategory, checkWinner, roomCode, playerName]);
 
   const handlePrediction = useCallback((prediction) => {
     setPredictions(prev => [...prev, prediction]);
@@ -200,6 +202,7 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
         setCurrentCategory(category);
         setCurrentSong(null);
         setCanMark(false);
+        setIsEligibleToMark(false);
         setSongStarted(false);
         setPredictions([]);
         setGamePhase('playing');
@@ -216,14 +219,21 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
         console.log('Canción revelada:', songData);
         setCurrentSong(songData);
         setSongStarted(false);
+        setIsEligibleToMark(false);
       },
-      markingEnabled: () => {
-        console.log('Marcado habilitado');
+      markingEnabled: ({ eligiblePlayers }) => {
+        console.log('Marcado habilitado para:', eligiblePlayers);
         setCanMark(true);
+        // Verificar si este jugador está en la lista de elegibles
+        const player = connectedPlayers.find(p => p.name === playerName);
+        if (player && eligiblePlayers.includes(player.id)) {
+          setIsEligibleToMark(true);
+        }
       },
       markingDisabled: () => {
         console.log('Marcado deshabilitado');
         setCanMark(false);
+        setIsEligibleToMark(false);
       },
       gameStarted: () => {
         console.log('Juego iniciado');
@@ -258,19 +268,14 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
       });
       gameSocket.disconnect();
     };
-  }, [joinGame, generateValidBoard, board.length]);
-
-  // Efecto para debug del tablero
-  useEffect(() => {
-    console.log('Estado actual del tablero:', board);
-  }, [board]);
+  }, [joinGame, generateValidBoard, board.length, connectedPlayers, playerName]);
 
   return {
     board,
     connectedPlayers,
     currentCategory,
     currentSong,
-    canMark,
+    canMark: canMark && isEligibleToMark,
     hasWinner,
     connectionError,
     gamePhase,
@@ -278,6 +283,7 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
     songStarted,
     handleCellClick,
     handlePrediction,
-    setConnectionError
+    setConnectionError,
+    isEligibleToMark
   };
 };
