@@ -84,31 +84,44 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
     if (!loggedIn || !isTokenValid) return;
 
     try {
-      if (isMarkingEnabled) return; // No permitir marcar durante el marcado activo
+      const newCorrectState = !playerCorrect[playerId];
+      console.log('Marcando jugador:', playerId, 'como:', newCorrectState);
 
       await gameSocket.markPlayerCorrect({
         roomCode,
         playerId,
-        isCorrect: !playerCorrect[playerId]
+        isCorrect: newCorrectState
       });
 
-      setPlayerCorrect(prev => ({
-        ...prev,
-        [playerId]: !prev[playerId]
-      }));
+      setPlayerCorrect(prev => {
+        const newState = {
+          ...prev,
+          [playerId]: newCorrectState
+        };
+        console.log('Nuevo estado de playerCorrect:', newState);
+        return newState;
+      });
     } catch (error) {
       console.error('Error al marcar jugador:', error);
       setConnectionError('Error al marcar el acierto del jugador');
     }
-  }, [roomCode, loggedIn, isTokenValid, playerCorrect, isMarkingEnabled]);
+  }, [roomCode, loggedIn, isTokenValid, playerCorrect]);
 
   // Efecto para eventos del socket
   useEffect(() => {
     if (!loggedIn || !isTokenValid) return;
 
+    // Limpiar handlers existentes
+    gameSocket.off('playersUpdate');
+    gameSocket.off('playerPrediction');
+    gameSocket.off('playerMarked');
+    gameSocket.off('markingEnabled');
+    gameSocket.off('markingDisabled');
+    gameSocket.off('gameStartFailed');
+    gameSocket.off('error');
+
     const handlers = {
       playersUpdate: ({ players }) => {
-        console.log('Actualización de jugadores:', players);
         setConnectedPlayers(players);
         checkAllPlayersReady(players);
       },
@@ -143,6 +156,7 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
       }
     };
 
+    // Registrar handlers
     Object.entries(handlers).forEach(([event, handler]) => {
       gameSocket.on(event, handler);
     });
@@ -153,7 +167,6 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
       Object.keys(handlers).forEach(event => {
         gameSocket.off(event);
       });
-      gameSocket.disconnect();
     };
   }, [initializeRoom, loggedIn, isTokenValid, checkAllPlayersReady]);
 
@@ -278,14 +291,19 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
   // Manejar marcado
   const handleMarkingToggle = useCallback(async () => {
     if (!loggedIn || !isTokenValid) return;
-  
+
     try {
       if (isMarkingEnabled) {
         await gameSocket.disableMarking({ roomCode });
         setIsMarkingEnabled(false);
       } else {
-        const eligiblePlayers = Object.keys(playerCorrect).filter(id => playerCorrect[id]);
-        console.log('Jugadores elegibles al habilitar marcado:', eligiblePlayers);
+        console.log('Estado actual de playerCorrect:', playerCorrect);
+        const eligiblePlayers = Object.entries(playerCorrect)
+          .filter(entry => entry[1]) // Si el valor es true, el jugador está marcado como correcto
+          .map(entry => entry[0]); // Obtener el ID del jugador
+
+        console.log('Jugadores elegibles a enviar:', eligiblePlayers);
+
         await gameSocket.enableMarking({ 
           roomCode,
           eligiblePlayers 
