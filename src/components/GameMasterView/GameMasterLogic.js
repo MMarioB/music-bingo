@@ -19,7 +19,6 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
   const [playerPredictions, setPlayerPredictions] = useState({});
   const [playerCorrect, setPlayerCorrect] = useState({});
 
-  // Inicializar playerCorrect cuando cambian los jugadores conectados
   useEffect(() => {
     const initialPlayerCorrect = connectedPlayers.reduce((acc, player) => {
       acc[player.id] = false;
@@ -28,7 +27,6 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
     setPlayerCorrect(initialPlayerCorrect);
   }, [connectedPlayers]);
 
-  // Verificar estado de autenticación
   useEffect(() => {
     const checkAuthState = () => {
       if (!token) {
@@ -53,7 +51,30 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
     checkAuthState();
   }, [token, logout, gameStep, isTokenValid]);
 
-  // Inicializar sala
+  useEffect(() => {
+    const handleVisibilityChange = async () => {
+      if (!document.hidden) {
+        const savedState = localStorage.getItem('musicBingoState');
+        if (savedState) {
+          try {
+            const parsedState = JSON.parse(savedState);
+            if (Date.now() - parsedState.timestamp < 300000) {
+              if (parsedState.cardState && !currentCard) {
+                setCurrentCard(parsedState.cardState);
+                setSongPlaying(true);
+              }
+            }
+          } catch (error) {
+            console.error('Error restaurando estado:', error);
+          }
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [currentCard]);
+
   const initializeRoom = useCallback(async () => {
     if (!loggedIn || !isTokenValid) {
       setGameStep('init');
@@ -82,32 +103,25 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
     }
   }, [roomCode, difficulty, loggedIn, isTokenValid]);
 
-  // Verificar si todos los jugadores están listos
   const checkAllPlayersReady = useCallback((players) => {
     const ready = players.every(player => player.ready || player.isHost);
     setAllPlayersReady(ready);
   }, []);
 
-  // Manejar toggle de aciertos
   const handlePlayerCorrectToggle = useCallback(async (playerId) => {
     if (!loggedIn || !isTokenValid) return;
 
     try {
-      // Obtener el estado actual del jugador
       const newCorrectState = !playerCorrect[playerId];
-      
-      // Encontrar el jugador por ID para logging
       const player = connectedPlayers.find(p => p.id === playerId);
       console.log('Marcando jugador:', player?.name, '(ID:', playerId, ') como:', newCorrectState);
 
-      // Primero intentamos la comunicación con el servidor
       await gameSocket.markPlayerCorrect({
         roomCode,
         playerId,
         isCorrect: newCorrectState
       });
 
-      // Si la comunicación fue exitosa, actualizamos el estado local
       setPlayerCorrect(prev => {
         const newState = {
           ...prev,
@@ -123,11 +137,9 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
     }
   }, [roomCode, loggedIn, isTokenValid, playerCorrect, connectedPlayers]);
 
-  // Efecto para eventos del socket
   useEffect(() => {
     if (!loggedIn || !isTokenValid) return;
 
-    // Limpiar handlers existentes
     gameSocket.off('playersUpdate');
     gameSocket.off('playerPrediction');
     gameSocket.off('playerMarked');
@@ -173,7 +185,6 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
       }
     };
 
-    // Registrar handlers
     Object.entries(handlers).forEach(([event, handler]) => {
       gameSocket.on(event, handler);
     });
@@ -187,7 +198,6 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
     };
   }, [initializeRoom, loggedIn, isTokenValid, checkAllPlayersReady]);
 
-  // Manejar cambio de dificultad
   const handleDifficultyChange = useCallback(async (newDifficulty) => {
     if (!loggedIn || !isTokenValid) {
       setGameStep('init');
@@ -206,7 +216,6 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
     }
   }, [roomCode, loggedIn, isTokenValid]);
 
-  // Manejar selección de categoría
   const handleCategorySelected = useCallback(async (category) => {
     if (!loggedIn || !isTokenValid) {
       setGameStep('init');
@@ -231,7 +240,6 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
     }
   }, [roomCode, loggedIn, isTokenValid]);
 
-  // Generar nueva carta
   const generateNewCard = useCallback(async () => {
     if (!loggedIn || !isTokenValid || !selectedCategory || !spotify) return;
 
@@ -259,12 +267,20 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
         artist: randomTrack.artists[0].name,
         year,
         spotifyUrl: randomTrack.external_urls.spotify,
+        uri: randomTrack.uri,
         musicCategory: randomMusicCategory,
         revealed: false
       };
 
-      setCurrentCard(newCard);
+      const gameState = {
+        currentTrack: randomTrack.uri,
+        timestamp: Date.now(),
+        cardState: newCard
+      };
+      localStorage.setItem('musicBingoState', JSON.stringify(gameState));
 
+      setCurrentCard(newCard);
+      await spotify.playTrack(randomTrack.uri);
       await gameSocket.startSong({ roomCode });
       setSongPlaying(true);
       setPlayerCorrect({});
@@ -283,7 +299,6 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
     }
   }, [loggedIn, isTokenValid, selectedCategory, spotify, roomCode, logout]);
 
-  // Revelar canción
   const handleRevealSong = useCallback(async () => {
     if (!currentCard || !loggedIn || !isTokenValid) return;
 
@@ -305,7 +320,6 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
     }
   }, [currentCard, roomCode, loggedIn, isTokenValid]);
 
-  // Manejar marcado
   const handleMarkingToggle = useCallback(async () => {
     if (!loggedIn || !isTokenValid) return;
 
@@ -314,18 +328,15 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
         await gameSocket.disableMarking({ roomCode });
         setIsMarkingEnabled(false);
       } else {
-        // Log del estado actual
         console.log('Estado actual de playerCorrect:', playerCorrect);
         console.log('Jugadores conectados:', connectedPlayers);
 
-        // Obtener IDs de jugadores marcados como correctos
         const eligiblePlayers = Object.entries(playerCorrect)
           .filter(([, isCorrect]) => isCorrect === true)
           .map(([playerId]) => playerId);
 
         console.log('Jugadores elegibles a enviar:', eligiblePlayers);
         
-        // Log de detalle de cada jugador elegible
         eligiblePlayers.forEach(id => {
           const player = connectedPlayers.find(p => p.id === id);
           console.log(`Jugador elegible: ${player?.name} (ID: ${id})`);
@@ -336,7 +347,6 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
           return;
         }
 
-        // Validar que los IDs existen en connectedPlayers
         const validEligiblePlayers = eligiblePlayers.filter(id => 
           connectedPlayers.some(player => player.id === id)
         );
@@ -347,7 +357,6 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
           return;
         }
 
-        // Enviar al servidor
         await gameSocket.enableMarking({ 
           roomCode,
           eligiblePlayers: validEligiblePlayers 
@@ -362,7 +371,6 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
     }
   }, [isMarkingEnabled, roomCode, loggedIn, isTokenValid, playerCorrect, connectedPlayers]);
 
-  // Iniciar nueva ronda
   const startNewRound = useCallback(async () => {
     if (!loggedIn || !isTokenValid) return;
 
