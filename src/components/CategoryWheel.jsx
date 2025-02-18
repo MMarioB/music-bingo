@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { Button } from './ui/button';
 import PropTypes from 'prop-types';
 import { motion } from 'framer-motion';
 import { CATEGORIES_A, CATEGORIES_B } from './constants';
@@ -154,17 +153,15 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
     };
 
     return (
-        <div className="flex flex-col items-center justify-center gap-8 p-4">
-            {/* Contenedor de la ruleta con tamaño fijo */}
+        <div className="flex flex-col items-center justify-center gap-4">
+            {/* Contenedor de la ruleta */}
             <div className="relative w-full max-w-[min(80vw,500px)] aspect-square mx-auto">
                 <svg
                     viewBox="-1.1 -1.1 2.2 2.2"
                     className="w-full h-full"
-                    style={{ maxHeight: 'calc(100vh - 300px)' }}
                 >
                     {createNeonFilter()}
                     {generateWheelSegments()}
-                    {/* Centro de la ruleta */}
                     <circle
                         cx="0"
                         cy="0"
@@ -177,32 +174,86 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
                 </svg>
             </div>
 
-            {/* Controles */}
-            <div className="w-full max-w-md space-y-4">
-                <Button
+            {/* Botón separado debajo de la ruleta */}
+            <div className="w-full max-w-[300px]">
+                <motion.button
                     onClick={spinWheel}
                     disabled={isSpinning}
-                    className="w-full h-12 bg-gradient-to-r from-purple-600/80 to-indigo-600/80 hover:from-purple-600 hover:to-indigo-600 text-white border border-purple-400/50 transition-all duration-300"
+                    className="w-full py-3 px-6 rounded-xl bg-gradient-to-r from-purple-600/90 to-pink-600/90 text-white font-bold border border-white/20 backdrop-blur-sm disabled:opacity-50 disabled:cursor-not-allowed group overflow-hidden"
                     style={{
-                        boxShadow: '0 0 15px rgba(168,85,247,0.3)'
+                        boxShadow: '0 0 20px rgba(168,85,247,0.4)'
                     }}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
                 >
-                    {isSpinning ? "Girando..." : "Girar Ruleta"}
-                </Button>
+                    {/* Fondo animado */}
+                    <div className="absolute inset-0 bg-gradient-to-r from-purple-400 to-pink-400 opacity-0 group-hover:opacity-20 transition-opacity" />
 
-                {finalSelectedCategory && (
-                    <motion.div
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className={`${finalSelectedCategory.color} p-4 rounded-lg text-center border border-white/20`}
-                        style={{ boxShadow: '0 0 15px rgba(255,255,255,0.1)' }}
-                    >
-                        <h3 className="font-semibold text-lg text-gray-800">
-                            {finalSelectedCategory.name}
-                        </h3>
-                    </motion.div>
-                )}
+                    {/* Efecto de notas musicales */}
+                    <div className="absolute inset-0 overflow-hidden">
+                        {isSpinning && Array.from({ length: 3 }).map((_, i) => (
+                            <motion.div
+                                key={i}
+                                initial={{
+                                    opacity: 0.8,
+                                    scale: 1,
+                                    x: '50%',
+                                    y: '100%'
+                                }}
+                                animate={{
+                                    opacity: 0,
+                                    scale: 0,
+                                    x: [null, `${50 + (i - 1) * 30}%`],
+                                    y: '-100%'
+                                }}
+                                transition={{
+                                    duration: 1,
+                                    delay: i * 0.2,
+                                    repeat: Infinity
+                                }}
+                                className="absolute w-4 h-4 text-white"
+                            >
+                                ♪
+                            </motion.div>
+                        ))}
+                    </div>
+
+                    {/* Texto e icono */}
+                    <div className="flex items-center justify-center gap-2 relative">
+                        <span className="relative z-10">
+                            {isSpinning ? "Girando..." : "Girar Ruleta"}
+                        </span>
+                        {!isSpinning && (
+                            <motion.span
+                                animate={{
+                                    rotate: [0, -10, 10, -10, 10, 0]
+                                }}
+                                transition={{
+                                    duration: 1.5,
+                                    repeat: Infinity,
+                                    repeatDelay: 1
+                                }}
+                            >
+                                🎵
+                            </motion.span>
+                        )}
+                    </div>
+                </motion.button>
             </div>
+
+            {/* Categoría seleccionada */}
+            {finalSelectedCategory && (
+                <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className={`${finalSelectedCategory.color} px-4 py-2 rounded-lg text-center border border-white/20 max-w-[300px] w-full`}
+                >
+                    <h3 className="font-semibold text-gray-800 flex items-center justify-center gap-2">
+                        <finalSelectedCategory.icon className="w-5 h-5" />
+                        {finalSelectedCategory.name}
+                    </h3>
+                </motion.div>
+            )}
         </div>
     );
 };
