@@ -43,7 +43,11 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
     playerCorrect
   } = useGameMasterLogic({ roomCode, initialDifficulty });
 
-  // Manejo del control de marcado
+  const resetLocalStates = useCallback(() => {
+    setMarkingEnabledThisRound(false);
+    setLocalPlayerCorrect({});
+  }, []);
+
   const handleMarkingControl = useCallback(() => {
     if (!isMarkingEnabled) {
       if (markingEnabledThisRound) {
@@ -62,33 +66,27 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
     handleMarkingToggle();
   }, [isMarkingEnabled, markingEnabledThisRound, handleMarkingToggle, localPlayerCorrect]);
 
-  // Manejo de nueva ronda
   const handleNewRound = useCallback(() => {
     console.log('Iniciando nueva ronda');
-    setMarkingEnabledThisRound(false);
+    resetLocalStates();
     startNewRound();
-  }, [startNewRound]);
+  }, [startNewRound, resetLocalStates]);
 
-  // Reset de estado cuando cambia la carta
   useEffect(() => {
-    if (!currentCard) {
-      console.log('Reseteando estado de marcado por nueva carta');
-      setMarkingEnabledThisRound(false);
+    if (!currentCard || currentCard.revealed) {
+      resetLocalStates();
     }
-  }, [currentCard]);
+  }, [currentCard, resetLocalStates]);
 
-  // Función para manejar el toggle de aciertos de jugadores
   const handleLocalPlayerToggle = async (playerId) => {
     if (isMarkingEnabled) return;
 
-    setLocalPlayerCorrect(prev => {
-      const newState = {
-        ...prev,
-        [playerId]: !prev[playerId]
-      };
-      console.log('Nuevo estado local:', newState);
-      return newState;
-    });
+    const newCorrectState = !localPlayerCorrect[playerId];
+    
+    setLocalPlayerCorrect(prev => ({
+      ...prev,
+      [playerId]: newCorrectState
+    }));
 
     try {
       await handlePlayerCorrectToggle(playerId);
@@ -97,7 +95,7 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
       console.error('Error al marcar jugador:', error);
       setLocalPlayerCorrect(prev => ({
         ...prev,
-        [playerId]: !prev[playerId]
+        [playerId]: !newCorrectState
       }));
     }
   };
@@ -157,7 +155,6 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
             <Card className="bg-black/30 border border-white/20 p-4">
               <div className="space-y-3">
                 <div className={`transition-all duration-500 ${currentCard.revealed ? '' : 'blur-md'}`}>
-                  {/* Grid para info de la canción */}
                   <div className="grid grid-cols-2 gap-3 mb-3">
                     <div className="col-span-2 text-center">
                       <h2 className="text-xl font-bold text-white">
@@ -169,7 +166,6 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
                       </div>
                     </div>
                     
-                    {/* Detalles en grid */}
                     <div className="bg-white/10 backdrop-blur-sm rounded-lg p-2 flex items-center justify-between">
                       <CalendarIcon className="w-5 h-5 text-purple-400" />
                       <span className="text-xl font-bold text-white">
@@ -185,7 +181,6 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
                   </div>
                 </div>
 
-                {/* Controles */}
                 {!currentCard.revealed ? (
                   <div className="grid grid-cols-2 gap-2">
                     <Button
@@ -209,13 +204,13 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
                   <div className="space-y-2">
                     <Button
                       onClick={handleMarkingControl}
-                      disabled={!Object.values(playerCorrect).some(correct => correct) || (markingEnabledThisRound && !isMarkingEnabled)}
+                      disabled={!Object.values(localPlayerCorrect).some(correct => correct) || (markingEnabledThisRound && !isMarkingEnabled)}
                       className={`w-full h-10 transition-all duration-300 ${
                         isMarkingEnabled
                           ? 'bg-yellow-500/80 hover:bg-yellow-500 border-yellow-400'
                           : markingEnabledThisRound
                             ? 'bg-gray-500/50 border-gray-400 cursor-not-allowed'
-                            : Object.values(playerCorrect).some(correct => correct)
+                            : Object.values(localPlayerCorrect).some(correct => correct)
                               ? 'bg-green-500/80 hover:bg-green-500 border-green-400'
                               : 'bg-gray-500/50 border-gray-400 cursor-not-allowed'
                       } border`}
@@ -224,7 +219,7 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
                         ? 'Deshabilitar Marcado'
                         : markingEnabledThisRound
                           ? 'Marcado Ya Utilizado'
-                          : Object.values(playerCorrect).some(correct => correct)
+                          : Object.values(localPlayerCorrect).some(correct => correct)
                             ? 'Habilitar Marcado'
                             : 'Marca jugadores primero'
                       }
@@ -244,7 +239,6 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
             </Card>
           )}
 
-          {/* Lista de jugadores */}
           {connectedPlayers.length > 0 && (
             <div className="mt-4">
               <h3 className="font-semibold text-lg text-white mb-3 flex items-center justify-between">

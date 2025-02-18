@@ -19,6 +19,14 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
   const [playerPredictions, setPlayerPredictions] = useState({});
   const [playerCorrect, setPlayerCorrect] = useState({});
 
+  const resetPlayerCorrectState = useCallback(() => {
+    const resetState = connectedPlayers.reduce((acc, player) => {
+      acc[player.id] = false;
+      return acc;
+    }, {});
+    setPlayerCorrect(resetState);
+  }, [connectedPlayers]);
+
   useEffect(() => {
     const initialPlayerCorrect = connectedPlayers.reduce((acc, player) => {
       acc[player.id] = false;
@@ -233,12 +241,12 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
       setCurrentCard(null);
       setSongPlaying(false);
       setPlayerPredictions({});
-      setPlayerCorrect({});
+      resetPlayerCorrectState();
     } catch (error) {
       console.error('Error al seleccionar categoría:', error);
       setConnectionError(error.message);
     }
-  }, [roomCode, loggedIn, isTokenValid]);
+  }, [roomCode, loggedIn, isTokenValid, resetPlayerCorrectState]);
 
   const generateNewCard = useCallback(async () => {
     if (!loggedIn || !isTokenValid || !selectedCategory || !spotify) return;
@@ -283,7 +291,7 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
       await spotify.playTrack(randomTrack.uri);
       await gameSocket.startSong({ roomCode });
       setSongPlaying(true);
-      setPlayerCorrect({});
+      resetPlayerCorrectState();
 
     } catch (error) {
       console.error("Error generando tarjeta:", error);
@@ -297,7 +305,7 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
     } finally {
       setIsLoading(false);
     }
-  }, [loggedIn, isTokenValid, selectedCategory, spotify, roomCode, logout]);
+  }, [loggedIn, isTokenValid, selectedCategory, spotify, roomCode, logout, resetPlayerCorrectState]);
 
   const handleRevealSong = useCallback(async () => {
     if (!currentCard || !loggedIn || !isTokenValid) return;
@@ -313,12 +321,12 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
       });
       setCurrentCard(prev => ({ ...prev, revealed: true }));
       setSongPlaying(false);
-      setPlayerCorrect({});
+      resetPlayerCorrectState();
     } catch (error) {
       console.error('Error al revelar canción:', error);
       setConnectionError('Error al revelar la canción');
     }
-  }, [currentCard, roomCode, loggedIn, isTokenValid]);
+  }, [currentCard, roomCode, loggedIn, isTokenValid, resetPlayerCorrectState]);
 
   const handleMarkingToggle = useCallback(async () => {
     if (!loggedIn || !isTokenValid) return;
@@ -382,12 +390,12 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
       setIsMarkingEnabled(false);
       setSongPlaying(false);
       setPlayerPredictions({});
-      setPlayerCorrect({});
+      resetPlayerCorrectState();
     } catch (error) {
       console.error('Error al iniciar nueva ronda:', error);
       setConnectionError('Error al iniciar nueva ronda');
     }
-  }, [roomCode, loggedIn, isTokenValid]);
+  }, [roomCode, loggedIn, isTokenValid, resetPlayerCorrectState]);
 
   return {
     loggedIn,
