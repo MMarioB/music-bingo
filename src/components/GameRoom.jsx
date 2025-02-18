@@ -4,7 +4,7 @@ import { Card } from '../components/ui/card';
 import { Alert, AlertDescription } from '../components/ui/alert';
 import { RadioGroup, RadioGroupItem } from '../components/ui/radio-group';
 import { Label } from '../components/ui/label';
-import { AlertCircle, Users, CheckCircle, Loader2 } from 'lucide-react';
+import { AlertCircle, Users, CheckCircle, Crown, Loader2 } from 'lucide-react';
 import { gameSocket } from '../services/socketService';
 import { motion } from 'framer-motion';
 import PropTypes from 'prop-types';
@@ -160,15 +160,12 @@ const GameRoom = ({ roomCode, playerName, isHost, onStartGame }) => {
   const allPlayersReady = players.every(player => player.isHost || player.ready);
 
   return (
-    <div className="min-h-screen bg-[#1a0133] flex flex-col items-center justify-center relative overflow-hidden">
-      {/* Fondo con cuadrícula tipo disco */}
-      <div 
-        className="absolute inset-0 opacity-10"
+    <div className="min-h-screen bg-[#1a0133] flex flex-col items-center justify-center relative overflow-hidden p-4">
+      {/* Fondo con cuadrícula */}
+      <div className="absolute inset-0 opacity-10"
         style={{
-          backgroundImage: `
-            linear-gradient(to right, #ff00ee 1px, transparent 1px),
-            linear-gradient(to bottom, #ff00ee 1px, transparent 1px)
-          `,
+          backgroundImage: `linear-gradient(to right, #ff00ee 1px, transparent 1px),
+            linear-gradient(to bottom, #ff00ee 1px, transparent 1px)`,
           backgroundSize: '40px 40px',
           transform: 'perspective(500px) rotateX(60deg)',
           transformOrigin: 'bottom'
@@ -179,34 +176,47 @@ const GameRoom = ({ roomCode, playerName, isHost, onStartGame }) => {
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.5 }}
-        className="w-[90%] max-w-sm mx-auto bg-black/10 backdrop-blur-sm rounded-xl shadow-xl overflow-hidden border border-white/10"
+        className="w-full max-w-md mx-auto"
       >
-        <div className="bg-black/20 p-4">
-          <h1 className="text-2xl font-bold text-center mb-1"
-              style={{
-                color: '#fff',
-                textShadow: '0 0 10px rgba(255,255,255,0.8)'
-              }}>
-            Sala de Music Bingo
-          </h1>
-          <p className="text-center text-purple-300 font-mono">
-            Código de sala: <span className="text-white font-bold">{roomCode}</span>
-          </p>
+        {/* Header con información de la sala */}
+        <div className="bg-black/40 backdrop-blur-lg rounded-xl p-4 mb-4 border border-white/10">
+          <div className="flex justify-between items-center gap-4">
+            <div>
+              <h1 className="text-2xl font-bold text-white mb-1">Music Bingo</h1>
+              <div className="flex items-center gap-2">
+                <span className="text-purple-300 text-sm">Sala:</span>
+                <span className="text-white font-mono font-bold">{roomCode}</span>
+              </div>
+            </div>
+            <div className="flex flex-col items-end gap-1">
+              <div className="flex items-center gap-2 text-white/80 bg-white/10 px-3 py-1 rounded-full border border-white/20">
+                <Users className="w-4 h-4" />
+                <span>{players.length}</span>
+              </div>
+              {isHost && (
+                <span className="text-xs bg-purple-500/20 text-purple-300 px-2 py-1 rounded-full border border-purple-400/30">
+                  Game Master
+                </span>
+              )}
+            </div>
+          </div>
         </div>
 
+        {/* Panel de error */}
         {connectionError && (
-          <Alert variant="destructive" className="mx-4 mt-4 bg-red-500/10 border border-red-500/50">
+          <Alert variant="destructive" className="mb-4 bg-red-500/10 border border-red-500/50">
             <AlertCircle className="h-4 w-4" />
             <AlertDescription className="text-white">{connectionError}</AlertDescription>
           </Alert>
         )}
 
-        <div className="p-4 space-y-4">
+        {/* Contenido principal */}
+        <div className="space-y-4">
           {!isHost && !isReady && (
             <Button
               onClick={handleSetReady}
               disabled={isSettingReady}
-              className="w-full h-12 bg-green-500/60 hover:bg-green-500/80 backdrop-blur-sm border border-green-400 transition-all duration-300"
+              className="w-full h-12 bg-gradient-to-r from-green-500/60 to-emerald-500/60 hover:from-green-500/80 hover:to-emerald-500/80 border border-green-400"
               style={{ boxShadow: '0 0 15px rgba(0,255,0,0.2)' }}
             >
               {isSettingReady ? (
@@ -220,36 +230,21 @@ const GameRoom = ({ roomCode, playerName, isHost, onStartGame }) => {
             </Button>
           )}
 
+          {/* Configuración del host */}
           {isHost && (
-            <Card className="bg-black/20 border border-white/20 p-4 space-y-4">
-              <h3 className="font-semibold text-lg text-white text-center">
-                Configuración de la Partida
-              </h3>
-
+            <Card className="bg-black/40 border-white/20 p-4 space-y-4">
               <RadioGroup
                 value={selectedDifficulty}
                 onValueChange={handleDifficultyChange}
-                className="grid grid-cols-2 gap-4"
+                className="grid grid-cols-2 gap-4 mb-4"
               >
                 <div className="flex items-center space-x-2">
-                  <RadioGroupItem
-                    value="principiante"
-                    id="principiante"
-                    className="border-green-400 text-green-400"
-                  />
-                  <Label htmlFor="principiante" className="text-green-400">
-                    Principiante
-                  </Label>
+                  <RadioGroupItem value="principiante" id="principiante" className="border-green-400 text-green-400" />
+                  <Label htmlFor="principiante" className="text-green-400">Principiante</Label>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <RadioGroupItem
-                    value="experto"
-                    id="experto"
-                    className="border-purple-400 text-purple-400"
-                  />
-                  <Label htmlFor="experto" className="text-purple-400">
-                    Experto
-                  </Label>
+                  <RadioGroupItem value="experto" id="experto" className="border-purple-400 text-purple-400" />
+                  <Label htmlFor="experto" className="text-purple-400">Experto</Label>
                 </div>
               </RadioGroup>
 
@@ -270,57 +265,57 @@ const GameRoom = ({ roomCode, playerName, isHost, onStartGame }) => {
                 {isJoining ? 'Conectando...' : 'Comenzar Partida'}
               </Button>
 
-              {players.length < 2 && !isJoining && (
-                <p className="text-sm text-gray-300 text-center">
-                  Se necesitan al menos 2 jugadores para comenzar
-                </p>
-              )}
-              {!allPlayersReady && players.length >= 2 && (
-                <p className="text-sm text-gray-300 text-center">
-                  Esperando a que todos los jugadores estén listos
-                </p>
+              {(players.length < 2 || !allPlayersReady) && (
+                <div className="text-sm text-center space-y-1">
+                  {players.length < 2 && (
+                    <p className="text-yellow-300">Se necesitan al menos 2 jugadores</p>
+                  )}
+                  {!allPlayersReady && players.length >= 2 && (
+                    <p className="text-yellow-300">Esperando que todos estén listos</p>
+                  )}
+                </div>
               )}
             </Card>
           )}
 
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <h3 className="font-semibold text-lg text-white">
-                Jugadores en la Sala
-              </h3>
-              <div className="flex items-center gap-2 text-white/80 bg-white/5 backdrop-blur-sm px-3 py-1 rounded-full border border-white/20">
-                <Users className="w-4 h-4" />
-                <span>{players.length}</span>
+          {/* Lista de jugadores */}
+          <div className="bg-black/40 backdrop-blur-lg rounded-xl border border-white/10 overflow-hidden">
+            <div className="flex items-center justify-between p-3 border-b border-white/10">
+              <h3 className="font-medium text-white">Jugadores</h3>
+              <div className="flex items-center gap-2 text-white/60 text-sm">
+                {players.length}/12
               </div>
             </div>
 
-            <div className="bg-black/20 rounded-lg divide-y divide-white/10 border border-white/20">
-              {players.length > 0 ? (
-                players.map((player) => (
-                  <div
-                    key={player.id}
-                    className="flex items-center justify-between p-3"
-                  >
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium text-white">
-                        {player.name}
-                        {player.name === playerName && (
-                          <span className="text-purple-400 ml-1">(Tú)</span>
-                        )}
-                      </span>
-                      {(player.ready || player.isHost) && (
-                        <CheckCircle className="h-4 w-4 text-green-400" />
-                      )}
-                    </div>
-                    {player.isHost && (
-                      <span className="text-xs bg-purple-500/20 text-purple-200 px-2 py-1 rounded-full border border-purple-400/50">
-                        Anfitrión
-                      </span>
+            <div className="divide-y divide-white/10">
+              {players.map((player) => (
+                <motion.div
+                  key={player.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="flex items-center justify-between p-3"
+                >
+                  <div className="flex items-center gap-2">
+                    {player.isHost ? (
+                      <Crown className="w-4 h-4 text-yellow-400" />
+                    ) : (
+                      <div className={`w-2 h-2 rounded-full ${player.ready ? 'bg-green-400' : 'bg-gray-400'}`} />
                     )}
+                    <span className="font-medium text-white">
+                      {player.name}
+                      {player.name === playerName && (
+                        <span className="text-purple-400 ml-1">(Tú)</span>
+                      )}
+                    </span>
                   </div>
-                ))
-              ) : (
-                <div className="p-3 text-gray-400 text-center">
+                  {(player.ready || player.isHost) && (
+                    <CheckCircle className="h-4 w-4 text-green-400" />
+                  )}
+                </motion.div>
+              ))}
+
+              {players.length === 0 && (
+                <div className="p-4 text-center text-white/60">
                   {isJoining ? 'Conectando...' : 'Esperando jugadores...'}
                 </div>
               )}
