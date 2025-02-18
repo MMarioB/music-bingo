@@ -122,26 +122,28 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
     if (!currentCard) return null;
 
     return (
-      <div className="space-y-4">
+      <div className="space-y-3"> {/* Reducido el espaciado general */}
         <div className={`transition-all duration-500 ${currentCard.revealed ? '' : 'blur-md'}`}>
-          <div className="text-center">
-            <h2 className="text-xl font-bold text-white mb-2">
-              {currentCard.title}
-            </h2>
-            <div className="flex justify-center items-center space-x-2 text-purple-300">
-              <MusicIcon className="w-4 h-4" />
-              <span className="text-base">{currentCard.artist}</span>
+          {/* Grid para info de la canción */}
+          <div className="grid grid-cols-2 gap-3 mb-3">
+            <div className="col-span-2 text-center">
+              <h2 className="text-xl font-bold text-white">
+                {currentCard.title}
+              </h2>
+              <div className="flex justify-center items-center space-x-2 text-purple-300">
+                <MusicIcon className="w-4 h-4" />
+                <span className="text-base">{currentCard.artist}</span>
+              </div>
             </div>
-          </div>
 
-          <div className="flex justify-between items-center bg-white/10 backdrop-blur-sm rounded-lg p-3 mt-3 border border-white/20">
-            <div className="flex items-center space-x-2">
+            {/* Detalles en grid */}
+            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-2 flex items-center justify-between">
               <CalendarIcon className="w-5 h-5 text-purple-400" />
-              <span className="text-2xl font-bold text-white">
+              <span className="text-xl font-bold text-white">
                 {currentCard.year}
               </span>
             </div>
-            <div className="flex items-center space-x-2">
+            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-2 flex items-center justify-between">
               <MusicIcon className="w-5 h-5 text-purple-400" />
               <span className="text-sm text-purple-300">
                 {currentCard.musicCategory}
@@ -150,11 +152,12 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
           </div>
         </div>
 
+        {/* Controles */}
         {!currentCard.revealed ? (
-          <div className="space-y-2">
+          <div className="grid grid-cols-2 gap-2"> {/* Grid para botones */}
             <Button
               onClick={handleRevealSong}
-              className="w-full h-12 bg-gradient-to-r from-purple-600/80 to-indigo-600/80 hover:from-purple-600 hover:to-indigo-600 border border-purple-400/50"
+              className="col-span-2 h-10 bg-gradient-to-r from-purple-600/80 to-indigo-600/80 hover:from-purple-600 hover:to-indigo-600 border border-purple-400/50"
               style={{ boxShadow: '0 0 15px rgba(168,85,247,0.3)' }}
             >
               <ExternalLinkIcon className="mr-2 h-4 w-4" />
@@ -162,7 +165,7 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
             </Button>
             <Button
               variant="outline"
-              className="w-full h-12 border-purple-400/50 text-purple-300 hover:bg-purple-500/20"
+              className="h-10 border-purple-400/50 text-purple-300 hover:bg-purple-500/20"
               onClick={() => window.open(currentCard.spotifyUrl, '_blank')}
             >
               <ExternalLinkIcon className="mr-2 h-4 w-4" />
@@ -174,13 +177,13 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
             <Button
               onClick={handleMarkingControl}
               disabled={!Object.values(playerCorrect).some(correct => correct) || (markingEnabledThisRound && !isMarkingEnabled)}
-              className={`w-full h-12 transition-all duration-300 ${isMarkingEnabled
-                ? 'bg-yellow-500/80 hover:bg-yellow-500 border-yellow-400'
-                : markingEnabledThisRound
-                  ? 'bg-gray-500/50 border-gray-400 cursor-not-allowed'
-                  : Object.values(playerCorrect).some(correct => correct)
-                    ? 'bg-green-500/80 hover:bg-green-500 border-green-400'
-                    : 'bg-gray-500/50 border-gray-400 cursor-not-allowed'
+              className={`w-full h-10 transition-all duration-300 ${isMarkingEnabled
+                  ? 'bg-yellow-500/80 hover:bg-yellow-500 border-yellow-400'
+                  : markingEnabledThisRound
+                    ? 'bg-gray-500/50 border-gray-400 cursor-not-allowed'
+                    : Object.values(playerCorrect).some(correct => correct)
+                      ? 'bg-green-500/80 hover:bg-green-500 border-green-400'
+                      : 'bg-gray-500/50 border-gray-400 cursor-not-allowed'
                 } border`}
               style={
                 !Object.values(playerCorrect).some(correct => correct) || markingEnabledThisRound || isMarkingEnabled
@@ -201,7 +204,7 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
             <Button
               onClick={handleNewRound}
               variant="outline"
-              className="w-full h-12 border-white/20 text-white/80 hover:bg-white/10"
+              className="w-full h-10 border-white/20 text-white/80 hover:bg-white/10"
             >
               <RefreshCwIcon className="w-4 h-4 mr-2" />
               Nueva Ronda
