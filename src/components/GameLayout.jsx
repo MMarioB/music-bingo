@@ -3,7 +3,7 @@ import PropTypes from 'prop-types';
 
 const GameLayout = ({ children, roomCode, playersCount, showSelect, selectContent }) => {
   return (
-    <div className="min-h-screen bg-[#1a0133] flex flex-col relative overflow-hidden">
+    <div className="min-h-screen bg-[#1a0133] flex flex-col relative overflow-hidden font-audiowide">
       {/* Fondo con cuadrícula */}
       <div
         className="absolute inset-0 opacity-10"
@@ -18,50 +18,28 @@ const GameLayout = ({ children, roomCode, playersCount, showSelect, selectConten
         }}
       />
 
-      {/* Header mejorado */}
+      {/* Header compacto */}
       <div className="w-full bg-gradient-to-b from-black/60 to-transparent backdrop-blur-sm">
-        <div className="max-w-xl mx-auto px-4 py-6 space-y-2">
-          {/* Título con mejor espaciado y diseño */}
-          <div className="text-center space-y-1">
-            <h1 className="text-4xl font-bold tracking-wider"
-              style={{
-                background: 'linear-gradient(to right, #ff00ee, #00ffff)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                textShadow: '0 2px 20px rgba(255,0,238,0.5)'
-              }}>
-              DISCOHITS
-            </h1>
-            <h2 className="text-2xl font-bold text-white/90"
-              style={{
-                textShadow: '0 0 10px rgba(255,255,255,0.5)'
-              }}>
-              Music Bingo
-            </h2>
-          </div>
-
-          {/* Info de sala/jugadores */}
-          <div className="flex justify-between items-center">
-            {showSelect ? (
-              <div className="flex-1 min-w-[200px]">
-                {selectContent}
+        <div className="max-w-xl mx-auto p-4">
+          <div className="flex items-center justify-between">
+            {/* Info de sala y select a la izquierda */}
+            <div className="flex items-center gap-4">
+              <div className="text-sm font-mono tracking-wide text-purple-300">
+                Sala: <span className="text-white">{roomCode}</span>
               </div>
-            ) : (
-              <div className="flex-1 min-w-[200px]">
-                <div className="text-sm text-purple-300">
-                  Jugador
+              {showSelect && (
+                <div className="w-40">
+                  {selectContent}
                 </div>
-              </div>
-            )}
+              )}
+            </div>
 
-            <div className="flex items-center gap-3 ml-4">
-              <div className="flex items-center gap-2 bg-black/30 px-3 py-1 rounded-full border border-white/20">
-                <Users className="w-4 h-4 text-purple-300" />
-                <span className="text-white">{playersCount}</span>
-              </div>
-              <div className="text-sm text-purple-300 font-mono">
-                {roomCode}
-              </div>
+            {/* Jugadores conectados a la derecha */}
+            <div className="flex items-center gap-2 bg-black/30 px-3 py-1.5 rounded-full border border-white/20">
+              <Users className="w-4 h-4 text-purple-300" />
+              <span className="text-white text-sm">
+                {playersCount} {playersCount === 1 ? 'jugador' : 'jugadores'}
+              </span>
             </div>
           </div>
         </div>
