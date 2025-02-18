@@ -18,34 +18,49 @@ const GameLayout = ({ children, roomCode, playersCount, showSelect, selectConten
                 }}
             />
 
-            {/* Header compacto */}
-            <div className="w-full bg-gradient-to-b from-black/60 to-transparent backdrop-blur-sm border-b border-white/10">
-                <div className="max-w-xl mx-auto p-4">
-                    <div className="flex items-center justify-between gap-4">
-                        {/* Título compacto a la izquierda */}
-                        <div className="flex items-center gap-4">
-                            <h1 className="font-audiowide bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent text-sm tracking-wider">
-                                DISCOHITS
-                            </h1>
-                            <div className="text-sm font-audiowide tracking-wide bg-black/20 px-3 py-1 rounded-full border border-white/10">
-                                Sala: <span className="text-white/90">{roomCode}</span>
+            {/* Header mejorado */}
+            <div className="w-full bg-gradient-to-b from-black/60 to-transparent backdrop-blur-sm">
+                <div className="max-w-xl mx-auto px-4 py-6 space-y-2">
+                    {/* Título con mejor espaciado y diseño */}
+                    <div className="text-center space-y-1">
+                        <h1 className="text-4xl font-bold tracking-wider"
+                            style={{
+                                background: 'linear-gradient(to right, #ff00ee, #00ffff)',
+                                WebkitBackgroundClip: 'text',
+                                WebkitTextFillColor: 'transparent',
+                                textShadow: '0 2px 20px rgba(255,0,238,0.5)'
+                            }}>
+                            DISCOHITS
+                        </h1>
+                        <h2 className="text-2xl font-bold text-white/90"
+                            style={{
+                                textShadow: '0 0 10px rgba(255,255,255,0.5)'
+                            }}>
+                            Music Bingo
+                        </h2>
+                    </div>
+
+                    {/* Info de sala/jugadores */}
+                    <div className="flex justify-between items-center">
+                        {showSelect ? (
+                            <div className="flex-1 min-w-[200px]">
+                                {selectContent}
                             </div>
-                        </div>
-
-                        <div className="flex items-center gap-4">
-                            {/* Select de dificultad si es necesario */}
-                            {showSelect && (
-                                <div className="w-40">
-                                    {selectContent}
+                        ) : (
+                            <div className="flex-1 min-w-[200px]">
+                                <div className="text-sm text-purple-300">
+                                    Jugador
                                 </div>
-                            )}
+                            </div>
+                        )}
 
-                            {/* Contador de jugadores */}
-                            <div className="flex items-center gap-2 bg-black/20 px-3 py-1 rounded-full border border-white/10">
+                        <div className="flex items-center gap-3 ml-4">
+                            <div className="flex items-center gap-2 bg-black/30 px-3 py-1 rounded-full border border-white/20">
                                 <Users className="w-4 h-4 text-purple-300" />
-                                <span className="text-white/90 text-sm">
-                                    {playersCount}
-                                </span>
+                                <span className="text-white">{playersCount}</span>
+                            </div>
+                            <div className="text-sm text-purple-300 font-mono">
+                                {roomCode}
                             </div>
                         </div>
                     </div>
