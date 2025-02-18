@@ -253,7 +253,7 @@ function App() {
             animate={{ opacity: 1, y: 0 }}
             className="text-center mb-12 relative"
           >
-            <h1 className="text-6xl md:text-5xl md:m-3 font-bold mb-4 tracking-wider"
+            <h1 className="text-4xl md:text-5xl md:m-3 font-bold mb-4 tracking-wider"
               style={{
                 color: '#fff',
                 textShadow: `
@@ -267,7 +267,7 @@ function App() {
               }}>
               DISCOHITS
             </h1>
-            <h2 className="text-4xl md:text-4xl font-bold relative"
+            <h2 className="text-2xl md:text-4xl font-bold relative"
               style={{
                 background: 'linear-gradient(to right, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #4b0082, #8b00ff)',
                 WebkitBackgroundClip: 'text',
