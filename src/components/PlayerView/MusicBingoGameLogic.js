@@ -5,7 +5,7 @@ import {
   MIN_DIFFERENT_CATEGORIES,
   CATEGORIES_A,
   CATEGORIES_B
-} from '../constants';
+} from '../Wheel/constants';
 
 export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
   const [board, setBoard] = useState([]);
