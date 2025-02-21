@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import PropTypes from 'prop-types';
 import { motion } from 'framer-motion';
-import { CATEGORIES_A, CATEGORIES_B } from './constants';
+import { CATEGORIES_A, CATEGORIES_B } from '../constants';
 
 const easeOutQuad = (t) => t * (2 - t);
 
