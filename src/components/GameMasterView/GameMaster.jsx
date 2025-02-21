@@ -12,8 +12,8 @@ import {
   AlertCircle,
   Check
 } from 'lucide-react';
-import CategoryWheel from '../CategoryWheel';
-import PredictionsPanel from '../PredictionsPanel';
+import CategoryWheel from '../Wheel/CategoryWheel';
+import PredictionsPanel from './PredictionsPanel';
 import GameLayout from '../GameLayout';
 import PropTypes from 'prop-types';
 import { useGameMasterLogic } from './GameMasterLogic';
