@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { AlertCircle, InfoIcon, Check, XCircleIcon } from 'lucide-react';
 import PropTypes from 'prop-types';
 import { useMusicBingoLogic } from './MusicBingoGameLogic';
-import PlayerPredictions from '../PlayerPredictions';
+import PlayerPredictions from '../PlayerView/PlayerPredictions';
 import GameLayout from '../GameLayout';
 
 const MusicBingoGame = ({ playerName, roomCode, difficulty }) => {
