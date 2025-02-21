@@ -6,7 +6,7 @@ import {
   MusicNoteIcon,
   ExactYearIcon,
   HeadphonesIcon
-} from './CustomIcons';
+} from '../CustomIcons';
 
 // Colores neón para las categorías
 export const WHEEL_COLORS = {
