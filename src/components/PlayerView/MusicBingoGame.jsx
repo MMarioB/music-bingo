@@ -63,7 +63,7 @@ const MusicBingoGame = ({ playerName, roomCode, difficulty }) => {
   }, [connectionError, setConnectionError]);
 
   const renderContent = () => (
-    <>
+    <div className="flex flex-col flex-1 space-y-4">
       {connectionError && (
         <AnimatePresence>
           <motion.div
@@ -71,7 +71,7 @@ const MusicBingoGame = ({ playerName, roomCode, difficulty }) => {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
           >
-            <Alert variant="destructive" className="mb-4 bg-red-500/20 border border-red-500/50">
+            <Alert variant="destructive" className="bg-red-500/20 border border-red-500/50">
               <AlertCircle className="h-4 w-4 text-white" />
               <AlertDescription className="text-white">{connectionError}</AlertDescription>
             </Alert>
@@ -86,7 +86,7 @@ const MusicBingoGame = ({ playerName, roomCode, difficulty }) => {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
           >
-            <Alert className="mb-4 bg-green-500/20 border border-green-500/50">
+            <Alert className="bg-green-500/20 border border-green-500/50">
               <Check className="h-5 w-5 text-green-400 mr-2" />
               <AlertDescription className="text-green-300 font-semibold text-sm md:text-base">
                 ¡BINGO! ¡Has completado una línea!
@@ -98,7 +98,7 @@ const MusicBingoGame = ({ playerName, roomCode, difficulty }) => {
 
       {currentCategory && (
         <div
-          className={`${currentCategory.color} p-3 rounded-lg text-center border border-white/20 mb-4`}
+          className={`${currentCategory.color} p-3 rounded-lg text-center border border-white/20`}
           style={{ boxShadow: '0 0 15px rgba(255,255,255,0.1)' }}
         >
           <h3 className="font-semibold text-lg text-gray-800">{currentCategory.name}</h3>
@@ -106,7 +106,7 @@ const MusicBingoGame = ({ playerName, roomCode, difficulty }) => {
       )}
 
       {currentSong && !canMark && !isEligibleToMark && (
-        <Alert className="mb-4 bg-yellow-500/20 border border-yellow-400/50">
+        <Alert className="bg-yellow-500/20 border border-yellow-400/50">
           <XCircleIcon className="h-5 w-5 text-yellow-400 mr-2" />
           <AlertDescription className="text-yellow-300">
             No has acertado esta ronda. ¡Sigue intentándolo en la siguiente!
@@ -117,10 +117,10 @@ const MusicBingoGame = ({ playerName, roomCode, difficulty }) => {
       {currentCategory && (
         <Alert className={
           canMark
-            ? "mb-4 bg-green-500/20 border border-green-400/50"
+            ? "bg-green-500/20 border border-green-400/50"
             : isEligibleToMark
-              ? "mb-4 bg-yellow-500/20 border border-yellow-400/50"
-              : "mb-4 bg-blue-500/20 border border-blue-400/50"
+              ? "bg-yellow-500/20 border border-yellow-400/50"
+              : "bg-blue-500/20 border border-blue-400/50"
         }>
           {canMark ? (
             lastMarkedIndex !== null ? (
@@ -159,63 +159,64 @@ const MusicBingoGame = ({ playerName, roomCode, difficulty }) => {
       )}
 
       {(gamePhase === 'playing' || currentCategory) && (
-        <Card className="bg-black/30 border border-white/20 p-2 md:p-4">
-          <div className="grid grid-cols-5 gap-1 md:gap-3">
-            {board.map((category, index) => {
-              const isSelected = index === lastMarkedIndex;
-              const isMarkable = canMark &&
-                category.name === currentCategory?.name &&
-                (!hasMarkedThisRound || isSelected);
+        <div className="flex-1 flex flex-col justify-center">
+          <Card className="bg-black/30 border border-white/20 p-2 md:p-4">
+            <div className="grid grid-cols-5 gap-1 md:gap-3">
+              {board.map((category, index) => {
+                const isSelected = index === lastMarkedIndex;
+                const isMarkable = canMark &&
+                  category.name === currentCategory?.name &&
+                  (!hasMarkedThisRound || isSelected);
 
-              return (
-                <motion.button
-                  key={index}
-                  whileHover={{ scale: isMarkable ? 1.05 : 1 }}
-                  whileTap={{ scale: isMarkable ? 0.95 : 1 }}
-                  className={`
-                    ${category.color} 
-                    aspect-square 
-                    rounded-lg
-                    flex 
-                    items-center 
-                    justify-center 
-                    p-1 md:p-2
-                    text-center 
-                    relative 
-                    transition-all 
-                    duration-200
-                    border border-white/20
-                    ${isMarkable ? 'cursor-pointer hover:ring-2 hover:ring-purple-400' : 'cursor-default'}
-                    ${category.marked ? 'scale-95 shadow-inner' : 'shadow hover:shadow-md'}
-                    ${isSelected ? 'ring-2 ring-purple-400' : ''}
-                  `}
-                  style={isSelected ? { boxShadow: '0 0 15px rgba(168,85,247,0.4)' } : {}}
-                  onClick={() => handleMarkCell(index)}
-                  disabled={!isMarkable}
-                  aria-label={`Casilla ${category.name}`}
-                >
-                  {category.marked && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/20 backdrop-blur-sm rounded-lg">
-                      <Check className="text-green-400 w-6 md:w-10 h-6 md:h-10"
-                        style={{ filter: 'drop-shadow(0 0 8px rgb(74 222 128 / 0.5))' }}
-                      />
-                    </div>
-                  )}
-                </motion.button>
-              );
-            })}
-          </div>
-        </Card>
+                return (
+                  <motion.button
+                    key={index}
+                    whileHover={{ scale: isMarkable ? 1.05 : 1 }}
+                    whileTap={{ scale: isMarkable ? 0.95 : 1 }}
+                    className={`
+                      ${category.color} 
+                      aspect-square 
+                      rounded-lg
+                      flex 
+                      items-center 
+                      justify-center 
+                      p-1 md:p-2
+                      text-center 
+                      relative 
+                      transition-all 
+                      duration-200
+                      border border-white/20
+                      ${isMarkable ? 'cursor-pointer hover:ring-2 hover:ring-purple-400' : 'cursor-default'}
+                      ${category.marked ? 'scale-95 shadow-inner' : 'shadow hover:shadow-md'}
+                      ${isSelected ? 'ring-2 ring-purple-400' : ''}
+                    `}
+                    style={isSelected ? { boxShadow: '0 0 15px rgba(168,85,247,0.4)' } : {}}
+                    onClick={() => handleMarkCell(index)}
+                    disabled={!isMarkable}
+                    aria-label={`Casilla ${category.name}`}
+                  >
+                    {category.marked && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/20 backdrop-blur-sm rounded-lg">
+                        <Check className="text-green-400 w-6 md:w-10 h-6 md:h-10"
+                          style={{ filter: 'drop-shadow(0 0 8px rgb(74 222 128 / 0.5))' }}
+                        />
+                      </div>
+                    )}
+                  </motion.button>
+                );
+              })}
+            </div>
+          </Card>
+        </div>
       )}
 
-      {/* Componente de predicciones */}
       <PlayerPredictions
         isRevealed={!!currentSong}
         onSubmitPrediction={handlePrediction}
         predictions={predictions}
         currentSongStarted={songStarted}
       />
-    </>
+    </div>
   );
 
   return (

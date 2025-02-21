@@ -20,7 +20,7 @@ const GameLayout = ({ children, roomCode, playersCount, showSelect, selectConten
 
             {/* Header mejorado */}
             <div className="w-full bg-gradient-to-b from-black/60 to-transparent backdrop-blur-sm">
-                <div className="max-w-xl mx-auto px-4 py-6 space-y-2">
+                <div className="max-w-xl mx-auto px-4 py-4 space-y-2">
                     {/* Título con mejor espaciado y diseño */}
                     <div className="text-center space-y-1">
                         <h1 className="text-4xl font-bold tracking-wider"
@@ -48,7 +48,7 @@ const GameLayout = ({ children, roomCode, playersCount, showSelect, selectConten
                             </div>
                         ) : (
                             <div className="flex-1 min-w-[200px]">
-                                <div className="text-sm text-purple-300">
+                                <div className="text, text-purple-300">
                                     Jugador
                                 </div>
                             </div>
@@ -68,8 +68,8 @@ const GameLayout = ({ children, roomCode, playersCount, showSelect, selectConten
             </div>
 
             {/* Contenido principal */}
-            <div className="flex-1 flex flex-col p-4">
-                <div className="max-w-xl w-full mx-auto flex-1 flex flex-col">
+            <div className="flex-1 flex flex-col p-4 overflow-y-auto">
+                <div className="max-w-xl w-full mx-auto flex-1 flex flex-col justify-between">
                     {children}
                 </div>
             </div>
