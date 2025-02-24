@@ -118,18 +118,23 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
 
   const handlePlayerCorrectToggle = useCallback(async (playerId) => {
     if (!loggedIn || !isTokenValid) return;
-
+  
     try {
+      // Invertir el estado actual del jugador
       const newCorrectState = !playerCorrect[playerId];
       const player = connectedPlayers.find(p => p.id === playerId);
-      console.log('Marcando jugador:', player?.name, '(ID:', playerId, ') como:', newCorrectState);
-
+      
+      console.log('Marcando jugador:', player?.name, '(ID:', playerId, ') como:', 
+        newCorrectState ? 'ACERTANTE' : 'NO ACERTANTE');
+  
+      // Notificar al servidor
       await gameSocket.markPlayerCorrect({
         roomCode,
         playerId,
         isCorrect: newCorrectState
       });
-
+  
+      // Actualizar el estado local
       setPlayerCorrect(prev => {
         const newState = {
           ...prev,
@@ -138,12 +143,18 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
         console.log('Nuevo estado de playerCorrect:', newState);
         return newState;
       });
-
+  
+      // Si el marcado ya está habilitado, deshabilitar para forzar una revaluación con los nuevos elegibles
+      if (isMarkingEnabled) {
+        await gameSocket.disableMarking({ roomCode });
+        setIsMarkingEnabled(false);
+      }
+  
     } catch (error) {
       console.error('Error al marcar jugador:', error);
       setConnectionError('Error al marcar el acierto del jugador');
     }
-  }, [roomCode, loggedIn, isTokenValid, playerCorrect, connectedPlayers]);
+  }, [roomCode, loggedIn, isTokenValid, playerCorrect, connectedPlayers, isMarkingEnabled]);
 
   useEffect(() => {
     if (!loggedIn || !isTokenValid) return;
@@ -330,7 +341,7 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
 
   const handleMarkingToggle = useCallback(async () => {
     if (!loggedIn || !isTokenValid) return;
-
+  
     try {
       if (isMarkingEnabled) {
         await gameSocket.disableMarking({ roomCode });
@@ -338,38 +349,44 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
       } else {
         console.log('Estado actual de playerCorrect:', playerCorrect);
         console.log('Jugadores conectados:', connectedPlayers);
-
+  
+        // Obtenemos solo los jugadores marcados explícitamente como correctos
         const eligiblePlayers = Object.entries(playerCorrect)
           .filter(([, isCorrect]) => isCorrect === true)
           .map(([playerId]) => playerId);
-
+  
         console.log('Jugadores elegibles a enviar:', eligiblePlayers);
         
+        // Log para depuración
         eligiblePlayers.forEach(id => {
           const player = connectedPlayers.find(p => p.id === id);
           console.log(`Jugador elegible: ${player?.name} (ID: ${id})`);
         });
-
+  
+        // Validación importante: si no hay jugadores elegibles, mostrar un error claro
         if (eligiblePlayers.length === 0) {
           console.log('⚠️ Advertencia: No hay jugadores elegibles para marcar');
+          setConnectionError('No hay jugadores marcados como acertantes. Marca al menos un jugador antes de habilitar el marcado.');
           return;
         }
-
+  
+        // Verificar que los jugadores elegibles estén conectados
         const validEligiblePlayers = eligiblePlayers.filter(id => 
           connectedPlayers.some(player => player.id === id)
         );
-
+  
         if (validEligiblePlayers.length === 0) {
           console.log('⚠️ Error: Ninguno de los jugadores elegibles está conectado');
-          setConnectionError('Error: No hay jugadores válidos para marcar');
+          setConnectionError('Error: Los jugadores marcados como acertantes ya no están conectados.');
           return;
         }
-
+  
+        // Todo correcto, enviamos los jugadores elegibles
         await gameSocket.enableMarking({ 
           roomCode,
           eligiblePlayers: validEligiblePlayers 
         });
-
+  
         setIsMarkingEnabled(true);
         console.log('Marcado habilitado exitosamente para:', validEligiblePlayers);
       }

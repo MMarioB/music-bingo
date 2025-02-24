@@ -1,4 +1,3 @@
-// Modificación para useMusicBingoLogic.js
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { gameSocket } from '../../services/socketService';
 import {
@@ -23,9 +22,11 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
   
   // Timer states para predicciones
   const [predictionTimeRemaining, setPredictionTimeRemaining] = useState(30);
-  const [predictionTimerActive, setPredictionTimerActive] = useState(false);
   const predictionTimerRef = useRef(null);
   const [canPredict, setCanPredict] = useState(true);
+  
+  // Añadir un estado para saber explícitamente si este jugador ha sido marcado como incorrecto
+  const [isMarkedAsIncorrect, setIsMarkedAsIncorrect] = useState(false);
   
   // Usar useRef para controlar si el tablero ya ha sido generado
   const boardGenerated = useRef(false);
@@ -38,14 +39,12 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
     }
     
     setPredictionTimeRemaining(seconds);
-    setPredictionTimerActive(true);
     setCanPredict(true);
     
     predictionTimerRef.current = setInterval(() => {
       setPredictionTimeRemaining(prev => {
         if (prev <= 1) {
           clearInterval(predictionTimerRef.current);
-          setPredictionTimerActive(false);
           setCanPredict(false);
           return 0;
         }
@@ -60,7 +59,6 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
       clearInterval(predictionTimerRef.current);
       predictionTimerRef.current = null;
     }
-    setPredictionTimerActive(false);
   }, []);
 
   // Función para validar la distribución de categorías
@@ -209,6 +207,7 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
   const handleCellClick = useCallback((index, isUnmarking = false) => {
     if (!canMark && !isUnmarking) return;
     if (!isEligibleToMark && !isUnmarking) return;
+    if (isMarkedAsIncorrect && !isUnmarking) return; // No permitir marcar si fue marcado como incorrecto
 
     setBoard(prev => {
       const newBoard = [...prev];
@@ -226,7 +225,7 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
       }
       return prev;
     });
-  }, [canMark, isEligibleToMark, currentCategory, checkWinner, roomCode, playerName]);
+  }, [canMark, isEligibleToMark, isMarkedAsIncorrect, currentCategory, checkWinner, roomCode, playerName]);
 
   const handlePrediction = useCallback((prediction) => {
     if (!canPredict) return;
@@ -253,7 +252,7 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
     };
   }, []);
 
-  // Efecto para eventos del socket
+  // Efecto para eventos del socket - modificado para manejar mejor el estado de elegibilidad
   useEffect(() => {
     const handlers = {
       playersUpdate: ({ players }) => {
@@ -264,6 +263,7 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
         setCurrentSong(null);
         setCanMark(false);
         setIsEligibleToMark(false);
+        setIsMarkedAsIncorrect(false); // Resetear al cambiar de categoría
         setSongStarted(false);
         setPredictions([]);
         setGamePhase('playing');
@@ -294,6 +294,13 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
           return;
         }
 
+        // Si el jugador ya ha sido marcado como incorrecto, no puede ser elegible
+        if (isMarkedAsIncorrect) {
+          console.log(`Jugador ${playerName} ya fue marcado como incorrecto, no es elegible para marcar`);
+          setIsEligibleToMark(false);
+          return;
+        }
+
         const isEligible = eligiblePlayers.includes(currentPlayerInList.id);
         console.log(`Jugador ${playerName} (${currentPlayerInList.id}): ${isEligible ? 'elegible' : 'NO elegible'} para marcar`);
         setIsEligibleToMark(isEligible);
@@ -306,9 +313,14 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
         const currentPlayer = connectedPlayers.find(p => p.name === playerName);
         if (currentPlayer && currentPlayer.id === playerId) {
           console.log(`Jugador ${playerName} marcado como: ${isCorrect ? 'correcto' : 'incorrecto'}`);
-          setIsEligibleToMark(isCorrect);
+          
+          // Guardar explícitamente si el jugador fue marcado como incorrecto
           if (!isCorrect) {
+            setIsMarkedAsIncorrect(true);
             setCanMark(false);
+            setIsEligibleToMark(false);
+          } else {
+            setIsEligibleToMark(true);
           }
         }
       },
@@ -344,14 +356,14 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
         gameSocket.off(event);
       });
     };
-  }, [joinGame, playerName, connectedPlayers, startPredictionTimer, stopPredictionTimer]);
+  }, [joinGame, playerName, connectedPlayers, startPredictionTimer, stopPredictionTimer, isMarkedAsIncorrect]);
 
   return {
     board,
     connectedPlayers,
     currentCategory,
     currentSong,
-    canMark,
+    canMark: canMark && isEligibleToMark && !isMarkedAsIncorrect,
     hasWinner,
     connectionError,
     gamePhase,
@@ -362,7 +374,7 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
     setConnectionError,
     isEligibleToMark,
     predictionTimeRemaining,
-    predictionTimerActive,
-    canPredict
+    canPredict,
+    isMarkedAsIncorrect
   };
 };

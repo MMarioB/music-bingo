@@ -28,7 +28,8 @@ const MusicBingoGame = ({ playerName, roomCode, difficulty }) => {
     gamePhase,
     isEligibleToMark,
     predictionTimeRemaining,
-    canPredict
+    canPredict,
+    isMarkedAsIncorrect
   } = useMusicBingoLogic({ playerName, roomCode, difficulty });
 
   const handleMarkCell = (index) => {
@@ -63,8 +64,6 @@ const MusicBingoGame = ({ playerName, roomCode, difficulty }) => {
     }
     return () => clearTimeout(timer);
   }, [connectionError, setConnectionError]);
-
-
 
   const renderContent = () => (
     <div className="flex flex-col flex-1 space-y-4">
@@ -109,18 +108,24 @@ const MusicBingoGame = ({ playerName, roomCode, difficulty }) => {
         </div>
       )}
 
-      {currentSong && !canMark && !isEligibleToMark && (
-        <Alert className="bg-yellow-500/20 border border-yellow-400/50">
-          <XCircleIcon className="h-5 w-5 text-yellow-400 mr-2" />
-          <AlertDescription className="text-yellow-300">
-            No has acertado esta ronda. ¡Sigue intentándolo en la siguiente!
+      {currentSong && isMarkedAsIncorrect && (
+        <Alert className="bg-red-500/20 border border-red-500/50">
+          <XCircleIcon className="h-5 w-5 text-red-400 mr-2" />
+          <AlertDescription className="text-red-300">
+            Has sido marcado como no acertante en esta ronda. No podrás marcar casillas.
           </AlertDescription>
         </Alert>
       )}
 
-      {/* Ya no necesitamos renderizar el temporizador aquí, 
-          ahora se muestra directamente en el componente PlayerPredictions */}
-          
+      {currentSong && !isMarkedAsIncorrect && !canMark && !isEligibleToMark && (
+        <Alert className="bg-yellow-500/20 border border-yellow-400/50">
+          <AlertCircle className="h-5 w-5 text-yellow-400 mr-2" />
+          <AlertDescription className="text-yellow-300">
+            Espera a que el Game Master evalúe tu predicción.
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Mensaje cuando se agota el tiempo para predecir (solo si no hay predicciones) */}
       {songStarted && predictionTimeRemaining === 0 && predictions.length === 0 && (
         <AnimatePresence>
@@ -145,7 +150,9 @@ const MusicBingoGame = ({ playerName, roomCode, difficulty }) => {
             ? "bg-green-500/20 border border-green-400/50"
             : isEligibleToMark
               ? "bg-yellow-500/20 border border-yellow-400/50"
-              : "bg-blue-500/20 border border-blue-400/50"
+              : isMarkedAsIncorrect
+                ? "bg-red-500/20 border border-red-500/50"
+                : "bg-blue-500/20 border border-blue-400/50"
         }>
           {canMark ? (
             lastMarkedIndex !== null ? (
@@ -168,6 +175,13 @@ const MusicBingoGame = ({ playerName, roomCode, difficulty }) => {
               <InfoIcon className="h-5 w-5 text-yellow-400 mr-2" />
               <AlertDescription className="text-yellow-300">
                 Espera a que el Game Master habilite el marcado
+              </AlertDescription>
+            </>
+          ) : isMarkedAsIncorrect ? (
+            <>
+              <XCircleIcon className="h-5 w-5 text-red-400 mr-2" />
+              <AlertDescription className="text-red-300">
+                No has acertado esta ronda, no podrás marcar casillas
               </AlertDescription>
             </>
           ) : (

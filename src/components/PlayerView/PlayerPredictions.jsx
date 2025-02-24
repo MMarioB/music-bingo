@@ -51,19 +51,26 @@ const PlayerPredictions = ({
     
     // Colores basados en el tiempo restante
     let colorClass = "text-green-400";
-    if (timeRemaining <= 10) colorClass = "text-red-400";
-    else if (timeRemaining <= 20) colorClass = "text-yellow-400";
+    let bgColorClass = "bg-green-400/20";
+    
+    if (timeRemaining <= 10) {
+      colorClass = "text-red-400";
+      bgColorClass = "bg-red-400/20";
+    } else if (timeRemaining <= 20) {
+      colorClass = "text-yellow-400";
+      bgColorClass = "bg-yellow-400/20";
+    }
     
     return (
-      <div className="flex items-center gap-1 text-xs">
+      <div className={`absolute -top-8 right-0 flex items-center gap-2 ${bgColorClass} px-2 py-1 rounded-t-md backdrop-blur-sm border-t border-l border-r border-white/20`}>
         <Clock className={`h-3 w-3 ${colorClass}`} />
-        <span className={colorClass}>{timeRemaining}s</span>
+        <span className={`${colorClass} font-mono font-bold`}>{timeRemaining}s</span>
       </div>
     );
   };
 
   return (
-    <div className="fixed bottom-4 sm:bottom-6 right-4 sm:right-6 flex flex-col items-end gap-2 z-40">
+    <div className="fixed bottom-4 sm:bottom-6 right-4 sm:right-6 flex flex-col items-end gap-3 z-40">
       {/* Lista de predicciones */}
       <AnimatePresence>
         {predictions.length > 0 && (
@@ -113,7 +120,8 @@ const PlayerPredictions = ({
                   <AlertDescription>{error}</AlertDescription>
                 </Alert>
               )}
-              <div className="flex flex-col gap-2">
+              <div className="relative">
+                {timeRemaining && timeRemaining > 0 && renderTimer()}
                 <div className="flex gap-2">
                   <div className="relative flex-1">
                     <Input
@@ -125,11 +133,6 @@ const PlayerPredictions = ({
                       }`}
                       disabled={disabled || isRevealed}
                     />
-                    {timeRemaining && timeRemaining > 0 && (
-                      <div className="absolute right-2 top-0 bottom-0 flex items-center">
-                        {renderTimer()}
-                      </div>
-                    )}
                   </div>
                   <Button 
                     type="submit"
@@ -145,9 +148,9 @@ const PlayerPredictions = ({
                 
                 {/* Barra de progreso para el timer */}
                 {timeRemaining && timeRemaining > 0 && (
-                  <div className="w-full bg-gray-700/50 rounded-full h-1">
+                  <div className="w-full mt-1 bg-gray-700/50 rounded-full h-1.5 overflow-hidden">
                     <motion.div 
-                      className={`h-1 rounded-full ${
+                      className={`h-1.5 rounded-full ${
                         timeRemaining <= 10 ? 'bg-red-500' : 
                         timeRemaining <= 20 ? 'bg-yellow-500' : 
                         'bg-green-500'
@@ -162,10 +165,14 @@ const PlayerPredictions = ({
                 
                 {/* Mensaje cuando el tiempo se ha acabado */}
                 {disabled && !isRevealed && (
-                  <div className="text-xs text-red-400 flex items-center">
+                  <motion.div 
+                    initial={{ opacity: 0, y: 5 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="mt-1 text-xs text-red-400 flex items-center bg-red-500/10 px-2 py-1 rounded border border-red-500/20"
+                  >
                     <AlertCircle className="h-3 w-3 mr-1" />
                     Se acabó el tiempo para predecir
-                  </div>
+                  </motion.div>
                 )}
               </div>
             </div>
