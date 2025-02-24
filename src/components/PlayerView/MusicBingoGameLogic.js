@@ -21,29 +21,32 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
   const [songStarted, setSongStarted] = useState(false);
   const [isEligibleToMark, setIsEligibleToMark] = useState(false);
   
-  // Timer states
-  const [timeRemaining, setTimeRemaining] = useState(30);
-  const [timerActive, setTimerActive] = useState(false);
-  const timerRef = useRef(null);
+  // Timer states para predicciones
+  const [predictionTimeRemaining, setPredictionTimeRemaining] = useState(30);
+  const [predictionTimerActive, setPredictionTimerActive] = useState(false);
+  const predictionTimerRef = useRef(null);
+  const [canPredict, setCanPredict] = useState(true);
   
   // Usar useRef para controlar si el tablero ya ha sido generado
   const boardGenerated = useRef(false);
 
-  // Función para iniciar el timer
-  const startTimer = useCallback((seconds = 30) => {
+  // Función para iniciar el timer de predicciones
+  const startPredictionTimer = useCallback((seconds = 30) => {
     // Limpiar cualquier timer existente primero
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
+    if (predictionTimerRef.current) {
+      clearInterval(predictionTimerRef.current);
     }
     
-    setTimeRemaining(seconds);
-    setTimerActive(true);
+    setPredictionTimeRemaining(seconds);
+    setPredictionTimerActive(true);
+    setCanPredict(true);
     
-    timerRef.current = setInterval(() => {
-      setTimeRemaining(prev => {
+    predictionTimerRef.current = setInterval(() => {
+      setPredictionTimeRemaining(prev => {
         if (prev <= 1) {
-          clearInterval(timerRef.current);
-          setTimerActive(false);
+          clearInterval(predictionTimerRef.current);
+          setPredictionTimerActive(false);
+          setCanPredict(false);
           return 0;
         }
         return prev - 1;
@@ -51,13 +54,13 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
     }, 1000);
   }, []);
   
-  // Función para detener el timer
-  const stopTimer = useCallback(() => {
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-      timerRef.current = null;
+  // Función para detener el timer de predicciones
+  const stopPredictionTimer = useCallback(() => {
+    if (predictionTimerRef.current) {
+      clearInterval(predictionTimerRef.current);
+      predictionTimerRef.current = null;
     }
-    setTimerActive(false);
+    setPredictionTimerActive(false);
   }, []);
 
   // Función para validar la distribución de categorías
@@ -226,12 +229,14 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
   }, [canMark, isEligibleToMark, currentCategory, checkWinner, roomCode, playerName]);
 
   const handlePrediction = useCallback((prediction) => {
+    if (!canPredict) return;
+    
     setPredictions(prev => [...prev, prediction]);
     gameSocket.submitPrediction({
       roomCode,
       prediction
     });
-  }, [roomCode]);
+  }, [roomCode, canPredict]);
 
   // Resetear boardGenerated cuando cambie el roomCode
   useEffect(() => {
@@ -242,8 +247,8 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
   useEffect(() => {
     return () => {
       // Cleanup timer on unmount
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
+      if (predictionTimerRef.current) {
+        clearInterval(predictionTimerRef.current);
       }
     };
   }, []);
@@ -263,17 +268,20 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
         setPredictions([]);
         setGamePhase('playing');
         // Detener cualquier timer activo cuando se cambia de categoría
-        stopTimer();
+        stopPredictionTimer();
       },
       songStarted: () => {
         setSongStarted(true);
+        // Iniciar el timer de predicciones cuando comienza la canción
+        startPredictionTimer(30);
       },
       songRevealed: (songData) => {
         setCurrentSong(songData);
         setSongStarted(false);
         setIsEligibleToMark(false);
-        // Detener cualquier timer activo cuando se revela la canción
-        stopTimer();
+        // Detener el timer de predicciones cuando se revela la canción
+        stopPredictionTimer();
+        setCanPredict(false);
       },
       markingEnabled: ({ eligiblePlayers }) => {
         console.log('Recibido evento markingEnabled con elegibles:', eligiblePlayers);
@@ -289,17 +297,10 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
         const isEligible = eligiblePlayers.includes(currentPlayerInList.id);
         console.log(`Jugador ${playerName} (${currentPlayerInList.id}): ${isEligible ? 'elegible' : 'NO elegible'} para marcar`);
         setIsEligibleToMark(isEligible);
-        
-        // Iniciar el timer cuando el jugador puede marcar
-        if (isEligible) {
-          startTimer(30);
-        }
       },
       markingDisabled: () => {
         setCanMark(false);
         setIsEligibleToMark(false);
-        // Detener el timer cuando se deshabilita el marcado
-        stopTimer();
       },
       playerMarked: ({ playerId, isCorrect }) => {
         const currentPlayer = connectedPlayers.find(p => p.name === playerName);
@@ -308,8 +309,6 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
           setIsEligibleToMark(isCorrect);
           if (!isCorrect) {
             setCanMark(false);
-            // Detener el timer si el jugador no ha acertado
-            stopTimer();
           }
         }
       },
@@ -345,39 +344,25 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
         gameSocket.off(event);
       });
     };
-  }, [joinGame, playerName, connectedPlayers, startTimer, stopTimer]);
-
-  // Efecto para cuando el timer llega a cero
-  useEffect(() => {
-    if (timeRemaining === 0 && isEligibleToMark) {
-      // Cuando el timer llega a cero, deshabilitamos el marcado
-      setCanMark(false);
-      
-      // Desactivamos el timer visualmente
-      setTimerActive(false);
-      
-      // Aquí podrías notificar al servidor que el tiempo se acabó si es necesario
-      // gameSocket.timeExpired({ roomCode, playerName });
-    }
-  }, [timeRemaining, isEligibleToMark, roomCode, playerName]);
+  }, [joinGame, playerName, connectedPlayers, startPredictionTimer, stopPredictionTimer]);
 
   return {
     board,
     connectedPlayers,
     currentCategory,
     currentSong,
-    canMark: canMark && isEligibleToMark && timeRemaining > 0,
+    canMark,
     hasWinner,
     connectionError,
     gamePhase,
     predictions,
     songStarted,
     handleCellClick,
-    handlePrediction: timeRemaining > 0 ? handlePrediction : () => {},
+    handlePrediction,
     setConnectionError,
     isEligibleToMark,
-    timeRemaining,
-    timerActive,
-    allowPredictions: timerActive && timeRemaining > 0
+    predictionTimeRemaining,
+    predictionTimerActive,
+    canPredict
   };
 };
