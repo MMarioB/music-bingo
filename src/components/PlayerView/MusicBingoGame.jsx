@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Card } from '../ui/card';
 import { Alert, AlertDescription } from '../ui/alert';
 import { motion, AnimatePresence } from 'framer-motion';
-import { AlertCircle, InfoIcon, Check, XCircleIcon } from 'lucide-react';
+import { AlertCircle, InfoIcon, Check, XCircleIcon, Clock } from 'lucide-react';
 import PropTypes from 'prop-types';
 import { useMusicBingoLogic } from './MusicBingoGameLogic';
 import PlayerPredictions from '../PlayerView/PlayerPredictions';
@@ -26,7 +26,10 @@ const MusicBingoGame = ({ playerName, roomCode, difficulty }) => {
     handleCellClick,
     handlePrediction,
     gamePhase,
-    isEligibleToMark
+    isEligibleToMark,
+    timeRemaining,
+    timerActive,
+    allowPredictions
   } = useMusicBingoLogic({ playerName, roomCode, difficulty });
 
   const handleMarkCell = (index) => {
@@ -61,6 +64,43 @@ const MusicBingoGame = ({ playerName, roomCode, difficulty }) => {
     }
     return () => clearTimeout(timer);
   }, [connectionError, setConnectionError]);
+
+  // Función para renderizar el temporizador
+  const renderTimer = () => {
+    if (!timerActive) return null;
+    
+    // Si el tiempo se acabó, no mostramos el temporizador
+    if (timeRemaining <= 0) return null;
+    
+    // Calcular el color basado en el tiempo restante
+    let colorClass = "text-green-400";
+    if (timeRemaining <= 10) colorClass = "text-red-400";
+    else if (timeRemaining <= 20) colorClass = "text-yellow-400";
+    
+    // Calcular el ancho de la barra de progreso
+    const progressPercentage = (timeRemaining / 30) * 100;
+    
+    return (
+      <div className="mb-2">
+        <div className="flex items-center justify-between mb-1">
+          <div className="flex items-center">
+            <Clock className={`h-4 w-4 ${colorClass} mr-2`} />
+            <span className={`font-bold ${colorClass}`}>{timeRemaining}s</span>
+          </div>
+          <span className={`text-xs ${colorClass}`}>Tiempo para marcar</span>
+        </div>
+        <div className="w-full bg-gray-700 rounded-full h-2.5">
+          <motion.div 
+            className={`h-2.5 rounded-full ${timeRemaining <= 10 ? 'bg-red-500' : timeRemaining <= 20 ? 'bg-yellow-500' : 'bg-green-500'}`}
+            style={{ width: `${progressPercentage}%` }}
+            initial={{ width: "100%" }}
+            animate={{ width: `${progressPercentage}%` }}
+            transition={{ duration: 0.5 }}
+          ></motion.div>
+        </div>
+      </div>
+    );
+  };
 
   const renderContent = () => (
     <div className="flex flex-col flex-1 space-y-4">
@@ -114,6 +154,25 @@ const MusicBingoGame = ({ playerName, roomCode, difficulty }) => {
         </Alert>
       )}
 
+      {isEligibleToMark && renderTimer()}
+
+      {timeRemaining === 0 && isEligibleToMark && (
+        <AnimatePresence>
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+          >
+            <Alert className="bg-red-500/20 border border-red-500/50">
+              <XCircleIcon className="h-5 w-5 text-red-400 mr-2" />
+              <AlertDescription className="text-red-300">
+                ¡Se ha agotado el tiempo para marcar!
+              </AlertDescription>
+            </Alert>
+          </motion.div>
+        </AnimatePresence>
+      )}
+
       {currentCategory && (
         <Alert className={
           canMark
@@ -139,12 +198,21 @@ const MusicBingoGame = ({ playerName, roomCode, difficulty }) => {
               </>
             )
           ) : isEligibleToMark ? (
-            <>
-              <InfoIcon className="h-5 w-5 text-yellow-400 mr-2" />
-              <AlertDescription className="text-yellow-300">
-                Espera a que el Game Master habilite el marcado
-              </AlertDescription>
-            </>
+            timeRemaining > 0 ? (
+              <>
+                <InfoIcon className="h-5 w-5 text-yellow-400 mr-2" />
+                <AlertDescription className="text-yellow-300">
+                  Espera a que el Game Master habilite el marcado
+                </AlertDescription>
+              </>
+            ) : (
+              <>
+                <XCircleIcon className="h-5 w-5 text-red-400 mr-2" />
+                <AlertDescription className="text-red-300">
+                  Se acabó el tiempo para marcar
+                </AlertDescription>
+              </>
+            )
           ) : (
             <>
               <InfoIcon className="h-5 w-5 text-blue-400 mr-2" />
@@ -215,6 +283,7 @@ const MusicBingoGame = ({ playerName, roomCode, difficulty }) => {
         onSubmitPrediction={handlePrediction}
         predictions={predictions}
         currentSongStarted={songStarted}
+        disabled={!allowPredictions && isEligibleToMark}
       />
     </div>
   );

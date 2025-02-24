@@ -1,3 +1,4 @@
+// Modificación para useMusicBingoLogic.js
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { gameSocket } from '../../services/socketService';
 import {
@@ -20,8 +21,44 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
   const [songStarted, setSongStarted] = useState(false);
   const [isEligibleToMark, setIsEligibleToMark] = useState(false);
   
+  // Timer states
+  const [timeRemaining, setTimeRemaining] = useState(30);
+  const [timerActive, setTimerActive] = useState(false);
+  const timerRef = useRef(null);
+  
   // Usar useRef para controlar si el tablero ya ha sido generado
   const boardGenerated = useRef(false);
+
+  // Función para iniciar el timer
+  const startTimer = useCallback((seconds = 30) => {
+    // Limpiar cualquier timer existente primero
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+    }
+    
+    setTimeRemaining(seconds);
+    setTimerActive(true);
+    
+    timerRef.current = setInterval(() => {
+      setTimeRemaining(prev => {
+        if (prev <= 1) {
+          clearInterval(timerRef.current);
+          setTimerActive(false);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  }, []);
+  
+  // Función para detener el timer
+  const stopTimer = useCallback(() => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+    setTimerActive(false);
+  }, []);
 
   // Función para validar la distribución de categorías
   const validateLine = useCallback((line) => {
@@ -201,6 +238,16 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
     boardGenerated.current = false;
   }, [roomCode]);
 
+  // Efecto para timer
+  useEffect(() => {
+    return () => {
+      // Cleanup timer on unmount
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
+    };
+  }, []);
+
   // Efecto para eventos del socket
   useEffect(() => {
     const handlers = {
@@ -215,6 +262,8 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
         setSongStarted(false);
         setPredictions([]);
         setGamePhase('playing');
+        // Detener cualquier timer activo cuando se cambia de categoría
+        stopTimer();
       },
       songStarted: () => {
         setSongStarted(true);
@@ -223,6 +272,8 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
         setCurrentSong(songData);
         setSongStarted(false);
         setIsEligibleToMark(false);
+        // Detener cualquier timer activo cuando se revela la canción
+        stopTimer();
       },
       markingEnabled: ({ eligiblePlayers }) => {
         console.log('Recibido evento markingEnabled con elegibles:', eligiblePlayers);
@@ -238,10 +289,17 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
         const isEligible = eligiblePlayers.includes(currentPlayerInList.id);
         console.log(`Jugador ${playerName} (${currentPlayerInList.id}): ${isEligible ? 'elegible' : 'NO elegible'} para marcar`);
         setIsEligibleToMark(isEligible);
+        
+        // Iniciar el timer cuando el jugador puede marcar
+        if (isEligible) {
+          startTimer(30);
+        }
       },
       markingDisabled: () => {
         setCanMark(false);
         setIsEligibleToMark(false);
+        // Detener el timer cuando se deshabilita el marcado
+        stopTimer();
       },
       playerMarked: ({ playerId, isCorrect }) => {
         const currentPlayer = connectedPlayers.find(p => p.name === playerName);
@@ -250,6 +308,8 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
           setIsEligibleToMark(isCorrect);
           if (!isCorrect) {
             setCanMark(false);
+            // Detener el timer si el jugador no ha acertado
+            stopTimer();
           }
         }
       },
@@ -285,22 +345,39 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
         gameSocket.off(event);
       });
     };
-  }, [joinGame, playerName, connectedPlayers]);
+  }, [joinGame, playerName, connectedPlayers, startTimer, stopTimer]);
+
+  // Efecto para cuando el timer llega a cero
+  useEffect(() => {
+    if (timeRemaining === 0 && isEligibleToMark) {
+      // Cuando el timer llega a cero, deshabilitamos el marcado
+      setCanMark(false);
+      
+      // Desactivamos el timer visualmente
+      setTimerActive(false);
+      
+      // Aquí podrías notificar al servidor que el tiempo se acabó si es necesario
+      // gameSocket.timeExpired({ roomCode, playerName });
+    }
+  }, [timeRemaining, isEligibleToMark, roomCode, playerName]);
 
   return {
     board,
     connectedPlayers,
     currentCategory,
     currentSong,
-    canMark: canMark && isEligibleToMark,
+    canMark: canMark && isEligibleToMark && timeRemaining > 0,
     hasWinner,
     connectionError,
     gamePhase,
     predictions,
     songStarted,
     handleCellClick,
-    handlePrediction,
+    handlePrediction: timeRemaining > 0 ? handlePrediction : () => {},
     setConnectionError,
-    isEligibleToMark
+    isEligibleToMark,
+    timeRemaining,
+    timerActive,
+    allowPredictions: timerActive && timeRemaining > 0
   };
 };
