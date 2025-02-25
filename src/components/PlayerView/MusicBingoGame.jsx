@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Card } from '../ui/card';
 import { Alert, AlertDescription } from '../ui/alert';
 import { motion, AnimatePresence } from 'framer-motion';
-import { AlertCircle, InfoIcon, Check, XCircleIcon } from 'lucide-react';
+import { AlertCircle, InfoIcon, Check, XCircleIcon, Trophy } from 'lucide-react';
 import PropTypes from 'prop-types';
 import { useMusicBingoLogic } from './MusicBingoGameLogic';
 import PlayerPredictions from '../PlayerView/PlayerPredictions';
@@ -29,7 +29,9 @@ const MusicBingoGame = ({ playerName, roomCode, difficulty }) => {
     isEligibleToMark,
     predictionTimeRemaining,
     canPredict,
-    isMarkedAsIncorrect
+    isMarkedAsIncorrect,
+    gameOver,
+    winners
   } = useMusicBingoLogic({ playerName, roomCode, difficulty });
 
   const handleMarkCell = (index) => {
@@ -266,6 +268,45 @@ const MusicBingoGame = ({ playerName, roomCode, difficulty }) => {
       playersCount={connectedPlayers.length}
       showSelect={false}
     >
+      {/* Game Over Overlay */}
+      {gameOver && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-50">
+          <div className="bg-black/90 border border-purple-500/50 rounded-lg p-6 max-w-md w-full">
+            <h2 className="text-2xl font-bold text-white text-center mb-6 flex items-center justify-center">
+              <Trophy className="h-8 w-8 text-yellow-400 mr-3" />
+              ¡Juego Finalizado!
+            </h2>
+
+            <div className="mb-6">
+              <h3 className="text-lg font-semibold text-white mb-3">
+                {winners.length > 1 ? 'Los ganadores son:' : 'El ganador es:'}
+              </h3>
+              <div className="space-y-2">
+                {winners.map(winner => (
+                  <div
+                    key={winner.id}
+                    className={`rounded-lg p-3 flex items-center ${winner.name === playerName
+                        ? 'border-yellow-400 bg-yellow-500/20 border'
+                        : 'border-purple-500/50 bg-purple-500/20 border'
+                      }`}
+                  >
+                    <Trophy className="h-5 w-5 text-yellow-400 mr-2" />
+                    <span className="text-white font-medium">
+                      {winner.name}
+                      {winner.name === playerName && ' (Tú)'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <p className="text-white/70 text-center">
+              Espera a que el Game Master inicie un nuevo juego...
+            </p>
+          </div>
+        </div>
+      )}
+
       {renderContent()}
     </GameLayout>
   );

@@ -19,15 +19,19 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
   const [predictions, setPredictions] = useState([]);
   const [songStarted, setSongStarted] = useState(false);
   const [isEligibleToMark, setIsEligibleToMark] = useState(false);
-  
+
   // Timer states para predicciones
   const [predictionTimeRemaining, setPredictionTimeRemaining] = useState(30);
   const predictionTimerRef = useRef(null);
   const [canPredict, setCanPredict] = useState(true);
-  
+
   // Añadir un estado para saber explícitamente si este jugador ha sido marcado como incorrecto
   const [isMarkedAsIncorrect, setIsMarkedAsIncorrect] = useState(false);
-  
+
+  // Estados para manejo del fin de juego
+  const [gameOver, setGameOver] = useState(false);
+  const [winners, setWinners] = useState([]);
+
   // Usar useRef para controlar si el tablero ya ha sido generado
   const boardGenerated = useRef(false);
 
@@ -37,10 +41,10 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
     if (predictionTimerRef.current) {
       clearInterval(predictionTimerRef.current);
     }
-    
+
     setPredictionTimeRemaining(seconds);
     setCanPredict(true);
-    
+
     predictionTimerRef.current = setInterval(() => {
       setPredictionTimeRemaining(prev => {
         if (prev <= 1) {
@@ -52,7 +56,7 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
       });
     }, 1000);
   }, []);
-  
+
   // Función para detener el timer de predicciones
   const stopPredictionTimer = useCallback(() => {
     if (predictionTimerRef.current) {
@@ -207,7 +211,7 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
   const handleCellClick = useCallback((index, isUnmarking = false) => {
     if (!canMark && !isUnmarking) return;
     if (!isEligibleToMark && !isUnmarking) return;
-    if (isMarkedAsIncorrect && !isUnmarking) return; // No permitir marcar si fue marcado como incorrecto
+    if (isMarkedAsIncorrect && !isUnmarking) return;
 
     setBoard(prev => {
       const newBoard = [...prev];
@@ -229,7 +233,7 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
 
   const handlePrediction = useCallback((prediction) => {
     if (!canPredict) return;
-    
+
     setPredictions(prev => [...prev, prediction]);
     gameSocket.submitPrediction({
       roomCode,
@@ -313,7 +317,7 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
         const currentPlayer = connectedPlayers.find(p => p.name === playerName);
         if (currentPlayer && currentPlayer.id === playerId) {
           console.log(`Jugador ${playerName} marcado como: ${isCorrect ? 'correcto' : 'incorrecto'}`);
-          
+
           // Guardar explícitamente si el jugador fue marcado como incorrecto
           if (!isCorrect) {
             setIsMarkedAsIncorrect(true);
@@ -323,6 +327,43 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
             setIsEligibleToMark(true);
           }
         }
+      },
+      playerWon: ({ playerId, playerName: winnerName }) => {
+        // Si este jugador es el que ganó
+        const currentPlayer = connectedPlayers.find(p => p.name === playerName);
+        if (currentPlayer && playerId === currentPlayer.id) {
+          console.log('¡Has ganado!');
+          setHasWinner(true);
+        }
+
+        // Añadir a la lista de ganadores
+        setWinners(prev => {
+          const existingWinner = prev.find(w => w.id === playerId);
+          if (!existingWinner) {
+            return [...prev, { id: playerId, name: winnerName }];
+          }
+          return prev;
+        });
+      },
+      gameOver: ({ winners: gameWinners }) => {
+        setGameOver(true);
+        setGamePhase('gameOver');
+        setCanMark(false);
+        setIsEligibleToMark(false);
+        stopPredictionTimer();
+        setWinners(gameWinners || []);
+      },
+      gameRestarted: () => {
+        setGameOver(false);
+        setWinners([]);
+        setHasWinner(false);
+        setGamePhase('waiting');
+        setCurrentCategory(null);
+        setCurrentSong(null);
+        setIsMarkedAsIncorrect(false);
+        setCanMark(false);
+        boardGenerated.current = false;
+        setBoard(generateValidBoard());
       },
       gameStarted: () => {
         setGamePhase('playing');
@@ -356,7 +397,7 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
         gameSocket.off(event);
       });
     };
-  }, [joinGame, playerName, connectedPlayers, startPredictionTimer, stopPredictionTimer, isMarkedAsIncorrect]);
+  }, [joinGame, playerName, connectedPlayers, startPredictionTimer, stopPredictionTimer, isMarkedAsIncorrect, generateValidBoard]);
 
   return {
     board,
@@ -375,6 +416,8 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
     isEligibleToMark,
     predictionTimeRemaining,
     canPredict,
-    isMarkedAsIncorrect
+    isMarkedAsIncorrect,
+    gameOver,
+    winners
   };
 };

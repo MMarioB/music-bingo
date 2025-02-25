@@ -18,22 +18,22 @@ class GameWebSocket {
       this.connected = true;
       return;
     }
-  
+
     if (this.isConnecting) {
       console.log('Conexión en progreso...');
       return this.connectPromise;
     }
-  
+
     this.isConnecting = true;
     this.connectionAttempts++;
-  
+
     this.connectPromise = new Promise((resolve, reject) => {
       try {
         if (this.socket) {
           this.socket.close();
           this.socket.removeAllListeners();
         }
-  
+
         console.log('Intentando conectar al servidor...');
         this.socket = io(import.meta.env.VITE_WS_URL, {
           reconnection: true,
@@ -45,7 +45,7 @@ class GameWebSocket {
           forceNew: true,
           autoConnect: false
         });
-  
+
         let attemptCount = 0;
         const maxAttempts = 3;
         const attemptConnection = () => {
@@ -54,10 +54,10 @@ class GameWebSocket {
             reject(new Error('Max connection attempts reached'));
             return;
           }
-  
+
           console.log(`Intento de conexión ${attemptCount + 1}/${maxAttempts}`);
           this.socket.connect();
-  
+
           const timeout = setTimeout(() => {
             if (!this.connected) {
               console.log(`Timeout en intento ${attemptCount + 1}`);
@@ -66,7 +66,7 @@ class GameWebSocket {
               attemptConnection();
             }
           }, 5000);
-  
+
           this.socket.once('connect', () => {
             console.log('Conectado exitosamente');
             clearTimeout(timeout);
@@ -74,12 +74,12 @@ class GameWebSocket {
             this.isConnecting = false;
             this.connectionAttempts = 0;
             this.restoreEventHandlers();
-            
+
             this.processConnectionQueue();
-            
+
             resolve();
           });
-  
+
           this.socket.once('connect_error', (error) => {
             console.error(`Error de conexión en intento ${attemptCount + 1}:`, error);
             clearTimeout(timeout);
@@ -88,7 +88,7 @@ class GameWebSocket {
             attemptConnection();
           });
         };
-  
+
         this.socket.on('disconnect', (reason) => {
           console.log('Desconectado:', reason);
           this.connected = false;
@@ -96,21 +96,21 @@ class GameWebSocket {
             attemptConnection();
           }
         });
-  
+
         attemptConnection();
-  
+
       } catch (error) {
         this.isConnecting = false;
         reject(error);
       }
     });
-  
+
     return this.connectPromise;
   }
 
   async createRoom(roomConfig) {
     await this.ensureConnection();
-    
+
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
         reject(new Error('Timeout creating room'));
@@ -146,11 +146,11 @@ class GameWebSocket {
       const handleRoomJoined = (roomInfo) => {
         clearTimeout(timeout);
         this.socket.off('error', handleError);
-        
+
         if (roomInfo.isReconnecting && roomInfo.phase === 'playing') {
           this.setPlayerReady(roomCode).catch(console.error);
         }
-        
+
         resolve(roomInfo);
       };
 
@@ -279,7 +279,7 @@ class GameWebSocket {
 
   async setPlayerReady(roomCode) {
     await this.ensureConnection();
-    
+
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
         reject(new Error('Timeout setting player ready'));
@@ -305,7 +305,7 @@ class GameWebSocket {
 
   async startGame(data) {
     await this.ensureConnection();
-    
+
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
         reject(new Error('Timeout starting game'));
@@ -420,6 +420,40 @@ class GameWebSocket {
     await this.ensureConnection();
     console.log('Anunciando ganador:', data);
     this.socket.emit('winner', data);
+  }
+
+  gameOver({ roomCode, winners }) {
+    return new Promise((resolve, reject) => {
+      if (!this.socket || !this.socket.connected) {
+        reject(new Error('No conectado'));
+        return;
+      }
+
+      this.socket.emit('gameOver', { roomCode, winners }, (response) => {
+        if (response && response.error) {
+          reject(new Error(response.error));
+        } else {
+          resolve(response);
+        }
+      });
+    });
+  }
+
+  restartGame({ roomCode }) {
+    return new Promise((resolve, reject) => {
+      if (!this.socket || !this.socket.connected) {
+        reject(new Error('No conectado'));
+        return;
+      }
+
+      this.socket.emit('restartGame', { roomCode }, (response) => {
+        if (response && response.error) {
+          reject(new Error(response.error));
+        } else {
+          resolve(response);
+        }
+      });
+    });
   }
 
   async updateRoom(data) {

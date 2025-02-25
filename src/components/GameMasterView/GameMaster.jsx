@@ -9,7 +9,8 @@ import {
   CalendarIcon,
   RefreshCwIcon,
   AlertCircle,
-  Check
+  Check,
+  Trophy
 } from 'lucide-react';
 import CategoryWheel from '../Wheel/CategoryWheel';
 import PredictionsPanel from './PredictionsPanel';
@@ -38,7 +39,10 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
     handleRevealSong,
     handleMarkingToggle,
     startNewRound,
-    playerCorrect
+    playerCorrect,
+    winners,
+    gameOver,
+    finishGame
   } = useGameMasterLogic({ roomCode, initialDifficulty });
 
   const resetLocalStates = useCallback(() => {
@@ -121,6 +125,34 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
           exit={{ opacity: 0, y: -20 }}
           className="flex-1 flex flex-col"
         >
+          {/* Panel de ganadores */}
+          {winners.length > 0 && !gameOver && (
+            <Alert className="mb-4 bg-purple-500/20 border border-purple-500/50">
+              <div className="w-full">
+                <div className="flex justify-between items-center mb-2">
+                  <h3 className="font-semibold text-white flex items-center">
+                    <Trophy className="h-5 w-5 text-yellow-400 mr-2" />
+                    {winners.length > 1 ? '¡Hay varios ganadores!' : '¡Tenemos un ganador!'}
+                  </h3>
+                  <Button
+                    onClick={finishGame}
+                    className="bg-purple-600 hover:bg-purple-700 text-white text-sm"
+                  >
+                    Finalizar Juego
+                  </Button>
+                </div>
+                <div className="space-y-1">
+                  {winners.map(winner => (
+                    <div key={winner.id} className="text-white flex items-center gap-2 bg-purple-500/10 py-1 px-2 rounded">
+                      <Trophy className="h-4 w-4 text-yellow-400" />
+                      <span>{winner.name}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </Alert>
+          )}
+
           {selectedCategory && (
             <div
               className={`${selectedCategory.color} p-3 rounded-lg flex items-center justify-center gap-3 border border-white/20 mb-4`}
@@ -204,12 +236,12 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
                       onClick={handleMarkingControl}
                       disabled={!Object.values(localPlayerCorrect).some(correct => correct) || (markingEnabledThisRound && !isMarkingEnabled)}
                       className={`w-full h-10 transition-all duration-300 ${isMarkingEnabled
-                          ? 'bg-yellow-500/80 hover:bg-yellow-500 border-yellow-400'
-                          : markingEnabledThisRound
-                            ? 'bg-gray-500/50 border-gray-400 cursor-not-allowed'
-                            : Object.values(localPlayerCorrect).some(correct => correct)
-                              ? 'bg-green-500/80 hover:bg-green-500 border-green-400'
-                              : 'bg-gray-500/50 border-gray-400 cursor-not-allowed'
+                        ? 'bg-yellow-500/80 hover:bg-yellow-500 border-yellow-400'
+                        : markingEnabledThisRound
+                          ? 'bg-gray-500/50 border-gray-400 cursor-not-allowed'
+                          : Object.values(localPlayerCorrect).some(correct => correct)
+                            ? 'bg-green-500/80 hover:bg-green-500 border-green-400'
+                            : 'bg-gray-500/50 border-gray-400 cursor-not-allowed'
                         } border`}
                     >
                       {isMarkingEnabled
@@ -252,7 +284,8 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
                 {connectedPlayers.map((player) => (
                   <div
                     key={player.id}
-                    className={`flex items-center justify-between p-3 transition-colors duration-200 ${playerCorrect[player.id] ? 'bg-green-500/20' : ''
+                    className={`flex items-center justify-between p-3 transition-colors duration-200 ${playerCorrect[player.id] ? 'bg-green-500/20' :
+                        winners.some(w => w.id === player.id) ? 'bg-purple-500/20' : ''
                       }`}
                   >
                     <div className="flex items-center gap-3">
@@ -278,7 +311,13 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
                       <span className="font-medium text-white">{player.name}</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      {playerCorrect[player.id] && (
+                      {winners.some(w => w.id === player.id) && (
+                        <span className="text-xs bg-purple-500/30 text-purple-300 px-2 py-1 rounded-full border border-purple-400/50">
+                          <Trophy className="h-3 w-3 inline mr-1" />
+                          Ganador
+                        </span>
+                      )}
+                      {playerCorrect[player.id] && !winners.some(w => w.id === player.id) && (
                         <span className="text-xs bg-green-500/30 text-green-300 px-2 py-1 rounded-full">
                           ¡Acierto!
                         </span>
@@ -318,6 +357,42 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
           <AlertCircle className="h-4 w-4 text-white" />
           <AlertDescription className="text-white">{connectionError}</AlertDescription>
         </Alert>
+      )}
+
+      {/* Game Over Overlay */}
+      {gameOver && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-50">
+          <div className="bg-black/90 border border-purple-500/50 rounded-lg p-6 max-w-lg w-full">
+            <h2 className="text-2xl font-bold text-white text-center mb-6 flex items-center justify-center">
+              <Trophy className="h-8 w-8 text-yellow-400 mr-3" />
+              ¡Juego Finalizado!
+            </h2>
+
+            <div className="mb-6">
+              <h3 className="text-lg font-semibold text-white mb-3">
+                {winners.length > 1 ? 'Ganadores:' : 'Ganador:'}
+              </h3>
+              <div className="space-y-2">
+                {winners.map(winner => (
+                  <div
+                    key={winner.id}
+                    className="bg-purple-500/20 border border-purple-500/50 rounded-lg p-3 flex items-center"
+                  >
+                    <Trophy className="h-5 w-5 text-yellow-400 mr-2" />
+                    <span className="text-white font-medium">{winner.name}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <Button
+              onClick={handleNewRound}
+              className="w-full bg-green-600 hover:bg-green-700 text-white py-3"
+            >
+              Iniciar Nuevo Juego
+            </Button>
+          </div>
+        </div>
       )}
 
       {renderMainContent()}
