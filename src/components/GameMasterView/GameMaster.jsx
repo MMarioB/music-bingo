@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Button } from '../ui/button';
 import { Card } from '../ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { Alert, AlertDescription } from '../ui/alert';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -34,7 +33,6 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
     playerPredictions,
     songPlaying,
     handlePlayerCorrectToggle,
-    handleDifficultyChange,
     handleCategorySelected,
     generateNewCard,
     handleRevealSong,
@@ -82,7 +80,7 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
     if (isMarkingEnabled) return;
 
     const newCorrectState = !localPlayerCorrect[playerId];
-    
+
     setLocalPlayerCorrect(prev => ({
       ...prev,
       [playerId]: newCorrectState
@@ -165,7 +163,7 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
                         <span className="text-base">{currentCard.artist}</span>
                       </div>
                     </div>
-                    
+
                     <div className="bg-white/10 backdrop-blur-sm rounded-lg p-2 flex items-center justify-between">
                       <CalendarIcon className="w-5 h-5 text-purple-400" />
                       <span className="text-xl font-bold text-white">
@@ -205,15 +203,14 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
                     <Button
                       onClick={handleMarkingControl}
                       disabled={!Object.values(localPlayerCorrect).some(correct => correct) || (markingEnabledThisRound && !isMarkingEnabled)}
-                      className={`w-full h-10 transition-all duration-300 ${
-                        isMarkingEnabled
+                      className={`w-full h-10 transition-all duration-300 ${isMarkingEnabled
                           ? 'bg-yellow-500/80 hover:bg-yellow-500 border-yellow-400'
                           : markingEnabledThisRound
                             ? 'bg-gray-500/50 border-gray-400 cursor-not-allowed'
                             : Object.values(localPlayerCorrect).some(correct => correct)
                               ? 'bg-green-500/80 hover:bg-green-500 border-green-400'
                               : 'bg-gray-500/50 border-gray-400 cursor-not-allowed'
-                      } border`}
+                        } border`}
                     >
                       {isMarkingEnabled
                         ? 'Deshabilitar Marcado'
@@ -255,9 +252,8 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
                 {connectedPlayers.map((player) => (
                   <div
                     key={player.id}
-                    className={`flex items-center justify-between p-3 transition-colors duration-200 ${
-                      playerCorrect[player.id] ? 'bg-green-500/20' : ''
-                    }`}
+                    className={`flex items-center justify-between p-3 transition-colors duration-200 ${playerCorrect[player.id] ? 'bg-green-500/20' : ''
+                      }`}
                   >
                     <div className="flex items-center gap-3">
                       {currentCard?.revealed && !isMarkingEnabled && (
@@ -309,18 +305,12 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
       playersCount={connectedPlayers.length}
       showSelect={true}
       selectContent={
-        <Select
-          value={difficulty}
-          onValueChange={handleDifficultyChange}
-        >
-          <SelectTrigger className="w-full bg-black/30 border-white/20 text-white">
-            <SelectValue placeholder="Nivel de juego" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="principiante">🟢 Principiante</SelectItem>
-            <SelectItem value="experto">🔥 Experto</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="flex items-center gap-2 border border-white/20 rounded-md px-3 py-1.5 bg-black/30 backdrop-blur-sm">
+          <div className={`w-4 h-4 rounded-full ${difficulty === 'principiante' ? 'bg-green-500' : 'bg-red-500'}`} />
+          <span className="text-white">
+            {difficulty === 'principiante' ? 'Principiante' : 'Experto'}
+          </span>
+        </div>
       }
     >
       {connectionError && (
@@ -329,7 +319,7 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
           <AlertDescription className="text-white">{connectionError}</AlertDescription>
         </Alert>
       )}
-      
+
       {renderMainContent()}
 
       <PredictionsPanel
