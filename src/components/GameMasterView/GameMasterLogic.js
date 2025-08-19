@@ -82,9 +82,6 @@ export const useGameMasterLogic = ({
     if (isTokenValid && gameStep === 'init') setGameStep('wheel');
   }, [isTokenValid, gameStep]);
 
-  /* ---------------------------------------------------------- *
-   *    2️⃣ REANUDAR ESTADO DESDE `localStorage` (visibility)   *
-   * ---------------------------------------------------------- */
   useEffect(() => {
     const handleVisibilityChange = async () => {
       if (!document.hidden) {
