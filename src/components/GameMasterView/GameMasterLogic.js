@@ -1,464 +1,501 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useSpotify } from '../../hooks/useSpotify';
 import { gameSocket } from '../../services/socketService';
 import { ARTISTS } from './constants';
 
-export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
+/**
+ * Hook que contiene toda la lógica del “Game Master”.
+ * Incluye:
+ *   • manejo de autenticación con Spotify
+ *   • conexión y control del socket
+ *   • generación de tarjetas, marcado de jugadores y control de rondas
+ *   • persistencia del estado en localStorage
+ *
+ * Los estados que son leídos dentro de callbacks que pueden
+ * ejecutarse *después* de una actualización (por ejemplo,
+ * eventos del socket) se acceden mediante `useRef` para evitar
+ * “stale closures”.
+ */
+export const useGameMasterLogic = ({
+  roomCode,
+  initialDifficulty,
+}) => {
+  /* ---------------------------------------------------------- *
+   *                     ESTADO REACTUAL                        *
+   * ---------------------------------------------------------- */
   const { spotify, loggedIn, login, logout, token } = useSpotify();
-  const [currentCard, setCurrentCard] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
+
+  const [currentCard, setCurrentCard]     = useState(null);
+  const [isLoading, setIsLoading]       = useState(false);
   const [selectedCategory, setSelectedCategory] = useState(null);
-  const [gameStep, setGameStep] = useState('init');
-  const [connectedPlayers, setConnectedPlayers] = useState([]);
-  const [difficulty, setDifficulty] = useState(initialDifficulty);
+  const [gameStep, setGameStep]         = useState('init');   // init | wheel | card | gameOver
+  const [connectedPlayers, setConnectedPlayers] = useState([]); // [{id, name, ready, isHost}, …]
+  const [difficulty, setDifficulty]     = useState(initialDifficulty);
   const [connectionError, setConnectionError] = useState(null);
   const [isMarkingEnabled, setIsMarkingEnabled] = useState(false);
   const [allPlayersReady, setAllPlayersReady] = useState(false);
   const [isTokenValid, setIsTokenValid] = useState(true);
   const [songPlaying, setSongPlaying] = useState(false);
-  const [playerPredictions, setPlayerPredictions] = useState({});
-  const [playerCorrect, setPlayerCorrect] = useState({});
+  const [playerPredictions, setPlayerPredictions] = useState({});   // {playerName: [pred1, pred2,…]}
+  const [playerCorrect, setPlayerCorrect] = useState({});        // {playerId: true/false}
   const [gameOver, setGameOver] = useState(false);
-  const [winners, setWinners] = useState([]);
+  const [winners, setWinners]   = useState([]);   // [{id, name}, …]
 
+  /* ---------------------------------------------------------- *
+   *                REFS – evitan “stale closures”              *
+   * ---------------------------------------------------------- */
+  const playerCorrectRef   = useRef({});
+  const connectedPlayersRef = useRef([]);
+  const markingEnabledRef = useRef(false);
+
+  // Mantener los refs actualizados después de cada render
+  useEffect(() => { playerCorrectRef.current   = playerCorrect;   }, [playerCorrect]);
+  useEffect(() => { connectedPlayersRef.current = connectedPlayers; }, [connectedPlayers]);
+  useEffect(() => { markingEnabledRef.current = isMarkingEnabled; }, [isMarkingEnabled]);
+
+  /* ---------------------------------------------------------- *
+   *          UTILIDADES auxiliares (reset, validaciones)      *
+   * ---------------------------------------------------------- */
   const resetPlayerCorrectState = useCallback(() => {
-    const resetState = connectedPlayers.reduce((acc, player) => {
-      acc[player.id] = false;
-      return acc;
-    }, {});
-    setPlayerCorrect(resetState);
-  }, [connectedPlayers]);
+    const reset = {};
+    connectedPlayersRef.current.forEach(p => (reset[p.id] = false));
+    setPlayerCorrect(reset);
+  }, []);   // solo necesita referenciar el ref
 
+  /* ---------------------------------------------------------- *
+   *            1️⃣ VERIFICACIÓN DE TOKEN (auth)               *
+   * ---------------------------------------------------------- */
+  // 1️⃣ Comprobamos que haya token en localStorage
   useEffect(() => {
-    const initialPlayerCorrect = connectedPlayers.reduce((acc, player) => {
-      acc[player.id] = false;
-      return acc;
-    }, {});
-    setPlayerCorrect(initialPlayerCorrect);
-  }, [connectedPlayers]);
+    const tokenData = localStorage.getItem('spotify_token');
+    if (!token || !tokenData) {
+      setIsTokenValid(false);
+      logout();
+      setGameStep('init');
+      return;
+    }
+    setIsTokenValid(true);
+  }, [token, logout]);
 
+  // 2️⃣ Cuando el token es válido pasamos de “init” → “wheel”
   useEffect(() => {
-    const checkAuthState = () => {
-      if (!token) {
-        setGameStep('init');
-        return;
-      }
+    if (isTokenValid && gameStep === 'init') setGameStep('wheel');
+  }, [isTokenValid, gameStep]);
 
-      const tokenData = localStorage.getItem('spotify_token');
-      if (!tokenData || !isTokenValid) {
-        setIsTokenValid(false);
-        logout();
-        setGameStep('init');
-        return;
-      }
-
-      setIsTokenValid(true);
-      if (gameStep === 'init') {
-        setGameStep('wheel');
-      }
-    };
-
-    checkAuthState();
-  }, [token, logout, gameStep, isTokenValid]);
-
+  /* ---------------------------------------------------------- *
+   *    2️⃣ REANUDAR ESTADO DESDE `localStorage` (visibility)   *
+   * ---------------------------------------------------------- */
   useEffect(() => {
     const handleVisibilityChange = async () => {
       if (!document.hidden) {
-        const savedState = localStorage.getItem('musicBingoState');
-        if (savedState) {
-          try {
-            const parsedState = JSON.parse(savedState);
-            if (Date.now() - parsedState.timestamp < 300000) {
-              if (parsedState.cardState && !currentCard) {
-                setCurrentCard(parsedState.cardState);
-                setSongPlaying(true);
-              }
-            }
-          } catch (error) {
-            console.error('Error restaurando estado:', error);
+        const saved = localStorage.getItem('musicBingoState');
+        if (!saved) return;
+        try {
+          const { timestamp, cardState } = JSON.parse(saved);
+          if (Date.now() - timestamp < 300_000 && cardState && !currentCard) {
+            setCurrentCard(cardState);
+            setSongPlaying(true);
+            // Si restauramos una tarjeta, la UI debe pasar a “card”
+            setGameStep('card');
           }
+        } catch (e) {
+          console.error('Error restaurando estado desde localStorage:', e);
         }
       }
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, [currentCard]);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []); // solo al montar
 
-  const initializeRoom = useCallback(async () => {
-    if (!loggedIn || !isTokenValid) {
-      setGameStep('init');
-      return;
-    }
-
-    try {
-      console.log('Iniciando sala:', roomCode);
-      await gameSocket.connect();
-
-      const roomResponse = await gameSocket.createRoom({
-        roomCode,
-        difficulty,
-        maxPlayers: 12,
-        host: true
-      });
-
-      if (roomResponse?.players) {
-        console.log('Jugadores iniciales:', roomResponse.players);
-        setConnectedPlayers(roomResponse.players);
-        checkAllPlayersReady(roomResponse.players);
-      }
-    } catch (error) {
-      console.error('Error inicializando sala:', error);
-      setConnectionError(error.message);
-    }
-  }, [roomCode, difficulty, loggedIn, isTokenValid]);
-
-  const checkAllPlayersReady = useCallback((players) => {
-    const ready = players.every(player => player.ready || player.isHost);
-    setAllPlayersReady(ready);
-  }, []);
-
-  const handlePlayerCorrectToggle = useCallback(async (playerId) => {
-    if (!loggedIn || !isTokenValid) return;
-
-    try {
-      // Invertir el estado actual del jugador
-      const newCorrectState = !playerCorrect[playerId];
-      const player = connectedPlayers.find(p => p.id === playerId);
-
-      console.log('Marcando jugador:', player?.name, '(ID:', playerId, ') como:',
-        newCorrectState ? 'ACERTANTE' : 'NO ACERTANTE');
-
-      // Notificar al servidor
-      await gameSocket.markPlayerCorrect({
-        roomCode,
-        playerId,
-        isCorrect: newCorrectState
-      });
-
-      // Actualizar el estado local
-      setPlayerCorrect(prev => {
-        const newState = {
-          ...prev,
-          [playerId]: newCorrectState
-        };
-        console.log('Nuevo estado de playerCorrect:', newState);
-        return newState;
-      });
-
-      // Si el marcado ya está habilitado, deshabilitar para forzar una revaluación con los nuevos elegibles
-      if (isMarkingEnabled) {
-        await gameSocket.disableMarking({ roomCode });
-        setIsMarkingEnabled(false);
-      }
-    } catch (error) {
-      console.error('Error al marcar jugador:', error);
-      setConnectionError('Error al marcar el acierto del jugador');
-    }
-  }, [roomCode, loggedIn, isTokenValid, playerCorrect, connectedPlayers, isMarkingEnabled]);
-
+  /* ---------------------------------------------------------- *
+   *    3️⃣ CONEXIÓN Y REGISTRO DE HANDLERS DE SOCKET           *
+   * ---------------------------------------------------------- */
+  /**
+   * Los handlers se registran una sola vez (cuando el hook se monta).
+   * Usamos los *refs* para leer siempre el estado más reciente.
+   */
   useEffect(() => {
-    if (!loggedIn || !isTokenValid) return;
-
-    gameSocket.off('playersUpdate');
-    gameSocket.off('playerPrediction');
-    gameSocket.off('playerMarked');
-    gameSocket.off('markingEnabled');
-    gameSocket.off('markingDisabled');
-    gameSocket.off('gameStartFailed');
-    gameSocket.off('playerWon');
-    gameSocket.off('error');
-
     const handlers = {
+      // → actualizar lista de jugadores
       playersUpdate: ({ players }) => {
-        console.log('Actualización de jugadores recibida:', players);
         setConnectedPlayers(players);
-        checkAllPlayersReady(players);
+        setAllPlayersReady(players.every(p => p.ready || p.isHost));
       },
+
+      // → predicciones de los jugadores
       playerPrediction: ({ playerName, prediction }) => {
-        console.log('Predicción recibida:', playerName, prediction);
         setPlayerPredictions(prev => ({
           ...prev,
-          [playerName]: [...(prev[playerName] || []), prediction]
+          [playerName]: [...(prev[playerName] || []), prediction],
         }));
       },
+
+      // → marcado de un jugador (acierto/no acierto)
       playerMarked: ({ playerId, isCorrect }) => {
-        console.log('Jugador marcado:', playerId, isCorrect);
         setPlayerCorrect(prev => ({
           ...prev,
-          [playerId]: isCorrect
+          [playerId]: isCorrect,
         }));
       },
-      markingEnabled: () => {
-        setIsMarkingEnabled(true);
-      },
-      markingDisabled: () => {
-        setIsMarkingEnabled(false);
-      },
-      playerWon: ({ playerId, playerName: winnerName }) => {
-        console.log(`¡Jugador ${winnerName} (ID: ${playerId}) ha ganado!`);
 
-        // Añadir el jugador a la lista de ganadores
+      // → habilitar / deshabilitar marcado global
+      markingEnabled:  () => setIsMarkingEnabled(true),
+      markingDisabled: () => setIsMarkingEnabled(false),
+
+      // → jugador ganador
+      playerWon: ({ playerId, playerName }) => {
         setWinners(prev => {
-          const existingWinner = prev.find(w => w.id === playerId);
-          if (!existingWinner) {
-            return [...prev, { id: playerId, name: winnerName }];
-          }
-          return prev;
+          if (prev.some(w => w.id === playerId)) return prev;
+          return [...prev, { id: playerId, name: playerName }];
         });
       },
-      gameStartFailed: (error) => {
-        console.error('Error al iniciar juego:', error);
-        setConnectionError(error.message);
+
+      // → error al iniciar partida (por ejemplo, “no hay suficientes jugadores”)
+      gameStartFailed: err => {
+        setConnectionError(err.message);
         setGameStep('wheel');
       },
-      error: (error) => {
-        console.error('Error en socket:', error);
-        setConnectionError(error.message);
-      }
+
+      // → cualquier error genérico del socket
+      error: err => setConnectionError(err.message),
     };
 
-    Object.entries(handlers).forEach(([event, handler]) => {
-      gameSocket.on(event, handler);
-    });
+    // Registrar todos los listeners
+    Object.entries(handlers).forEach(([ev, fn]) => gameSocket.on(ev, fn));
 
-    initializeRoom();
+    /**
+     * Conexión y creación de la sala.
+     * Evitamos reconectar si ya está conectado.
+     */
+    const initRoom = async () => {
+      try {
+        if (!gameSocket.connected) await gameSocket.connect();
 
-    return () => {
-      Object.keys(handlers).forEach(event => {
-        gameSocket.off(event);
-      });
-    };
-  }, [initializeRoom, loggedIn, isTokenValid, checkAllPlayersReady]);
-
-  const handleDifficultyChange = useCallback(async (newDifficulty) => {
-    if (!loggedIn || !isTokenValid) {
-      setGameStep('init');
-      return;
-    }
-
-    try {
-      setDifficulty(newDifficulty);
-      await gameSocket.updateRoom({
-        roomCode,
-        difficulty: newDifficulty
-      });
-    } catch (error) {
-      console.error('Error al cambiar dificultad:', error);
-      setConnectionError(error.message);
-    }
-  }, [roomCode, loggedIn, isTokenValid]);
-
-  const handleCategorySelected = useCallback(async (category) => {
-    if (!loggedIn || !isTokenValid) {
-      setGameStep('init');
-      return;
-    }
-
-    try {
-      await gameSocket.selectCategory({
-        roomCode,
-        category
-      });
-      setSelectedCategory(category);
-      setGameStep('card');
-      setIsMarkingEnabled(false);
-      setCurrentCard(null);
-      setSongPlaying(false);
-      setPlayerPredictions({});
-      resetPlayerCorrectState();
-    } catch (error) {
-      console.error('Error al seleccionar categoría:', error);
-      setConnectionError(error.message);
-    }
-  }, [roomCode, loggedIn, isTokenValid, resetPlayerCorrectState]);
-
-  const generateNewCard = useCallback(async () => {
-    if (!loggedIn || !isTokenValid || !selectedCategory || !spotify) return;
-
-    setIsLoading(true);
-    try {
-      const randomMusicCategory = Object.keys(ARTISTS)[Math.floor(Math.random() * Object.keys(ARTISTS).length)];
-      const artistsInCategory = ARTISTS[randomMusicCategory];
-      const randomArtist = artistsInCategory[Math.floor(Math.random() * artistsInCategory.length)];
-
-      const response = await spotify.searchTracks(`artist:"${randomArtist}"`, {
-        limit: 50,
-        market: 'ES'
-      });
-
-      const tracks = response.tracks.items;
-      if (!tracks.length) {
-        throw new Error('No se encontraron canciones');
-      }
-
-      const randomTrack = tracks[Math.floor(Math.random() * tracks.length)];
-      const year = parseInt(randomTrack.album.release_date.split('-')[0]);
-
-      const newCard = {
-        title: randomTrack.name,
-        artist: randomTrack.artists[0].name,
-        year,
-        spotifyUrl: randomTrack.external_urls.spotify,
-        uri: randomTrack.uri,
-        musicCategory: randomMusicCategory,
-        revealed: false
-      };
-
-      const gameState = {
-        currentTrack: randomTrack.uri,
-        timestamp: Date.now(),
-        cardState: newCard
-      };
-      localStorage.setItem('musicBingoState', JSON.stringify(gameState));
-
-      setCurrentCard(newCard);
-      await spotify.playTrack(randomTrack.uri);
-      await gameSocket.startSong({ roomCode });
-      setSongPlaying(true);
-      resetPlayerCorrectState();
-
-    } catch (error) {
-      console.error("Error generando tarjeta:", error);
-      if (error.status === 401) {
-        setIsTokenValid(false);
-        logout();
-        setGameStep('init');
-      } else {
-        setConnectionError('Error al generar la tarjeta');
-      }
-    } finally {
-      setIsLoading(false);
-    }
-  }, [loggedIn, isTokenValid, selectedCategory, spotify, roomCode, logout, resetPlayerCorrectState]);
-
-  const handleRevealSong = useCallback(async () => {
-    if (!currentCard || !loggedIn || !isTokenValid) return;
-
-    try {
-      await gameSocket.revealSong({
-        roomCode,
-        songData: {
-          title: currentCard.title,
-          artist: currentCard.artist,
-          year: currentCard.year
-        }
-      });
-      setCurrentCard(prev => ({ ...prev, revealed: true }));
-      setSongPlaying(false);
-      resetPlayerCorrectState();
-    } catch (error) {
-      console.error('Error al revelar canción:', error);
-      setConnectionError('Error al revelar la canción');
-    }
-  }, [currentCard, roomCode, loggedIn, isTokenValid, resetPlayerCorrectState]);
-
-  const handleMarkingToggle = useCallback(async () => {
-    if (!loggedIn || !isTokenValid) return;
-
-    try {
-      if (isMarkingEnabled) {
-        await gameSocket.disableMarking({ roomCode });
-        setIsMarkingEnabled(false);
-      } else {
-        console.log('Estado actual de playerCorrect:', playerCorrect);
-        console.log('Jugadores conectados:', connectedPlayers);
-
-        // Obtenemos solo los jugadores marcados explícitamente como correctos
-        const eligiblePlayers = Object.entries(playerCorrect)
-          .filter(([, isCorrect]) => isCorrect === true)
-          .map(([playerId]) => playerId);
-
-        console.log('Jugadores elegibles a enviar:', eligiblePlayers);
-
-        // Log para depuración
-        eligiblePlayers.forEach(id => {
-          const player = connectedPlayers.find(p => p.id === id);
-          console.log(`Jugador elegible: ${player?.name} (ID: ${id})`);
+        const roomResponse = await gameSocket.createRoom({
+          roomCode,
+          difficulty,
+          maxPlayers: 12,
+          host: true,
         });
 
-        // Validación importante: si no hay jugadores elegibles, mostrar un error claro
-        if (eligiblePlayers.length === 0) {
-          console.log('⚠️ Advertencia: No hay jugadores elegibles para marcar');
-          setConnectionError('No hay jugadores marcados como acertantes. Marca al menos un jugador antes de habilitar el marcado.');
-          return;
+        if (roomResponse?.players) {
+          setConnectedPlayers(roomResponse.players);
+          setAllPlayersReady(
+            roomResponse.players.every(p => p.ready || p.isHost)
+          );
         }
+      } catch (e) {
+        console.error('Error al crear/suscribirse a la sala:', e);
+        setConnectionError(e.message);
+      }
+    };
 
-        // Verificar que los jugadores elegibles estén conectados
-        const validEligiblePlayers = eligiblePlayers.filter(id =>
-          connectedPlayers.some(player => player.id === id)
+    initRoom();
+
+    // Cleanup al desmontar
+    return () => {
+      Object.keys(handlers).forEach(ev => gameSocket.off(ev));
+    };
+  }, []); // ⬅️ vacío → solo al montar
+
+  /* ---------------------------------------------------------- *
+   * 4️⃣ CALLBACKS del juego (parte “business logic”)           *
+   * ---------------------------------------------------------- */
+
+  /** Cambiar la dificultad */
+  const handleDifficultyChange = useCallback(
+    async newDifficulty => {
+      if (!loggedIn || !isTokenValid) {
+        setGameStep('init');
+        return;
+      }
+      try {
+        setDifficulty(newDifficulty);
+        await gameSocket.updateRoom({ roomCode, difficulty: newDifficulty });
+      } catch (e) {
+        console.error('Error al cambiar dificultad:', e);
+        setConnectionError(e.message);
+      }
+    },
+    [roomCode, loggedIn, isTokenValid]
+  );
+
+  /** Seleccionar categoría → pasa a la fase “card” */
+  const handleCategorySelected = useCallback(
+    async category => {
+      if (!loggedIn || !isTokenValid) {
+        setGameStep('init');
+        return;
+      }
+      try {
+        await gameSocket.selectCategory({ roomCode, category });
+        setSelectedCategory(category);
+        setGameStep('card');
+        setIsMarkingEnabled(false);
+        setCurrentCard(null);
+        setSongPlaying(false);
+        setPlayerPredictions({});
+        resetPlayerCorrectState();
+      } catch (e) {
+        console.error('Error al seleccionar categoría:', e);
+        setConnectionError(e.message);
+      }
+    },
+    [roomCode, loggedIn, isTokenValid, resetPlayerCorrectState]
+  );
+
+  /** Generar una tarjeta nueva (busca pista en Spotify) */
+  const generateNewCard = useCallback(
+    async () => {
+      if (!loggedIn || !isTokenValid || !selectedCategory || !spotify) return;
+
+      setIsLoading(true);
+      try {
+        // 1️⃣ Elegir categoría y artista aleatorios
+        const randomMusicCategory =
+          Object.keys(ARTISTS)[
+            Math.floor(Math.random() * Object.keys(ARTISTS).length)
+          ];
+        const artistsInCategory = ARTISTS[randomMusicCategory];
+        const randomArtist =
+          artistsInCategory[Math.floor(Math.random() * artistsInCategory.length)];
+
+        // 2️⃣ Buscar tracks en Spotify
+        const response = await spotify.searchTracks(
+          `artist:"${randomArtist}"`,
+          { limit: 50, market: 'ES' }
+        );
+        const tracks = response.tracks.items;
+        if (!tracks.length) throw new Error('No se encontraron canciones');
+
+        const randomTrack = tracks[Math.floor(Math.random() * tracks.length)];
+        const year = parseInt(randomTrack.album.release_date.split('-')[0], 10);
+
+        const newCard = {
+          title: randomTrack.name,
+          artist: randomTrack.artists[0].name,
+          year,
+          spotifyUrl: randomTrack.external_urls.spotify,
+          uri: randomTrack.uri,
+          musicCategory: randomMusicCategory,
+          revealed: false,
+        };
+
+        // 3️⃣ Guardar estado en localStorage (para “resume”)
+        const gameState = {
+          currentTrack: randomTrack.uri,
+          timestamp: Date.now(),
+          cardState: newCard,
+        };
+        localStorage.setItem('musicBingoState', JSON.stringify(gameState));
+
+        // 4️⃣ Cambiar UI y reproducir canción
+        setCurrentCard(newCard);
+        await spotify.playTrack(randomTrack.uri);
+        await gameSocket.startSong({ roomCode });
+        setSongPlaying(true);
+        resetPlayerCorrectState();
+      } catch (e) {
+        console.error('Error generando tarjeta:', e);
+        if (e.status === 401) {
+          setIsTokenValid(false);
+          logout();
+          setGameStep('init');
+        } else {
+          setConnectionError('Error al generar la tarjeta');
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [
+      loggedIn,
+      isTokenValid,
+      selectedCategory,
+      spotify,
+      roomCode,
+      logout,
+      resetPlayerCorrectState,
+    ]
+  );
+
+  /** Revelar la canción (cuando la ronda termina) */
+  const handleRevealSong = useCallback(
+    async () => {
+      if (!currentCard || !loggedIn || !isTokenValid) return;
+      try {
+        await gameSocket.revealSong({
+          roomCode,
+          songData: {
+            title: currentCard.title,
+            artist: currentCard.artist,
+            year: currentCard.year,
+          },
+        });
+        setCurrentCard(prev => ({ ...prev, revealed: true }));
+        setSongPlaying(false);
+        resetPlayerCorrectState();
+      } catch (e) {
+        console.error('Error al revelar canción:', e);
+        setConnectionError('Error al revelar la canción');
+      }
+    },
+    [currentCard, roomCode, loggedIn, isTokenValid, resetPlayerCorrectState]
+  );
+
+  /** Marcar/unmarcar a un jugador individualmente */
+  const handlePlayerCorrectToggle = useCallback(
+    async playerId => {
+      if (!loggedIn || !isTokenValid) return;
+      try {
+        const newCorrect = !playerCorrectRef.current[playerId];
+        const player = connectedPlayersRef.current.find(p => p.id === playerId);
+        console.log(
+          'Marcando jugador:',
+          player?.name,
+          `(ID:${playerId}) →`,
+          newCorrect ? 'ACERTANTE' : 'NO ACERTANTE'
         );
 
-        if (validEligiblePlayers.length === 0) {
-          console.log('⚠️ Error: Ninguno de los jugadores elegibles está conectado');
-          setConnectionError('Error: Los jugadores marcados como acertantes ya no están conectados.');
+        await gameSocket.markPlayerCorrect({
+          roomCode,
+          playerId,
+          isCorrect: newCorrect,
+        });
+
+        setPlayerCorrect(prev => ({
+          ...prev,
+          [playerId]: newCorrect,
+        }));
+
+        // Si el marcador global estaba activo, lo desactivamos para recalcular
+        if (markingEnabledRef.current) {
+          await gameSocket.disableMarking({ roomCode });
+          setIsMarkingEnabled(false);
+        }
+      } catch (e) {
+        console.error('Error al marcar jugador:', e);
+        setConnectionError('Error al marcar el acierto del jugador');
+      }
+    },
+    [roomCode, loggedIn, isTokenValid]
+  );
+
+  /** Habilitar / deshabilitar el marcado global (cuando se quiere “revelar” las respuestas) */
+  const handleMarkingToggle = useCallback(
+    async () => {
+      if (!loggedIn || !isTokenValid) return;
+
+      try {
+        // Si ya está habilitado → lo desactivamos
+        if (markingEnabledRef.current) {
+          await gameSocket.disableMarking({ roomCode });
+          setIsMarkingEnabled(false);
           return;
         }
 
-        // Todo correcto, enviamos los jugadores elegibles
+        // ---------------------  Habilitar  ---------------------
+        // 1️⃣ Tomar los jugadores marcados como correctos
+        const currentCorrect = playerCorrectRef.current;
+        const eligiblePlayers = Object.entries(currentCorrect)
+          .filter(([, isCorrect]) => isCorrect)
+          .map(([id]) => id);
+
+        if (!eligiblePlayers.length) {
+          setConnectionError(
+            'No hay jugadores marcados como acertantes. Marca al menos uno antes de habilitar el marcado.'
+          );
+          return;
+        }
+
+        // 2️⃣ Verificar que esos jugadores sigan conectados
+        const stillConnected = eligiblePlayers.filter(id =>
+          connectedPlayersRef.current.some(p => p.id === id)
+        );
+
+        if (!stillConnected.length) {
+          setConnectionError(
+            'Los jugadores marcados como acertantes ya no están conectados.'
+          );
+          return;
+        }
+
+        // 3️⃣ Enviar al servidor
         await gameSocket.enableMarking({
           roomCode,
-          eligiblePlayers: validEligiblePlayers
+          eligiblePlayers: stillConnected,
         });
-
         setIsMarkingEnabled(true);
-        console.log('Marcado habilitado exitosamente para:', validEligiblePlayers);
+      } catch (e) {
+        console.error('Error al cambiar estado de marcado:', e);
+        setConnectionError('Error al cambiar estado de marcado');
       }
-    } catch (error) {
-      console.error('Error al cambiar estado de marcado:', error);
-      setConnectionError('Error al cambiar estado de marcado');
-    }
-  }, [isMarkingEnabled, roomCode, loggedIn, isTokenValid, playerCorrect, connectedPlayers]);
+    },
+    [roomCode, loggedIn, isTokenValid]
+  );
 
-  const finishGame = useCallback(async () => {
-    if (!loggedIn || !isTokenValid) return;
-
-    try {
-      if (winners.length === 0) {
+  /** Finalizar la partida (cuando hay ganadores) */
+  const finishGame = useCallback(
+    async () => {
+      if (!loggedIn || !isTokenValid) return;
+      if (!winners.length) {
         setConnectionError('No hay ganadores para finalizar el juego');
         return;
       }
-
-      // Notificar a todos los jugadores que el juego ha terminado
-      await gameSocket.gameOver({
-        roomCode,
-        winners
-      });
-
-      setGameOver(true);
-      setGameStep('gameOver');
-    } catch (error) {
-      console.error('Error al finalizar el juego:', error);
-      setConnectionError('Error al finalizar el juego');
-    }
-  }, [roomCode, loggedIn, isTokenValid, winners]);
-
-  const startNewRound = useCallback(async () => {
-    if (!loggedIn || !isTokenValid) return;
-
-    try {
-      // Si el juego terminó, enviamos el evento de reinicio
-      if (gameOver) {
-        await gameSocket.restartGame({ roomCode });
-        setGameOver(false);
-        setWinners([]);
+      try {
+        await gameSocket.gameOver({ roomCode, winners });
+        setGameOver(true);
+        setGameStep('gameOver');
+      } catch (e) {
+        console.error('Error al finalizar el juego:', e);
+        setConnectionError('Error al finalizar el juego');
       }
+    },
+    [roomCode, loggedIn, isTokenValid, winners]
+  );
 
-      await gameSocket.disableMarking({ roomCode });
-      setCurrentCard(null);
-      setSelectedCategory(null);
-      setGameStep('wheel');
-      setIsMarkingEnabled(false);
-      setSongPlaying(false);
-      setPlayerPredictions({});
-      resetPlayerCorrectState();
-    } catch (error) {
-      console.error('Error al iniciar nueva ronda:', error);
-      setConnectionError('Error al iniciar nueva ronda');
-    }
-  }, [roomCode, loggedIn, isTokenValid, resetPlayerCorrectState, gameOver]);
+  /** Iniciar una nueva ronda (resetear todo) */
+  const startNewRound = useCallback(
+    async () => {
+      if (!loggedIn || !isTokenValid) return;
+      try {
+        // Si el juego ya terminó, pedimos al servidor que lo reinicie
+        if (gameOver) {
+          await gameSocket.restartGame({ roomCode });
+          setGameOver(false);
+          setWinners([]);
+        }
 
+        await gameSocket.disableMarking({ roomCode });
+        setCurrentCard(null);
+        setSelectedCategory(null);
+        setGameStep('wheel');
+        setIsMarkingEnabled(false);
+        setSongPlaying(false);
+        setPlayerPredictions({});
+        resetPlayerCorrectState();
+      } catch (e) {
+        console.error('Error al iniciar nueva ronda:', e);
+        setConnectionError('Error al iniciar nueva ronda');
+      }
+    },
+    [
+      roomCode,
+      loggedIn,
+      isTokenValid,
+      resetPlayerCorrectState,
+      gameOver,
+    ]
+  );
+
+  /* ---------------------------------------------------------- *
+   *                     RETURN (API del Hook)                 *
+   * ---------------------------------------------------------- */
   return {
+    // Estado / datos
     loggedIn,
     login,
     logout,
@@ -476,6 +513,8 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
     songPlaying,
     playerPredictions,
     playerCorrect,
+
+    // Acciones
     handlePlayerCorrectToggle,
     handleDifficultyChange,
     handleCategorySelected,
@@ -483,9 +522,11 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
     handleRevealSong,
     handleMarkingToggle,
     startNewRound,
+    finishGame,
+
+    // Otros valores útiles
     setCurrentCard,
     gameOver,
     winners,
-    finishGame
   };
 };
