@@ -1,19 +1,84 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import PropTypes from 'prop-types';
-import { motion } from 'framer-motion';
-import { CATEGORIES_A, CATEGORIES_B } from './constants';
+import { motion, AnimatePresence } from 'framer-motion';
+import { CATEGORIES_A, CATEGORIES_B } from './constants'; // Asegúrate de que tus constantes están aquí
 
+// Componente principal de la ruleta
 const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () => { } }) => {
+    // === ESTADOS ===
     const [isSpinning, setIsSpinning] = useState(false);
-    const [highlightedIndex, setHighlightedIndex] = useState(-1);
     const [finalSelectedCategory, setFinalSelectedCategory] = useState(null);
+    const [excludedCategory, setExcludedCategory] = useState(null); // La categoría que NO puede salir en el siguiente tiro
+    const [rotation, setRotation] = useState(0); // El ángulo de rotación de la ruleta
 
+    // Selecciona las categorías según la dificultad
     const allCategories = difficulty === 'principiante' ? CATEGORIES_A : CATEGORIES_B;
-    const [excludedCategory, setExcludedCategory] = useState(null);
+    const numCategories = allCategories.length;
+    const segmentAngle = 360 / numCategories;
 
-    const finalIndexRef = useRef(-1);
-    const animationStepRef = useRef(0); // Seguimiento de pasos de animación
+    // === FUNCIÓN DE GIRO (LA LÓGICA CLAVE) ===
+    const spinWheel = () => {
+        if (isSpinning) return;
 
+        // 1. Filtra las categorías disponibles (todas menos la excluida)
+        let availableCategories = allCategories.filter(
+            category => !excludedCategory || category.id !== excludedCategory.id
+        );
+
+        // Si después de filtrar no queda ninguna (porque ya han salido todas menos una),
+        // se resetea la exclusión para la siguiente ronda y se usan todas las categorías de nuevo.
+        if (availableCategories.length === 0) {
+            setExcludedCategory(null); // Reseteamos la exclusión
+            availableCategories = allCategories; // Volvemos a tener todas disponibles
+        }
+
+        setIsSpinning(true);
+        setFinalSelectedCategory(null);
+
+        // 2. Elige una categoría ganadora al azar de las DISPONIBLES
+        const randomIndexInAvailable = Math.floor(Math.random() * availableCategories.length);
+        const winningCategory = availableCategories[randomIndexInAvailable];
+
+        // 3. Encuentra el índice de la categoría ganadora en el array ORIGINAL (para el cálculo del ángulo)
+        const finalIndex = allCategories.findIndex(cat => cat.id === winningCategory.id);
+
+        // 4. Calcula el ángulo de rotación final
+        // Le sumamos varias vueltas completas para que el giro sea vistoso
+        const randomSpins = 5 + Math.floor(Math.random() * 5); // Entre 5 y 10 vueltas
+        const targetAngle = finalIndex * segmentAngle;
+
+        // El ángulo final alinea el CENTRO del segmento ganador con el puntero de arriba (a -90 grados)
+        const finalRotation = rotation - (rotation % 360) + (360 * randomSpins) - targetAngle - (segmentAngle / 2);
+
+        setRotation(finalRotation);
+
+        // La lógica del final del giro se mueve a `onAnimationComplete`
+    };
+
+    // === FUNCIÓN QUE SE EJECUTA CUANDO LA ANIMACIÓN TERMINA ===
+    const handleSpinComplete = () => {
+        setIsSpinning(false);
+
+        // Calcula cuál fue la categoría ganadora basándose en el ángulo final
+        const normalizedRotation = (rotation % 360 + 360) % 360;
+        const winningIndex = Math.floor((360 - normalizedRotation - segmentAngle / 2) / segmentAngle + numCategories) % numCategories;
+        const finalCategory = allCategories[winningIndex];
+
+        setFinalSelectedCategory(finalCategory);
+
+        // **AQUÍ ESTÁ LA MAGIA**: Excluimos la categoría que acaba de salir para la próxima tirada
+        setExcludedCategory(finalCategory);
+
+        // Llamamos a la función del padre pasándole el resultado
+        setTimeout(() => {
+            onCategorySelected(finalCategory);
+        }, 1500); // Un pequeño delay para que el usuario vea el resultado
+    };
+
+
+    // --- RENDERIZADO ---
+
+    // Filtro SVG para el efecto Neón
     const createNeonFilter = () => (
         <defs>
             <filter id="neonGlow" x="-50%" y="-50%" width="200%" height="200%">
@@ -27,274 +92,115 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
                     <feMergeNode in="SourceGraphic" />
                 </feMerge>
             </filter>
-            <radialGradient id="segmentGradient">
-                <stop offset="0%" stopColor="rgba(255,255,255,0.1)" />
-                <stop offset="100%" stopColor="rgba(0,0,0,0)" />
-            </radialGradient>
         </defs>
     );
 
+    // Dibuja los segmentos de la ruleta
     const generateWheelSegments = () => {
-        const segmentAngle = 360 / allCategories.length;
         return allCategories.map((category, index) => {
             const startAngle = index * segmentAngle;
             const endAngle = startAngle + segmentAngle;
             const midAngle = startAngle + segmentAngle / 2;
-            const radius = 0.85;
+
+            const radius = 1; // Usamos un radio simple
             const startX = Math.cos((startAngle - 90) * Math.PI / 180) * radius;
             const startY = Math.sin((startAngle - 90) * Math.PI / 180) * radius;
             const endX = Math.cos((endAngle - 90) * Math.PI / 180) * radius;
             const endY = Math.sin((endAngle - 90) * Math.PI / 180) * radius;
-            const squarePosition = 0.55;
-            const squareSize = 0.25;
-            const textX = Math.cos((midAngle - 90) * Math.PI / 180) * squarePosition;
-            const textY = Math.sin((midAngle - 90) * Math.PI / 180) * squarePosition;
-            const largeArcFlag = "0";
-            const pathData = `M 0 0 L ${startX} ${startY} A ${radius} ${radius} 0 ${largeArcFlag} 1 ${endX} ${endY} Z`;
+            const pathData = `M 0 0 L ${startX} ${startY} A ${radius} ${radius} 0 0 1 ${endX} ${endY} Z`;
 
-            const isSelectedResult = category === finalSelectedCategory;
-            const isHighlightedDuringSpin = index === highlightedIndex;
-            const isTemporarilyExcluded = excludedCategory && category.id === excludedCategory.id && category !== finalSelectedCategory;
+            const textRadius = 0.65;
+            const textX = Math.cos((midAngle - 90) * Math.PI / 180) * textRadius;
+            const textY = Math.sin((midAngle - 90) * Math.PI / 180) * textRadius;
 
             const Icon = category.icon;
+            const isSelectedResult = finalSelectedCategory && category.id === finalSelectedCategory.id;
+            const isExcluded = excludedCategory && category.id === excludedCategory.id;
 
             return (
-                <g key={category.id} className="transition-all duration-300">
+                <g key={category.id}
+                    className="transition-opacity duration-500"
+                    style={{ opacity: isExcluded && !isSelectedResult ? 0.4 : 1 }}
+                >
                     <path
                         d={pathData}
-                        fill="transparent"
+                        fill={category.wheelColor}
                         stroke={category.neonColor}
-                        strokeWidth="0.005"
-                        className={`transition-opacity duration-300
-                            ${isSelectedResult ? 'opacity-100' : (isTemporarilyExcluded ? 'opacity-30' : (isHighlightedDuringSpin ? 'opacity-70' : 'opacity-50'))}
-                        `}
+                        strokeWidth="0.01"
+                        style={{ filter: isSelectedResult ? 'url(#neonGlow)' : 'none' }}
                     />
-                    <g transform={`translate(${textX}, ${textY})`}>
-                        <rect
-                            x={-squareSize / 2}
-                            y={-squareSize / 2}
-                            width={squareSize}
-                            height={squareSize}
-                            fill={category.wheelColor}
-                            stroke={category.neonColor}
-                            strokeWidth="0.005"
-                            rx="0.02"
-                            ry="0.02"
-                            className={`transition-all duration-300
-                                ${isSelectedResult ? 'opacity-100' : (isTemporarilyExcluded ? 'opacity-50' : (isHighlightedDuringSpin ? 'opacity-70' : 'opacity-60'))}
-                            `}
+                    <g transform={`translate(${textX}, ${textY}) rotate(${midAngle})`}>
+                        <Icon
+                            size={40}
                             style={{
-                                filter: isSelectedResult ? 'url(#neonGlow)' : (isHighlightedDuringSpin ? 'url(#neonGlow)' : 'none')
+                                color: 'white',
+                                transform: 'translate(-20px, -20px)', // Centrar el icono
+                                filter: isSelectedResult ? 'drop-shadow(0 0 5px white)' : 'none'
                             }}
                         />
-                        <g
-                            transform={`translate(${-squareSize / 4}, ${-squareSize / 4}) scale(0.01)`}
-                            style={{
-                                transformBox: 'fill-box',
-                                transformOrigin: 'center'
-                            }}
-                        >
-                            <Icon
-                                size={48}
-                                {...category.iconProps}
-                                style={{
-                                    ...category.iconProps.style,
-                                    strokeWidth: '2',
-                                    opacity: isTemporarilyExcluded ? 0.6 : (isHighlightedDuringSpin ? 0.9 : 1)
-                                }}
-                            />
-                        </g>
                     </g>
                 </g>
             );
         });
     };
 
-    const spinWheel = () => {
-        if (isSpinning) return;
-
-        const validCategoriesForThisSpin = allCategories.filter(
-            category => !excludedCategory || category.id !== excludedCategory.id
-        );
-
-        // Comprobamos si solo queda una categoría válida posible ahora mismo.
-        // Esto es importante para saber si el próximo giro debe resetear el `excludedCategory`.
-        const isOnlyOneValidCategoryLeft = validCategoriesForThisSpin.length === 1;
-
-        setIsSpinning(true);
-        setFinalSelectedCategory(null);
-        finalIndexRef.current = -1;
-        animationStepRef.current = 0;
-
-        const duration = 3500;
-        const startTime = Date.now();
-        const currentNumberOfSegments = allCategories.length; // Total de segmentos visibles.
-        const randomSpins = Math.floor(Math.random() * (20 - 10 + 1)) + 10;
-        const totalSteps = randomSpins * currentNumberOfSegments; // Total de "pasos de segmento" virtuales.
-
-        // Determinar el índice de la categoría de destino final.
-        let targetCategoryActualIndex = -1;
-        if (validCategoriesForThisSpin.length > 0) {
-            const randomIndexTargetInValidList = Math.floor(Math.random() * validCategoriesForThisSpin.length);
-            targetCategoryActualIndex = allCategories.findIndex(cat => cat.id === validCategoriesForThisSpin[randomIndexTargetInValidList].id);
-            finalIndexRef.current = targetCategoryActualIndex;
-        } else {
-            // Si no hay categorías válidas (esto es un caso de borde o error lógico anterior).
-            // Forzamos el reset del `excludedCategory` y recalculamos.
-            console.warn("No categories available for spin! Forcing reset.");
-            setExcludedCategory(null); // Resetea la exclusión.
-            // Volvemos a calcular las categorías válidas ahora que `excludedCategory` es null.
-            const freshValidCategories = allCategories.filter(cat => !excludedCategory || cat.id !== excludedCategory.id); // excludedCategory es null aquí
-            if (freshValidCategories.length > 0) {
-                // Si ahora hay categorías, seleccionamos una al azar de nuevo.
-                const randomIndexTargetInValidList = Math.floor(Math.random() * freshValidCategories.length);
-                targetCategoryActualIndex = allCategories.findIndex(cat => cat.id === freshValidCategories[randomIndexTargetInValidList].id);
-                finalIndexRef.current = targetCategoryActualIndex;
-
-                // Si después del reset todavía no hay categorías (solo pasa si allCategories está vacío),
-                // asignamos uno aleatorio del TOTAL de segmentos visibles.
-            } else {
-                finalIndexRef.current = Math.floor(Math.random() * currentNumberOfSegments);
-            }
-        }
-
-        // Inicializar el `highlightedIndex` (el que se anima) con un valor aleatorio.
-        setHighlightedIndex(Math.floor(Math.random() * currentNumberOfSegments));
-
-        const animateSpin = () => {
-            const currentTime = Date.now();
-            const elapsedTime = currentTime - startTime;
-            const progress = Math.min(elapsedTime / duration, 1); // Progreso general de la animación (0 a 1)
-            animationStepRef.current = progress * totalSteps; // Actualizamos el progreso en pasos virtuales
-
-            let animatedIndex;
-
-            if (progress < 0.9) { // Fase de "giro rápido" (mayor parte de la animación)
-                // Generar un índice de resaltado que parezca aleatorio, pero con una leve tendencia a acercarse al final.
-                // Este es el punto más delicado para la sensación de *movimiento*.
-                const randomOffset = Math.floor(Math.random() * allCategories.length);
-                // El `finalIndexRef.current` se usa para "guiar" la animación de manera que al final, apunte al destino.
-                // Sumamos `randomOffset` para la variabilidad inicial, y `currentStep` para simular el "avance".
-                animatedIndex = (finalIndexRef.current + randomOffset + animationStepRef.current) % currentNumberOfSegments;
-
-            } else { // Fase de "desaceleración" (últimos ~10% de la animación)
-                // Convergencia hacia el destino `finalIndexRef.current`.
-                // La idea es que a medida que `progress` aumenta, `animatedIndex` se acerca cada vez más a `finalIndexRef.current`.
-                // Usamos la cantidad de pasos restantes para calcular la posición.
-                const stepsRemaining = totalSteps - animationStepRef.current;
-                animatedIndex = (finalIndexRef.current + stepsRemaining) % currentNumberOfSegments;
-
-                // Asegurarse de que en el frame final, sea exactamente el índice destino.
-                if (progress >= 0.99) {
-                    animatedIndex = finalIndexRef.current;
-                }
-            }
-            setHighlightedIndex(animatedIndex);
-
-            if (progress < 1) {
-                requestAnimationFrame(animateSpin);
-            } else {
-                // La animación ha terminado.
-                const finalCategory = allCategories[finalIndexRef.current];
-                setFinalSelectedCategory(finalCategory);
-
-                // Lógica para excluir temporalmente la categoría que acaba de salir.
-                if (isOnlyOneValidCategoryLeft) {
-                    setExcludedCategory(null); // Resetea la exclusión si era la última
-                } else {
-                    setExcludedCategory(finalCategory); // Propaga la exclusión a la siguiente ronda
-                }
-
-                setIsSpinning(false);
-
-                setTimeout(() => {
-                    onCategorySelected(finalCategory);
-                }, 2000);
-            }
-        };
-        animateSpin();
-    };
-
-    // Calculamos las categorías válidas una vez por render para usar en el botón.
-    const validCategoriesForThisSpin = allCategories.filter(
-        category => !excludedCategory || category.id !== excludedCategory.id
-    );
-
-    // Deshabilitar el botón si isSpinning o si no hay categorías válidas para esta ronda.
-    const isButtonDisabled = isSpinning || (allCategories.length > 0 && validCategoriesForThisSpin.length === 0);
-
     return (
-        <div className="flex flex-col items-center justify-center gap-4">
+        <div className="flex flex-col items-center justify-center gap-6">
             <div className="relative w-full max-w-[min(80vw,500px)] aspect-square mx-auto">
-                <svg
-                    viewBox="-1.1 -1.1 2.2 2.2"
-                    className="w-full h-full"
-                >
-                    {createNeonFilter()}
-                    {generateWheelSegments()}
-                    <circle
-                        cx="0"
-                        cy="0"
-                        r="0.15"
-                        fill="white"
-                        style={{
-                            filter: 'url(#neonGlow)'
-                        }}
-                    />
-                </svg>
-            </div>
-            <div className="w-full max-w-[300px]">
-                <motion.button
-                    onClick={spinWheel}
-                    disabled={isButtonDisabled}
-                    className="w-full py-3 px-6 rounded-xl bg-gradient-to-r from-purple-600/90 to-pink-600/90 text-white font-bold border border-white/20 backdrop-blur-sm disabled:opacity-50 disabled:cursor-not-allowed group overflow-hidden"
+                {/* Puntero que se queda fijo arriba */}
+                <div
+                    className="absolute top-[-10px] left-1/2 -translate-x-1/2 z-10"
                     style={{
-                        boxShadow: '0 0 20px rgba(168,85,247,0.4)'
+                        width: 0, height: 0,
+                        borderLeft: '15px solid transparent',
+                        borderRight: '15px solid transparent',
+                        borderTop: '25px solid white',
+                        filter: 'drop-shadow(0 -2px 5px rgba(255,255,255,0.7))'
                     }}
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                >
-                    <div className="absolute inset-0 bg-gradient-to-r from-purple-400 to-pink-400 opacity-0 group-hover:opacity-20 transition-opacity" />
-                    <div className="absolute inset-0 overflow-hidden">
-                        {isSpinning && Array.from({ length: 3 }).map((_, i) => (
-                            <motion.div
-                                key={i}
-                                initial={{ opacity: 0.8, scale: 1, x: '50%', y: '100%' }}
-                                animate={{ opacity: 0, scale: 0, x: [null, `${50 + (i - 1) * 30}%`], y: '-100%' }}
-                                transition={{ duration: 1, delay: i * 0.2, repeat: Infinity }}
-                                className="absolute w-4 h-4 text-white"
-                            >
-                                ♪
-                            </motion.div>
-                        ))}
-                    </div>
-                    <div className="flex items-center justify-center gap-2 relative">
-                        <span className="relative z-10">
-                            {isSpinning ? "Girando..." : (validCategoriesForThisSpin.length === 0 ? "Ciclo completo" : "Girar Ruleta")}
-                        </span>
-                        {!isSpinning && validCategoriesForThisSpin.length > 0 && (
-                            <motion.span
-                                animate={{ rotate: [0, -10, 10, -10, 10, 0] }}
-                                transition={{ duration: 1.5, repeat: Infinity, repeatDelay: 1 }}
-                            >
-                                🎵
-                            </motion.span>
-                        )}
-                    </div>
-                </motion.button>
-            </div>
-            {finalSelectedCategory && (
+                />
+
+                {/* La ruleta que gira */}
                 <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className={`${finalSelectedCategory.color} px-4 py-2 rounded-lg text-center border border-white/20 max-w-[300px] w-full`}
+                    className="w-full h-full"
+                    animate={{ rotate: rotation }}
+                    transition={{
+                        duration: 4, // Duración del giro
+                        ease: "easeOut", // Desaceleración al final
+                    }}
+                    onAnimationComplete={handleSpinComplete}
                 >
-                    <h3 className="font-semibold text-gray-800 flex items-center justify-center gap-2">
-                        <finalSelectedCategory.icon className="w-5 h-5" />
-                        {finalSelectedCategory.name}
-                    </h3>
+                    <svg viewBox="-1.1 -1.1 2.2 2.2" className="w-full h-full">
+                        {createNeonFilter()}
+                        {generateWheelSegments()}
+                    </svg>
                 </motion.div>
-            )}
+            </div>
+
+            {/* Botón para girar */}
+            <motion.button
+                onClick={spinWheel}
+                disabled={isSpinning}
+                className="w-full max-w-[300px] py-3 px-6 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold border border-white/20 backdrop-blur-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                whileHover={{ scale: isSpinning ? 1 : 1.05 }}
+                whileTap={{ scale: isSpinning ? 1 : 0.95 }}
+            >
+                {isSpinning ? "Girando..." : "Lanzar Ruleta"}
+            </motion.button>
+
+            {/* Muestra del resultado final */}
+            <AnimatePresence>
+                {finalSelectedCategory && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -20 }}
+                        className={`text-xl font-bold p-4 rounded-lg flex items-center gap-3 ${finalSelectedCategory.color}`}
+                    >
+                        <finalSelectedCategory.icon />
+                        <span>{finalSelectedCategory.name}</span>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 };
