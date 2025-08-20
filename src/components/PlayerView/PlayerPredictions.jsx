@@ -24,22 +24,18 @@ const PlayerPredictions = ({
       setError('Escribe tu predicción primero');
       return;
     }
-
     if (!currentSongStarted) {
       setError('Espera a que comience la canción');
       return;
     }
-
     if (isRevealed) {
       setError('Ya no se pueden hacer predicciones');
       return;
     }
-
     if (disabled) {
       setError('Se ha agotado el tiempo para predecir');
       return;
     }
-
     onSubmitPrediction(prediction.trim());
     setPrediction('');
     setError('');
@@ -48,11 +44,11 @@ const PlayerPredictions = ({
   // Función para renderizar el temporizador dentro del formulario
   const renderTimer = () => {
     if (!timeRemaining || timeRemaining <= 0 || isRevealed) return null;
-    
+
     // Colores basados en el tiempo restante
     let colorClass = "text-green-400";
     let bgColorClass = "bg-green-400/20";
-    
+
     if (timeRemaining <= 10) {
       colorClass = "text-red-400";
       bgColorClass = "bg-red-400/20";
@@ -60,7 +56,7 @@ const PlayerPredictions = ({
       colorClass = "text-yellow-400";
       bgColorClass = "bg-yellow-400/20";
     }
-    
+
     return (
       <div className={`absolute -top-8 right-0 flex items-center gap-2 ${bgColorClass} px-2 py-1 rounded-t-md backdrop-blur-sm border-t border-l border-r border-white/20`}>
         <Clock className={`h-3 w-3 ${colorClass}`} />
@@ -70,7 +66,9 @@ const PlayerPredictions = ({
   };
 
   return (
-    <div className="fixed bottom-4 sm:bottom-6 right-4 sm:right-6 flex flex-col items-end gap-3 z-40">
+    // Cambiamos 'fixed' por 'relative' y ajustamos el posicionamiento para que se adapte al flujo del documento.
+    // Añadimos un margen inferior para que no se pegue al borde de la pantalla.
+    <div className="relative bottom-4 sm:bottom-6 right-4 sm:right-6 flex flex-col items-end gap-3 z-40 mb-20"> {/* mb-20 añadido */}
       {/* Lista de predicciones */}
       <AnimatePresence>
         {predictions.length > 0 && (
@@ -128,33 +126,30 @@ const PlayerPredictions = ({
                       value={prediction}
                       onChange={(e) => setPrediction(e.target.value)}
                       placeholder="¿Qué canción crees que es?"
-                      className={`w-64 bg-black/40 border-white/20 text-white placeholder:text-white/50 ${
-                        disabled ? 'opacity-70' : ''
-                      }`}
+                      className={`w-64 bg-black/40 border-white/20 text-white placeholder:text-white/50 ${disabled ? 'opacity-70' : ''
+                        }`}
                       disabled={disabled || isRevealed}
                     />
                   </div>
-                  <Button 
+                  <Button
                     type="submit"
                     size="icon"
-                    className={`bg-purple-600 hover:bg-purple-700 ${
-                      disabled ? 'opacity-70 cursor-not-allowed' : ''
-                    }`}
+                    className={`bg-purple-600 hover:bg-purple-700 ${disabled ? 'opacity-70 cursor-not-allowed' : ''
+                      }`}
                     disabled={disabled || isRevealed}
                   >
                     <Send size={18} />
                   </Button>
                 </div>
-                
+
                 {/* Barra de progreso para el timer */}
                 {timeRemaining && timeRemaining > 0 && (
                   <div className="w-full mt-1 bg-gray-700/50 rounded-full h-1.5 overflow-hidden">
-                    <motion.div 
-                      className={`h-1.5 rounded-full ${
-                        timeRemaining <= 10 ? 'bg-red-500' : 
-                        timeRemaining <= 20 ? 'bg-yellow-500' : 
-                        'bg-green-500'
-                      }`}
+                    <motion.div
+                      className={`h-1.5 rounded-full ${timeRemaining <= 10 ? 'bg-red-500' :
+                          timeRemaining <= 20 ? 'bg-yellow-500' :
+                            'bg-green-500'
+                        }`}
                       style={{ width: `${(timeRemaining / 30) * 100}%` }}
                       initial={{ width: "100%" }}
                       animate={{ width: `${(timeRemaining / 30) * 100}%` }}
@@ -162,10 +157,10 @@ const PlayerPredictions = ({
                     />
                   </div>
                 )}
-                
+
                 {/* Mensaje cuando el tiempo se ha acabado */}
                 {disabled && !isRevealed && (
-                  <motion.div 
+                  <motion.div
                     initial={{ opacity: 0, y: 5 }}
                     animate={{ opacity: 1, y: 0 }}
                     className="mt-1 text-xs text-red-400 flex items-center bg-red-500/10 px-2 py-1 rounded border border-red-500/20"
