@@ -2,20 +2,17 @@ import { useState, useRef } from 'react';
 import PropTypes from 'prop-types';
 import { motion } from 'framer-motion';
 // Asegúrate de que este import sea correcto para tu estructura de proyecto
-import { CATEGORIES_A, CATEGORIES_B } from './constants'; 
+import { CATEGORIES_A, CATEGORIES_B } from './constants';
 
-const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () => { } }) => {
-    // === ESTADOS ===
+const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () => {} }) => {
+    // === ESTADOS (sin cambios) ===
     const [isSpinning, setIsSpinning] = useState(false);
-    const [rotation, setRotation] = useState(0); // Estado para el ángulo de giro
+    const [rotation, setRotation] = useState(0);
     const [finalSelectedCategory, setFinalSelectedCategory] = useState(null);
     const [excludedCategory, setExcludedCategory] = useState(null);
-
-    // Usamos una ref para guardar el ganador decidido ANTES de que empiece la animación.
-    // Esto evita errores de cálculo al final del giro.
     const winnerRef = useRef(null);
 
-    // === LÓGICA DE LA RULETA ===
+    // === LÓGICA DE LA RULETA (sin cambios) ===
     const allCategories = difficulty === 'principiante' ? CATEGORIES_A : CATEGORIES_B;
     const numCategories = allCategories.length;
     const segmentAngle = 360 / numCategories;
@@ -24,73 +21,68 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
     const spinWheel = () => {
         if (isSpinning) return;
 
-        // 1. Filtra las categorías disponibles (todas menos la que salió antes)
+        // 1. Selección del ganador (esta parte ya era correcta)
         let availableCategories = allCategories.filter(
             category => !excludedCategory || category.id !== excludedCategory.id
         );
-
-        // Si después de filtrar no queda ninguna (porque han salido todas las demás),
-        // reseteamos la lista de exclusión para empezar un nuevo ciclo.
         if (availableCategories.length === 0) {
             setExcludedCategory(null);
             availableCategories = allCategories;
         }
-
-        // 2. Elige un ganador AL AZAR de la lista de categorías DISPONIBLES
         const winningPickIndex = Math.floor(Math.random() * availableCategories.length);
         const winningCategory = availableCategories[winningPickIndex];
         
-        // ¡LA CLAVE! Guardamos el ganador antes de que empiece la animación.
-        winnerRef.current = winningCategory;
-
-        // 3. Encuentra el índice del ganador en la ruleta COMPLETA para el cálculo del ángulo
+        winnerRef.current = winningCategory; // Guardamos el ganador, 100% fiable
+        
         const finalIndexInWheel = allCategories.findIndex(cat => cat.id === winningCategory.id);
-
-        setFinalSelectedCategory(null); // Oculta el resultado anterior
+        
+        setFinalSelectedCategory(null);
         setIsSpinning(true);
 
-        // 4. Calcula el ángulo de rotación final
-        const randomSpins = 5 + Math.floor(Math.random() * 5); // 5 a 10 vueltas completas para que sea vistoso
-        const fullSpinsRotation = 360 * randomSpins;
+        // === CAMBIO CLAVE: Nueva fórmula de rotación más robusta ===
         
-        // Ángulo para que el centro del segmento ganador quede alineado con el puntero de arriba
-        const targetSegmentAngle = finalIndexInWheel * segmentAngle;
-        const pointerCorrection = segmentAngle / 2; // Para apuntar al medio del segmento, no al borde
+        // 1. Vueltas completas que ya ha dado la ruleta.
+        const previousRevolutions = Math.floor(rotation / 360);
         
-        // La nueva rotación es la actual + vueltas completas + el ángulo hasta el ganador
-        const newRotation = rotation + fullSpinsRotation + (360 - (rotation % 360)) - targetSegmentAngle - pointerCorrection;
+        // 2. Número de vueltas NUEVAS que queremos que dé (para el efecto visual).
+        const randomSpins = 5 + Math.floor(Math.random() * 5); // 5-9 vueltas adicionales
+
+        // 3. Cálculo del ángulo final. Queremos que el PUNTERO (arriba) apunte al MEDIO del segmento ganador.
+        // El ángulo del centro del segmento es: `finalIndexInWheel * segmentAngle + segmentAngle / 2`.
+        // Para que ese punto llegue arriba (a la posición 0), debemos rotar la ruleta en sentido contrario.
+        // La rotación CSS es en sentido horario (positiva), así que calculamos el "offset" necesario.
+        const targetAngleCorrection = 360 - (finalIndexInWheel * segmentAngle) - (segmentAngle / 2);
+
+        // 4. Se calcula la nueva rotación total. Siempre será un número mayor al anterior.
+        const newRotation = (previousRevolutions + randomSpins) * 360 + targetAngleCorrection;
 
         setRotation(newRotation);
     };
 
-    // === FUNCIÓN QUE SE ACTIVA CUANDO TERMINA LA ANIMACIÓN ===
+    // === FUNCIÓN AL TERMINAR LA ANIMACIÓN (sin cambios, ahora funciona perfecto) ===
     const handleSpinComplete = () => {
-        const winner = winnerRef.current; // Leemos el ganador que guardamos, 100% fiable
+        const winner = winnerRef.current;
         if (!winner) return;
 
         setIsSpinning(false);
         setFinalSelectedCategory(winner);
         
-        // Excluimos la categoría ganadora para la siguiente tirada,
-        // a menos que ya no queden más opciones, en cuyo caso reseteamos.
         const remainingValidCategories = allCategories.filter(
             cat => cat.id !== winner.id && (!excludedCategory || cat.id !== excludedCategory.id)
         );
         
         if (remainingValidCategories.length === 0) {
-            setExcludedCategory(null); // Ciclo completado, reseteamos la exclusión
+            setExcludedCategory(null);
         } else {
-            setExcludedCategory(winner); // Excluimos al ganador
+            setExcludedCategory(winner);
         }
-
+        
         setTimeout(() => {
             onCategorySelected(winner);
         }, 1500);
     };
 
-
-    // --- RENDERIZADO (TU DISEÑO ORIGINAL) ---
-
+    // --- RENDERIZADO (Todo lo de abajo sigue igual, era correcto) ---
     const createNeonFilter = () => (
         <defs>
             <filter id="neonGlow" x="-50%" y="-50%" width="200%" height="200%">
@@ -106,8 +98,7 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
             </filter>
         </defs>
     );
-    
-    // Tu función para generar los segmentos, con tu diseño bonito, intacta.
+
     const generateWheelSegments = () => {
         return allCategories.map((category, index) => {
             const startAngle = index * segmentAngle;
@@ -123,11 +114,10 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
             const textX = Math.cos((midAngle - 90) * Math.PI / 180) * squarePosition;
             const textY = Math.sin((midAngle - 90) * Math.PI / 180) * squarePosition;
             const pathData = `M 0 0 L ${startX} ${startY} A ${radius} ${radius} 0 0 1 ${endX} ${endY} Z`;
-            
+
             const isSelectedResult = finalSelectedCategory && category.id === finalSelectedCategory.id;
             const isTemporarilyExcluded = excludedCategory && category.id === excludedCategory.id && !isSelectedResult;
             const Icon = category.icon;
-
             return (
                 <g key={category.id} className="transition-opacity duration-500" style={{ opacity: isTemporarilyExcluded ? 0.3 : 1 }}>
                     <path d={pathData} fill="transparent" stroke={category.neonColor} strokeWidth="0.005" className={`transition-opacity duration-300 ${isSelectedResult ? 'opacity-100' : 'opacity-60'}`} />
@@ -141,7 +131,7 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
             );
         });
     };
-
+    
     const availableCategories = allCategories.filter(cat => !excludedCategory || cat.id !== excludedCategory.id);
     const isCycleComplete = availableCategories.length === 0;
 
@@ -179,7 +169,7 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
                     </span>
                 </motion.button>
             </div>
-
+            
             {finalSelectedCategory && (
                 <motion.div
                     initial={{ opacity: 0, y: 10 }}
