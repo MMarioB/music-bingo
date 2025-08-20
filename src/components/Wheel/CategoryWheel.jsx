@@ -1,24 +1,18 @@
-import { useState, useRef } from 'react'; // useEffect no es criticamente necesario aquí, pero ref sí.
+import { useState, useRef } from 'react';
 import PropTypes from 'prop-types';
 import { motion } from 'framer-motion';
 import { CATEGORIES_A, CATEGORIES_B } from './constants';
 
-const easeOutQuad = (t) => t * (2 - t);
-
 const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () => { } }) => {
     const [isSpinning, setIsSpinning] = useState(false);
-    // `highlightedIndex` se refiere a qué segmento está siendo visualmente enfocado durante la animación.
     const [highlightedIndex, setHighlightedIndex] = useState(-1);
     const [finalSelectedCategory, setFinalSelectedCategory] = useState(null);
 
     const allCategories = difficulty === 'principiante' ? CATEGORIES_A : CATEGORIES_B;
-    // La categoría que fue seleccionada en la tirada ANTERIOR y que debe ser excluida de la PRÓXIMA tirada.
     const [excludedCategory, setExcludedCategory] = useState(null);
 
-    // `finalIndexRef` almacenará el índice del resultado deseado dentro de `allCategories`.
     const finalIndexRef = useRef(-1);
-    // `animationStepRef` rastrea el progreso de la animación en términos de segmentos pasados.
-    const animationStepRef = useRef(0);
+    const animationStepRef = useRef(0); // Seguimiento de pasos de animación
 
     const createNeonFilter = () => (
         <defs>
@@ -41,12 +35,11 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
     );
 
     const generateWheelSegments = () => {
-        const segmentAngle = 360 / allCategories.length; // Siempre usamos el total de categorías visibles.
-
+        const segmentAngle = 360 / allCategories.length;
         return allCategories.map((category, index) => {
             const startAngle = index * segmentAngle;
             const endAngle = startAngle + segmentAngle;
-            const midAngle = startAngle + segmentAngle / 2; // Punto medio para el texto/icono
+            const midAngle = startAngle + segmentAngle / 2;
             const radius = 0.85;
             const startX = Math.cos((startAngle - 90) * Math.PI / 180) * radius;
             const startY = Math.sin((startAngle - 90) * Math.PI / 180) * radius;
@@ -59,8 +52,8 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
             const largeArcFlag = "0";
             const pathData = `M 0 0 L ${startX} ${startY} A ${radius} ${radius} 0 ${largeArcFlag} 1 ${endX} ${endY} Z`;
 
-            const isHighlighted = index === highlightedIndex;
-            const isSelected = category === finalSelectedCategory;
+            const isSelectedResult = category === finalSelectedCategory;
+            const isHighlightedDuringSpin = index === highlightedIndex;
             const isTemporarilyExcluded = excludedCategory && category.id === excludedCategory.id && category !== finalSelectedCategory;
 
             const Icon = category.icon;
@@ -73,7 +66,7 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
                         stroke={category.neonColor}
                         strokeWidth="0.005"
                         className={`transition-opacity duration-300
-                            ${isHighlighted || isSelected ? 'opacity-100' : (isTemporarilyExcluded ? 'opacity-30' : 'opacity-60')}
+                            ${isSelectedResult ? 'opacity-100' : (isTemporarilyExcluded ? 'opacity-30' : (isHighlightedDuringSpin ? 'opacity-70' : 'opacity-50'))}
                         `}
                     />
                     <g transform={`translate(${textX}, ${textY})`}>
@@ -88,10 +81,10 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
                             rx="0.02"
                             ry="0.02"
                             className={`transition-all duration-300
-                                ${isHighlighted || isSelected ? 'opacity-100' : (isTemporarilyExcluded ? 'opacity-50' : 'opacity-70')}
+                                ${isSelectedResult ? 'opacity-100' : (isTemporarilyExcluded ? 'opacity-50' : (isHighlightedDuringSpin ? 'opacity-70' : 'opacity-60'))}
                             `}
                             style={{
-                                filter: isHighlighted || isSelected ? 'url(#neonGlow)' : 'none'
+                                filter: isSelectedResult ? 'url(#neonGlow)' : (isHighlightedDuringSpin ? 'url(#neonGlow)' : 'none')
                             }}
                         />
                         <g
@@ -107,7 +100,7 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
                                 style={{
                                     ...category.iconProps.style,
                                     strokeWidth: '2',
-                                    opacity: isTemporarilyExcluded ? 0.6 : 1
+                                    opacity: isTemporarilyExcluded ? 0.6 : (isHighlightedDuringSpin ? 0.9 : 1)
                                 }}
                             />
                         </g>
@@ -124,66 +117,90 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
             category => !excludedCategory || category.id !== excludedCategory.id
         );
 
+        // Comprobamos si solo queda una categoría válida posible ahora mismo.
+        // Esto es importante para saber si el próximo giro debe resetear el `excludedCategory`.
         const isOnlyOneValidCategoryLeft = validCategoriesForThisSpin.length === 1;
 
         setIsSpinning(true);
         setFinalSelectedCategory(null);
-        finalIndexRef.current = -1; // Reiniciar el índice final deseado
-        animationStepRef.current = 0; // Reiniciar el contador de pasos de animación
+        finalIndexRef.current = -1;
+        animationStepRef.current = 0;
 
         const duration = 3500;
         const startTime = Date.now();
-        const currentNumberOfSegments = allCategories.length; // La ruleta visible es siempre sobre el total de categorías.
-        const randomSpins = Math.floor(Math.random() * (20 - 10 + 1)) + 10; // Número de vueltas completas.
-        const totalSteps = randomSpins * currentNumberOfSegments; // Total de segmentos "virtuales" a pasar.
+        const currentNumberOfSegments = allCategories.length; // Total de segmentos visibles.
+        const randomSpins = Math.floor(Math.random() * (20 - 10 + 1)) + 10;
+        const totalSteps = randomSpins * currentNumberOfSegments; // Total de "pasos de segmento" virtuales.
 
-        // Determinar cuál categoría válida será el resultado final.
-        let randomIndexTargetInValidList = Math.floor(Math.random() * validCategoriesForThisSpin.length);
+        // Determinar el índice de la categoría de destino final.
         let targetCategoryActualIndex = -1;
-
-        if (validCategoriesForThisSpin.length > 0) { // Solo si hay categorías válidas
-             // Encontrar el índice de esa categoría válida dentro del array COMPLETO `allCategories`.
+        if (validCategoriesForThisSpin.length > 0) {
+            const randomIndexTargetInValidList = Math.floor(Math.random() * validCategoriesForThisSpin.length);
             targetCategoryActualIndex = allCategories.findIndex(cat => cat.id === validCategoriesForThisSpin[randomIndexTargetInValidList].id);
             finalIndexRef.current = targetCategoryActualIndex;
         } else {
-            // Si no hay categorías válidas (esto no debería ocurrir si `allCategories` no está vacío),
-            // hay un problema de lógica previa o el ciclo de reset no se aplicó.
-            // Para este caso, asignamos un índice aleatorio del total de segmentos visibles.
-            finalIndexRef.current = Math.floor(Math.random() * currentNumberOfSegments);
+            // Si no hay categorías válidas (esto es un caso de borde o error lógico anterior).
+            // Forzamos el reset del `excludedCategory` y recalculamos.
+            console.warn("No categories available for spin! Forcing reset.");
+            setExcludedCategory(null); // Resetea la exclusión.
+            // Volvemos a calcular las categorías válidas ahora que `excludedCategory` es null.
+            const freshValidCategories = allCategories.filter(cat => !excludedCategory || cat.id !== excludedCategory.id); // excludedCategory es null aquí
+            if (freshValidCategories.length > 0) {
+                // Si ahora hay categorías, seleccionamos una al azar de nuevo.
+                const randomIndexTargetInValidList = Math.floor(Math.random() * freshValidCategories.length);
+                targetCategoryActualIndex = allCategories.findIndex(cat => cat.id === freshValidCategories[randomIndexTargetInValidList].id);
+                finalIndexRef.current = targetCategoryActualIndex;
+
+                // Si después del reset todavía no hay categorías (solo pasa si allCategories está vacío),
+                // asignamos uno aleatorio del TOTAL de segmentos visibles.
+            } else {
+                finalIndexRef.current = Math.floor(Math.random() * currentNumberOfSegments);
+            }
         }
 
-        // Establecer un `highlightedIndex` inicial aleatorio para la animación.
+        // Inicializar el `highlightedIndex` (el que se anima) con un valor aleatorio.
         setHighlightedIndex(Math.floor(Math.random() * currentNumberOfSegments));
 
         const animateSpin = () => {
             const currentTime = Date.now();
             const elapsedTime = currentTime - startTime;
-            const progress = Math.min(elapsedTime / duration, 1);
+            const progress = Math.min(elapsedTime / duration, 1); // Progreso general de la animación (0 a 1)
+            animationStepRef.current = progress * totalSteps; // Actualizamos el progreso en pasos virtuales
 
-            const easingFactor = easeOutQuad(progress);
-            // Calculamos el número de segmentos que se han pasado virtualmente.
-            const currentStep = Math.floor(easingFactor * totalSteps);
+            let animatedIndex;
 
-            // Actualizamos el contador de pasos de animación
-            animationStepRef.current = currentStep;
+            if (progress < 0.9) { // Fase de "giro rápido" (mayor parte de la animación)
+                // Generar un índice de resaltado que parezca aleatorio, pero con una leve tendencia a acercarse al final.
+                // Este es el punto más delicado para la sensación de *movimiento*.
+                const randomOffset = Math.floor(Math.random() * allCategories.length);
+                // El `finalIndexRef.current` se usa para "guiar" la animación de manera que al final, apunte al destino.
+                // Sumamos `randomOffset` para la variabilidad inicial, y `currentStep` para simular el "avance".
+                animatedIndex = (finalIndexRef.current + randomOffset + animationStepRef.current) % currentNumberOfSegments;
 
-            // El `highlightedIndex` se calcula basándose en el `initialIndex` y los pasos avanzados.
-            // El `initialIndex` es un punto de partida aleatorio para la animación.
-            const animatedSegmentIndex = (finalIndexRef.current + currentStep) % currentNumberOfSegments; // Aquí ajustamos el índice de animación.
+            } else { // Fase de "desaceleración" (últimos ~10% de la animación)
+                // Convergencia hacia el destino `finalIndexRef.current`.
+                // La idea es que a medida que `progress` aumenta, `animatedIndex` se acerca cada vez más a `finalIndexRef.current`.
+                // Usamos la cantidad de pasos restantes para calcular la posición.
+                const stepsRemaining = totalSteps - animationStepRef.current;
+                animatedIndex = (finalIndexRef.current + stepsRemaining) % currentNumberOfSegments;
 
-            setHighlightedIndex(animatedSegmentIndex);
+                // Asegurarse de que en el frame final, sea exactamente el índice destino.
+                if (progress >= 0.99) {
+                    animatedIndex = finalIndexRef.current;
+                }
+            }
+            setHighlightedIndex(animatedIndex);
 
             if (progress < 1) {
                 requestAnimationFrame(animateSpin);
             } else {
-                // La animación ha terminado. Establecemos la categoría final.
+                // La animación ha terminado.
                 const finalCategory = allCategories[finalIndexRef.current];
                 setFinalSelectedCategory(finalCategory);
 
                 // Lógica para excluir temporalmente la categoría que acaba de salir.
                 if (isOnlyOneValidCategoryLeft) {
                     setExcludedCategory(null); // Resetea la exclusión si era la última
-
                 } else {
                     setExcludedCategory(finalCategory); // Propaga la exclusión a la siguiente ronda
                 }
@@ -198,10 +215,12 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
         animateSpin();
     };
 
+    // Calculamos las categorías válidas una vez por render para usar en el botón.
     const validCategoriesForThisSpin = allCategories.filter(
         category => !excludedCategory || category.id !== excludedCategory.id
     );
 
+    // Deshabilitar el botón si isSpinning o si no hay categorías válidas para esta ronda.
     const isButtonDisabled = isSpinning || (allCategories.length > 0 && validCategoriesForThisSpin.length === 0);
 
     return (
@@ -212,7 +231,7 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
                     className="w-full h-full"
                 >
                     {createNeonFilter()}
-                    {generateWheelSegments()} {/* Siempre renderiza todos los segmentos */}
+                    {generateWheelSegments()}
                     <circle
                         cx="0"
                         cy="0"
@@ -224,7 +243,6 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
                     />
                 </svg>
             </div>
-
             <div className="w-full max-w-[300px]">
                 <motion.button
                     onClick={spinWheel}
@@ -241,23 +259,9 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
                         {isSpinning && Array.from({ length: 3 }).map((_, i) => (
                             <motion.div
                                 key={i}
-                                initial={{
-                                    opacity: 0.8,
-                                    scale: 1,
-                                    x: '50%',
-                                    y: '100%'
-                                }}
-                                animate={{
-                                    opacity: 0,
-                                    scale: 0,
-                                    x: [null, `${50 + (i - 1) * 30}%`],
-                                    y: '-100%'
-                                }}
-                                transition={{
-                                    duration: 1,
-                                    delay: i * 0.2,
-                                    repeat: Infinity
-                                }}
+                                initial={{ opacity: 0.8, scale: 1, x: '50%', y: '100%' }}
+                                animate={{ opacity: 0, scale: 0, x: [null, `${50 + (i - 1) * 30}%`], y: '-100%' }}
+                                transition={{ duration: 1, delay: i * 0.2, repeat: Infinity }}
                                 className="absolute w-4 h-4 text-white"
                             >
                                 ♪
@@ -270,14 +274,8 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
                         </span>
                         {!isSpinning && validCategoriesForThisSpin.length > 0 && (
                             <motion.span
-                                animate={{
-                                    rotate: [0, -10, 10, -10, 10, 0]
-                                }}
-                                transition={{
-                                    duration: 1.5,
-                                    repeat: Infinity,
-                                    repeatDelay: 1
-                                }}
+                                animate={{ rotate: [0, -10, 10, -10, 10, 0] }}
+                                transition={{ duration: 1.5, repeat: Infinity, repeatDelay: 1 }}
                             >
                                 🎵
                             </motion.span>
@@ -285,7 +283,6 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
                     </div>
                 </motion.button>
             </div>
-
             {finalSelectedCategory && (
                 <motion.div
                     initial={{ opacity: 0, y: 10 }}
