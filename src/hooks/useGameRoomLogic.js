@@ -11,7 +11,6 @@ export const useGameRoomLogic = ({ roomCode, playerName, isHost, onStartGame }) 
     const [error, setError] = useState(null);
     const [isConnected, setIsConnected] = useState(false);
 
-    // El listener principal que recibe actualizaciones del servidor
     const handleGameStateUpdate = useCallback((newGameState) => {
         console.log('🔄 GameRoom recibió gameStateUpdate:', newGameState);
         setGameState(prevState => ({
@@ -23,7 +22,6 @@ export const useGameRoomLogic = ({ roomCode, playerName, isHost, onStartGame }) 
         }));
     }, []);
 
-    // Efecto para gestionar la conexión y los listeners
     useEffect(() => {
         const connectAndJoin = async () => {
             try {
@@ -37,7 +35,6 @@ export const useGameRoomLogic = ({ roomCode, playerName, isHost, onStartGame }) 
                     roomInfo = await gameSocket.joinRoom(roomCode, { name: playerName });
                 }
 
-                // Sincronizar estado inicial
                 setGameState(prevState => ({
                     ...prevState,
                     players: roomInfo.players || [],
@@ -53,7 +50,6 @@ export const useGameRoomLogic = ({ roomCode, playerName, isHost, onStartGame }) 
 
         connectAndJoin();
 
-        // Registrar listeners
         gameSocket.on('gameStateUpdate', handleGameStateUpdate);
         gameSocket.on('error', (err) => setError(err.message));
         gameSocket.on('hostDisconnected', () => setError('El anfitrión se ha desconectado.'));
@@ -63,21 +59,19 @@ export const useGameRoomLogic = ({ roomCode, playerName, isHost, onStartGame }) 
             gameSocket.off('gameStateUpdate');
             gameSocket.off('error');
             gameSocket.off('hostDisconnected');
-            gameSocket.disconnect();
+            // <-- CAMBIO CRÍTICO: Eliminamos la desconexión automática.
+            // gameSocket.disconnect(); 
+            // La desconexión ahora se maneja en App.jsx al resetear el juego.
         };
-    }, [roomCode, playerName, isHost]); // <-- Dependencias correctas
+    }, [roomCode, playerName, isHost]);
 
-    // Si el estado del juego cambia a 'wheel', notificamos al componente padre
     useEffect(() => {
         if (gameState.gameStep === 'wheel' || gameState.gameStep === 'card') {
             onStartGame({ difficulty: gameState.difficulty });
         }
     }, [gameState.gameStep, gameState.difficulty, onStartGame]);
 
-    // Acciones que el jugador o el host pueden realizar
     const handleSetReady = useCallback(() => {
-        // <-- ¡AQUÍ ESTÁ LA CORRECCIÓN! -->
-        // Enviamos solo el string roomCode, como espera el método.
         gameSocket.setPlayerReady(roomCode);
     }, [roomCode]);
 
@@ -86,7 +80,7 @@ export const useGameRoomLogic = ({ roomCode, playerName, isHost, onStartGame }) 
     }, [roomCode, gameState.difficulty]);
 
     const handleDifficultyChange = useCallback(async (newDifficulty) => {
-        setGameState(prev => ({ ...prev, difficulty: newDifficulty })); // Actualización optimista
+        setGameState(prev => ({ ...prev, difficulty: newDifficulty }));
         try {
             await gameSocket.updateRoom({ roomCode, difficulty: newDifficulty });
         } catch (err) {
@@ -95,7 +89,6 @@ export const useGameRoomLogic = ({ roomCode, playerName, isHost, onStartGame }) 
         }
     }, [roomCode]);
 
-    // Devolvemos el estado y las acciones que el componente necesita
     return {
         ...gameState,
         error,
