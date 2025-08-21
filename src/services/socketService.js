@@ -5,477 +5,194 @@ class GameWebSocket {
     this.socket = null;
     this.eventHandlers = new Map();
     this.isConnecting = false;
-    this.connected = false;
-    this.connectionAttempts = 0;
-    this.maxAttempts = 5;
     this.connectPromise = null;
-    this.connectionQueue = [];
   }
 
-  async connect() {
+  /**
+   * Conecta al servidor WebSocket.
+   * Utiliza la lógica de reconexión interna de Socket.IO.
+   * Devuelve una promesa que se resuelve cuando la conexión es exitosa.
+   */
+  connect() {
     if (this.socket?.connected) {
-      console.log('Ya conectado');
-      this.connected = true;
-      return;
+      return Promise.resolve();
     }
 
     if (this.isConnecting) {
-      console.log('Conexión en progreso...');
       return this.connectPromise;
     }
 
     this.isConnecting = true;
-    this.connectionAttempts++;
+    
+    // Limpieza de cualquier instancia anterior
+    if (this.socket) {
+        this.socket.close();
+        this.socket.removeAllListeners();
+    }
 
     this.connectPromise = new Promise((resolve, reject) => {
-      try {
-        if (this.socket) {
-          this.socket.close();
-          this.socket.removeAllListeners();
-        }
+      console.log('🔌 Intentando conectar al servidor...');
+      this.socket = io(import.meta.env.VITE_WS_URL, {
+        reconnection: true, // Dejar que Socket.IO gestione la reconexión
+        reconnectionAttempts: 5,
+        reconnectionDelay: 1000,
+        timeout: 10000, // Timeout para el handshake inicial
+        transports: ['websocket', 'polling'], // Priorizar WebSocket
+        forceNew: true, // Asegura una conexión limpia
+      });
 
-        console.log('Intentando conectar al servidor...');
-        this.socket = io(import.meta.env.VITE_WS_URL, {
-          reconnection: true,
-          reconnectionAttempts: 5,
-          reconnectionDelay: 1000,
-          reconnectionDelayMax: 5000,
-          timeout: 20000,
-          transports: ['polling', 'websocket'],
-          forceNew: true,
-          autoConnect: false
-        });
+      this.socket.on('connect', () => {
+        console.log('✅ Conectado exitosamente al servidor. ID:', this.socket.id);
+        this.isConnecting = false;
+        this.restoreEventHandlers(); // Restaurar listeners generales
+        resolve();
+      });
 
-        let attemptCount = 0;
-        const maxAttempts = 3;
-        const attemptConnection = () => {
-          if (attemptCount >= maxAttempts) {
-            this.isConnecting = false;
-            reject(new Error('Max connection attempts reached'));
-            return;
-          }
+      this.socket.on('disconnect', (reason) => {
+        console.warn('❌ Desconectado del servidor:', reason);
+        // Si el servidor nos desconectó, no intentará reconectar automáticamente.
+        // Aquí podrías agregar lógica para notificar al usuario.
+      });
 
-          console.log(`Intento de conexión ${attemptCount + 1}/${maxAttempts}`);
-          this.socket.connect();
-
-          const timeout = setTimeout(() => {
-            if (!this.connected) {
-              console.log(`Timeout en intento ${attemptCount + 1}`);
-              this.socket.disconnect();
-              attemptCount++;
-              attemptConnection();
-            }
-          }, 5000);
-
-          this.socket.once('connect', () => {
-            console.log('Conectado exitosamente');
-            clearTimeout(timeout);
-            this.connected = true;
-            this.isConnecting = false;
-            this.connectionAttempts = 0;
-            this.restoreEventHandlers();
-
-            this.processConnectionQueue();
-
-            resolve();
-          });
-
-          this.socket.once('connect_error', (error) => {
-            console.error(`Error de conexión en intento ${attemptCount + 1}:`, error);
-            clearTimeout(timeout);
-            this.socket.disconnect();
-            attemptCount++;
-            attemptConnection();
-          });
-        };
-
-        this.socket.on('disconnect', (reason) => {
-          console.log('Desconectado:', reason);
-          this.connected = false;
-          if (reason === 'io server disconnect') {
-            attemptConnection();
-          }
-        });
-
-        attemptConnection();
-
-      } catch (error) {
+      this.socket.on('connect_error', (error) => {
+        console.error('🔥 Error de conexión:', error.message);
+        // Esto se dispara si todos los intentos de reconexión fallan
         this.isConnecting = false;
         reject(error);
-      }
+      });
+
+      // Restaurar los listeners que el usuario haya definido con .on()
+      this.restoreEventHandlers();
+
     });
 
     return this.connectPromise;
   }
-
-  async createRoom(roomConfig) {
-    await this.ensureConnection();
-
-    return new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        reject(new Error('Timeout creating room'));
-      }, 10000);
-
-      const handleRoomCreated = (roomInfo) => {
-        clearTimeout(timeout);
-        this.socket.off('error', handleError);
-        resolve(roomInfo);
-      };
-
-      const handleError = (error) => {
-        clearTimeout(timeout);
-        this.socket.off('roomCreated', handleRoomCreated);
-        reject(error);
-      };
-
-      console.log('Creando sala:', roomConfig);
-      this.socket.emit('createRoom', roomConfig);
-      this.socket.once('roomCreated', handleRoomCreated);
-      this.socket.once('error', handleError);
-    });
-  }
-
-  async joinRoom(roomCode, playerInfo) {
-    await new Promise(resolve => setTimeout(resolve, Math.random() * 1000));
-
-    return new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        reject(new Error('Timeout joining room'));
-      }, 10000);
-
-      const handleRoomJoined = (roomInfo) => {
-        clearTimeout(timeout);
-        this.socket.off('error', handleError);
-
-        if (roomInfo.isReconnecting && roomInfo.phase === 'playing') {
-          this.setPlayerReady(roomCode).catch(console.error);
-        }
-
-        resolve(roomInfo);
-      };
-
-      const handleError = (error) => {
-        clearTimeout(timeout);
-        this.socket.off('roomJoined', handleRoomJoined);
-        reject(error);
-      };
-
-      console.log('Intentando unirse a sala:', roomCode, playerInfo);
-      this.socket.emit('joinRoom', { roomCode, ...playerInfo });
-      this.socket.once('roomJoined', handleRoomJoined);
-      this.socket.once('error', handleError);
-    });
-  }
-
-  async startSong(data) {
-    await this.ensureConnection();
-    console.log('Iniciando reproducción:', data);
-    return new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        reject(new Error('Timeout starting song'));
-      }, 5000);
-
-      const handleSongStarted = () => {
-        clearTimeout(timeout);
-        this.socket.off('error', handleError);
-        resolve();
-      };
-
-      const handleError = (error) => {
-        clearTimeout(timeout);
-        this.socket.off('songStarted', handleSongStarted);
-        reject(error);
-      };
-
-      this.socket.emit('startSong', data);
-      this.socket.once('songStarted', handleSongStarted);
-      this.socket.once('error', handleError);
-    });
-  }
-
-  async submitPrediction(data) {
-    await this.ensureConnection();
-    return new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        reject(new Error('Timeout submitting prediction'));
-      }, 5000);
-
-      const handlePredictionSubmitted = () => {
-        clearTimeout(timeout);
-        this.socket.off('error', handleError);
-        resolve();
-      };
-
-      const handleError = (error) => {
-        clearTimeout(timeout);
-        this.socket.off('predictionSubmitted', handlePredictionSubmitted);
-        reject(error);
-      };
-
-      this.socket.emit('submitPrediction', data);
-      this.socket.once('predictionSubmitted', handlePredictionSubmitted);
-      this.socket.once('error', handleError);
-    });
-  }
-
-  async markPlayerCorrect(data) {
-    await this.ensureConnection();
-    return new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        reject(new Error('Timeout marking player'));
-      }, 5000);
-
-      const handlePlayerMarked = (response) => {
-        clearTimeout(timeout);
-        this.socket.off('error', handleError);
-        resolve(response);
-      };
-
-      const handleError = (error) => {
-        clearTimeout(timeout);
-        this.socket.off('playerMarked', handlePlayerMarked);
-        reject(error);
-      };
-
-      console.log('Marcando jugador:', data);
-      this.socket.emit('markPlayerCorrect', data);
-      this.socket.once('playerMarked', handlePlayerMarked);
-      this.socket.once('error', handleError);
-    });
-  }
-
-  async confirmCorrect(data) {
-    await this.ensureConnection();
-    return new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        reject(new Error('Timeout confirming correct'));
-      }, 5000);
-
-      const handleConfirmed = (response) => {
-        clearTimeout(timeout);
-        this.socket.off('error', handleError);
-        resolve(response);
-      };
-
-      const handleError = (error) => {
-        clearTimeout(timeout);
-        this.socket.off('playerConfirmed', handleConfirmed);
-        reject(error);
-      };
-
-      console.log('Confirmando acierto:', data);
-      this.socket.emit('confirmCorrect', data);
-      this.socket.once('playerConfirmed', handleConfirmed);
-      this.socket.once('error', handleError);
-    });
-  }
-
-  processConnectionQueue() {
-    while (this.connectionQueue.length > 0) {
-      const { resolve, reject, fn } = this.connectionQueue.shift();
-      fn().then(resolve).catch(reject);
+  
+    /**
+   * Helper privado para manejar la lógica de "petición-respuesta".
+   * @param {string} eventName - El nombre del evento a emitir.
+   * @param {string} responseEvent - El nombre del evento que esperamos como respuesta.
+   * @param {object} data - Los datos a enviar.
+   * @param {number} timeoutMs - Tiempo de espera en milisegundos.
+   * @returns {Promise<any>}
+   * @private
+   */
+    async _request(eventName, responseEvent, data, timeoutMs = 15000) { // <-- 1. Hacemos la función principal async
+      // 2. Esperamos la conexión ANTES de crear la promesa para los listeners
+      await this.ensureConnection();
+  
+      // 3. Ahora el executor es síncrono, como debe ser.
+      return new Promise((resolve, reject) => {
+        let timeout;
+  
+        const handleResponse = (response) => {
+          clearTimeout(timeout);
+          this.socket.off('error', handleError);
+          resolve(response);
+        };
+  
+        const handleError = (error) => {
+          clearTimeout(timeout);
+          this.socket.off(responseEvent, handleResponse);
+          reject(error);
+        };
+  
+        timeout = setTimeout(() => {
+          this.socket.off(responseEvent, handleResponse);
+          this.socket.off('error', handleError);
+          reject(new Error(`Timeout: No se recibió respuesta para '${eventName}' a tiempo.`));
+        }, timeoutMs);
+        
+        this.socket.once(responseEvent, handleResponse);
+        this.socket.once('error', handleError);
+  
+        console.log(`[EMIT] ${eventName}`, data);
+        this.socket.emit(eventName, data);
+      });
     }
+
+  // --- MÉTODOS DE LA API (ahora mucho más limpios) ---
+
+  createRoom(roomConfig) {
+    // El servidor debe responder con 'roomCreated' o 'error'
+    return this._request('createRoom', 'roomCreated', roomConfig);
   }
 
-  async setPlayerReady(roomCode) {
-    await this.ensureConnection();
-
-    return new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        reject(new Error('Timeout setting player ready'));
-      }, 5000);
-
-      const handlePlayersUpdate = (data) => {
-        clearTimeout(timeout);
-        this.socket.off('error', handleError);
-        resolve(data);
-      };
-
-      const handleError = (error) => {
-        clearTimeout(timeout);
-        this.socket.off('playersUpdate', handlePlayersUpdate);
-        reject(error);
-      };
-
-      this.socket.emit('playerReady', { roomCode });
-      this.socket.once('playersUpdate', handlePlayersUpdate);
-      this.socket.once('error', handleError);
-    });
+  joinRoom(roomCode, playerInfo) {
+    return this._request('joinRoom', 'roomJoined', { roomCode, ...playerInfo });
   }
 
-  async startGame(data) {
-    await this.ensureConnection();
-
-    return new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        reject(new Error('Timeout starting game'));
-      }, 15000);
-
-      const handleGameStarted = (gameInfo) => {
-        clearTimeout(timeout);
-        this.socket.off('error', handleError);
-        this.socket.off('gameStartFailed', handleStartFailed);
-        resolve(gameInfo);
-      };
-
-      const handleStartFailed = (error) => {
-        clearTimeout(timeout);
-        this.socket.off('gameStarted', handleGameStarted);
-        this.socket.off('error', handleError);
-        reject(new Error(error.message));
-      };
-
-      const handleError = (error) => {
-        clearTimeout(timeout);
-        this.socket.off('gameStarted', handleGameStarted);
-        this.socket.off('gameStartFailed', handleStartFailed);
-        reject(error);
-      };
-
-      console.log('Iniciando juego:', data);
-      this.socket.emit('startGame', data);
-      this.socket.once('gameStarted', handleGameStarted);
-      this.socket.once('gameStartFailed', handleStartFailed);
-      this.socket.once('error', handleError);
-    });
+  setPlayerReady(roomCode) {
+    return this._request('playerReady', 'playersUpdate', { roomCode });
   }
 
-  async selectCategory(data) {
-    await this.ensureConnection();
-    return new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        reject(new Error('Timeout selecting category'));
-      }, 10000);
-
-      const handleCategorySelected = (response) => {
-        clearTimeout(timeout);
-        resolve(response);
-      };
-
-      console.log('Seleccionando categoría:', data);
-      this.socket.emit('selectCategory', data);
-      this.socket.once('categorySelected', handleCategorySelected);
-    });
+  startGame(data) {
+    return this._request('startGame', 'gameStarted', data);
   }
+
+  selectCategory(data) {
+    return this._request('selectCategory', 'categorySelected', data);
+  }
+
+  startSong(data) {
+    // A veces no necesitas una respuesta, solo confirmación. El servidor puede enviar 'songStarted'
+    return this._request('startSong', 'songStarted', data);
+  }
+
+  submitPrediction(data) {
+    return this._request('submitPrediction', 'predictionSubmitted', data);
+  }
+
+  markPlayerCorrect(data) {
+    return this._request('markPlayerCorrect', 'playerMarked', data);
+  }
+
+  confirmCorrect(data) {
+    return this._request('confirmCorrect', 'playerConfirmed',data);
+  }
+
+  enableMarking(data) {
+    return this._request('enableMarking', 'markingEnabled', data);
+  }
+
+  disableMarking(data) {
+    return this._request('disableMarking', 'markingDisabled', data);
+  }
+
+  gameOver(data) {
+    return this._request('gameOver', 'gameOverConfirmed', data);
+  }
+  
+  restartGame(data) {
+    return this._request('restartGame', 'gameRestarted', data);
+  }
+
+  // --- Métodos que no necesitan respuesta (Fire-and-Forget) ---
 
   async revealSong(data) {
     await this.ensureConnection();
-    console.log('Revelando canción:', data);
     this.socket.emit('revealSong', data);
-  }
-
-  async enableMarking(data) {
-    await this.ensureConnection();
-    console.log('Habilitando marcado:', data);
-    return new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        reject(new Error('Timeout enabling marking'));
-      }, 5000);
-
-      const handleMarkingEnabled = (response) => {
-        clearTimeout(timeout);
-        this.socket.off('error', handleError);
-        resolve(response);
-      };
-
-      const handleError = (error) => {
-        clearTimeout(timeout);
-        this.socket.off('markingEnabled', handleMarkingEnabled);
-        reject(error);
-      };
-
-      this.socket.emit('enableMarking', data);
-      this.socket.once('markingEnabled', handleMarkingEnabled);
-      this.socket.once('error', handleError);
-    });
-  }
-
-  async disableMarking(data) {
-    await this.ensureConnection();
-    console.log('Deshabilitando marcado:', data);
-    return new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        reject(new Error('Timeout disabling marking'));
-      }, 5000);
-
-      const handleMarkingDisabled = (response) => {
-        clearTimeout(timeout);
-        this.socket.off('error', handleError);
-        resolve(response);
-      };
-
-      const handleError = (error) => {
-        clearTimeout(timeout);
-        this.socket.off('markingDisabled', handleMarkingDisabled);
-        reject(error);
-      };
-
-      this.socket.emit('disableMarking', data);
-      this.socket.once('markingDisabled', handleMarkingDisabled);
-      this.socket.once('error', handleError);
-    });
-  }
-
-  async winner(data) {
-    await this.ensureConnection();
-    console.log('Anunciando ganador:', data);
-    this.socket.emit('winner', data);
-  }
-
-  gameOver({ roomCode, winners }) {
-    return new Promise((resolve, reject) => {
-      if (!this.socket || !this.socket.connected) {
-        reject(new Error('No conectado'));
-        return;
-      }
-
-      this.socket.emit('gameOver', { roomCode, winners }, (response) => {
-        if (response && response.error) {
-          reject(new Error(response.error));
-        } else {
-          resolve(response);
-        }
-      });
-    });
-  }
-
-  restartGame({ roomCode }) {
-    return new Promise((resolve, reject) => {
-      if (!this.socket || !this.socket.connected) {
-        reject(new Error('No conectado'));
-        return;
-      }
-
-      this.socket.emit('restartGame', { roomCode }, (response) => {
-        if (response && response.error) {
-          reject(new Error(response.error));
-        } else {
-          resolve(response);
-        }
-      });
-    });
   }
 
   async updateRoom(data) {
     await this.ensureConnection();
-    console.log('Actualizando sala:', data);
     this.socket.emit('updateRoom', data);
   }
 
-  restoreEventHandlers() {
-    if (!this.socket) return;
-    this.eventHandlers.forEach((handler, event) => {
-      this.socket.on(event, handler);
-    });
-  }
+  // --- GESTIÓN DE EVENTOS Y CONEXIÓN ---
 
   async ensureConnection() {
-    if (!this.connected) {
-      await this.connect();
+    if (!this.socket?.connected) {
+      if (!this.isConnecting) {
+        await this.connect();
+      } else {
+        await this.connectPromise;
+      }
     }
-    return true;
   }
 
+  // Para eventos que escuchas constantemente (ej. actualizaciones de estado)
   on(event, handler) {
     this.eventHandlers.set(event, handler);
     if (this.socket) {
@@ -490,15 +207,21 @@ class GameWebSocket {
     }
   }
 
+  restoreEventHandlers() {
+    if (!this.socket) return;
+    this.socket.removeAllListeners(); // Empezar de cero para evitar duplicados
+    this.eventHandlers.forEach((handler, event) => {
+      this.socket.on(event, handler);
+    });
+  }
+
   disconnect() {
     if (this.socket) {
+      console.log('Desconectando manualmente el socket.');
       this.socket.disconnect();
-      this.eventHandlers.clear();
       this.socket = null;
-      this.connected = false;
-      this.isConnecting = false;
-      this.connectionAttempts = 0;
       this.connectPromise = null;
+      this.isConnecting = false;
     }
   }
 }
