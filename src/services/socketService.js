@@ -51,9 +51,6 @@ class GameWebSocket {
     return this.connectPromise;
   }
   
-  /**
-   * Helper privado para acciones que requieren una respuesta específica (petición-respuesta).
-   */
   async _request(eventName, responseEvent, data, timeoutMs = 15000) {
     await this.ensureConnection();
     return new Promise((resolve, reject) => {
@@ -82,61 +79,29 @@ class GameWebSocket {
   }
 
   // --- MÉTODOS DE PETICIÓN-RESPUESTA (usan _request) ---
-  // Acciones que necesitan una confirmación directa e individual.
-  
-  createRoom(roomConfig) {
-    return this._request('createRoom', 'roomCreated', roomConfig);
-  }
-  
-  joinRoom(roomCode, playerInfo) {
-    return this._request('joinRoom', 'roomJoined', { roomCode, ...playerInfo });
-  }
-
-  selectCategory(data) {
-    return this._request('selectCategory', 'categorySelected', data);
-  }
-
-  startSong(data) {
-    return this._request('startSong', 'songStarted', data);
-  }
-
-  submitPrediction(data) {
-    return this._request('submitPrediction', 'predictionSubmitted', data);
-  }
-
-  markPlayerCorrect(data) {
-    return this._request('markPlayerCorrect', 'playerMarked', data);
-  }
-
-  enableMarking(data) {
-    return this._request('enableMarking', 'markingEnabled', data);
-  }
-
-  disableMarking(data) {
-    return this._request('disableMarking', 'markingDisabled', data);
-  }
-
-  gameOver(data) {
-    return this._request('gameOver', 'gameOverConfirmed', data);
-  }
-  
-  restartGame(data) {
-    return this._request('restartGame', 'gameRestarted', data);
-  }
-
+  createRoom(roomConfig) { return this._request('createRoom', 'roomCreated', roomConfig); }
+  joinRoom(roomCode, playerInfo) { return this._request('joinRoom', 'roomJoined', { roomCode, ...playerInfo }); }
+  selectCategory(data) { return this._request('selectCategory', 'categorySelected', data); }
+  startSong(data) { return this._request('startSong', 'songStarted', data); }
+  markPlayerCorrect(data) { return this._request('markPlayerCorrect', 'playerMarked', data); }
+  enableMarking(data) { return this._request('enableMarking', 'markingEnabled', data); }
+  disableMarking(data) { return this._request('disableMarking', 'markingDisabled', data); }
+  gameOver(data) { return this._request('gameOver', 'gameOverConfirmed', data); }
+  restartGame(data) { return this._request('restartGame', 'gameRestarted', data); }
 
   // --- MÉTODOS DE NOTIFICACIÓN (Fire-and-Forget) ---
-  // Acciones que solo informan al servidor. No esperan respuesta directa.
-  // La UI se actualizará a través del evento general 'gameStateUpdate'.
-
-  // <-- CAMBIO: `setPlayerReady` ahora es un método de notificación. -->
+  async submitPrediction(data) {
+    await this.ensureConnection();
+    console.log(`[EMIT] submitPrediction`, data);
+    this.socket.emit('submitPrediction', data);
+  }
+  
   async setPlayerReady(roomCode) {
     await this.ensureConnection();
     console.log(`[EMIT] playerReady`, { roomCode });
     this.socket.emit('playerReady', { roomCode });
   }
   
-  // <-- CAMBIO: `startGame` también es un método de notificación. -->
   async startGame(data) {
     await this.ensureConnection();
     console.log(`[EMIT] startGame`, data);
@@ -161,45 +126,32 @@ class GameWebSocket {
     this.socket.emit('winner', data);
   }
 
-
   // --- GESTIÓN DE EVENTOS Y CONEXIÓN ---
-  
   async ensureConnection() {
     if (!this.socket?.connected) {
-      if (!this.isConnecting) {
-        await this.connect();
-      } else {
-        await this.connectPromise;
-      }
+      if (!this.isConnecting) await this.connect();
+      else await this.connectPromise;
     }
   }
 
   on(event, handler) {
     this.eventHandlers.set(event, handler);
-    if (this.socket) {
-      this.socket.on(event, handler);
-    }
+    if (this.socket) this.socket.on(event, handler);
   }
 
   off(event) {
     this.eventHandlers.delete(event);
-    if (this.socket) {
-      this.socket.off(event);
-    }
+    if (this.socket) this.socket.off(event);
   }
 
   restoreEventHandlers() {
     if (!this.socket) return;
-    // Limpiamos solo los listeners de eventos de juego, no los de conexión ('connect', 'disconnect', etc.)
     this.eventHandlers.forEach((_, event) => this.socket.off(event));
-    this.eventHandlers.forEach((handler, event) => {
-      this.socket.on(event, handler);
-    });
+    this.eventHandlers.forEach((handler, event) => this.socket.on(event, handler));
   }
   
   disconnect() {
     if (this.socket) {
-      console.log('Desconectando manualmente el socket.');
       this.socket.disconnect();
       this.socket = null;
       this.connectPromise = null;

@@ -10,53 +10,43 @@ const alertConfig = {
   bingo: { className: "bg-green-500/20 border-green-500/50 text-green-300 font-bold", Icon: PartyPopper },
 };
 
-// La lógica para decidir qué alerta mostrar ahora es más limpia
 const getAlertInfo = ({ gameState, playerName }) => {
-  const { 
-    gameStep, 
-    isMarkingEnabled, 
-    playerCorrectStatus, 
-    currentCategory, 
-    currentSong,
-    winners
-  } = gameState;
+  const { gameStep, isMarkingEnabled, playerCorrectStatus, currentCategory, currentSong, winners, connectionError } = gameState;
+
+  // Prioridad 1: Errores de conexión
+  if (connectionError) return { type: 'error', message: connectionError };
 
   const player = gameState.connectedPlayers.find(p => p.name === playerName);
   const isWinner = winners.some(w => w.id === player?.id);
   const isEligible = player && playerCorrectStatus[player.id];
 
-  // 1. Prioridad máxima: Eres un ganador
-  if (isWinner) {
-    return { type: 'bingo', message: '¡BINGO! ¡Has ganado esta partida!' };
-  }
+  if (isWinner) return { type: 'bingo', message: '¡BINGO! ¡Has ganado esta partida!' };
 
-  // 2. Si el juego está en revisión...
   if (gameStep === 'reviewing') {
     if (isEligible) {
       if (isMarkingEnabled) {
-        return { type: 'success', message: `¡Correcto! Puedes marcar una casilla de "${currentCategory.name}".` };
+        if (currentCategory) {
+            return { type: 'success', message: `¡Correcto! Puedes marcar una casilla de "${currentCategory.name}".` };
+        }
       } else {
         return { type: 'warning', message: '¡Has acertado! Espera a que el host habilite el marcado.' };
       }
     } else {
-      // El servidor determina si acertaste o no, así que si no eres elegible, es que no acertaste.
       if (currentSong?.revealed) {
         return { type: 'error', message: 'No has acertado. ¡Mejor suerte en la próxima ronda!' };
       }
     }
   }
 
-  // 3. Si la canción está sonando
   if (gameStep === 'playing' && currentSong) {
     return { type: 'info', message: '¡Adivina la canción! Escribe tu predicción abajo.' };
   }
   
-  // 4. Esperando a que el host revele la canción
   if (gameStep === 'playing' && !currentSong) {
     return { type: 'info', message: 'Espera a que el Game Master ponga una canción.' };
   }
-
-  return null; // No mostrar ninguna alerta
+  
+  return null;
 };
 
 const GameStatusAlert = (props) => {
