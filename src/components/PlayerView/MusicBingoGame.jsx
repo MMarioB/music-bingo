@@ -1,4 +1,3 @@
-// MusicBingoGame.js
 import { useState, useEffect } from 'react';
 import { Trophy } from 'lucide-react';
 import PropTypes from 'prop-types';
