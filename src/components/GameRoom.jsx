@@ -7,7 +7,7 @@ import { Label } from '../components/ui/label';
 import { AlertCircle, Users, CheckCircle, Crown, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import PropTypes from 'prop-types';
-import { useGameRoomLogic } from './useGameRoomLogic'; // <-- Importa el nuevo hook
+import { useGameRoomLogic } from '../hooks/useGameRoomLogic'; // <-- Importa el nuevo hook
 
 const GameRoom = ({ roomCode, playerName, isHost, onStartGame }) => {
   const {
