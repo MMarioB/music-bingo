@@ -2,27 +2,20 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { gameSocket } from '../../services/socketService';
 import { BOARD_SIZE, MIN_DIFFERENT_CATEGORIES, CATEGORIES_A, CATEGORIES_B } from '../Wheel/constants';
 
-// Esta función ahora está fuera porque no depende de props o estado del componente, es una función pura.
 const generateValidBoard = (difficulty) => {
     const categories = difficulty === 'experto' ? CATEGORIES_B : CATEGORIES_A;
     const cells = [];
     categories.forEach(category => {
-        for (let i = 0; i < 5; i++) {
-        cells.push({ ...category, marked: false });
-        }
+        for (let i = 0; i < 5; i++) cells.push({ ...category, marked: false });
     });
-    // Mezcla simple de Fisher-Yates
     for (let i = cells.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [cells[i], cells[j]] = [cells[j], cells[i]];
     }
-    // En una implementación futura, aquí se podría añadir la validación de filas/columnas.
     return cells;
 };
 
-
 export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
-    // Estado unificado que refleja lo que llega del servidor.
     const [gameState, setGameState] = useState({
         gameStep: 'waiting',
         connectedPlayers: [],
@@ -33,21 +26,19 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
         gameOver: false,
         winners: [],
     });
-
-    // Estado que es puramente local del cliente (el tablero y errores).
     const [board, setBoard] = useState([]);
     const [error, setError] = useState(null);
+    const [myPredictions, setMyPredictions] = useState([]); // Estado local para las predicciones del jugador
     const boardGenerated = useRef(false);
 
-    // --- LÓGICA DE VALIDACIÓN DEL TABLERO (se mantiene local) ---
     const validateLine = useCallback((line) => {
         const categoryCounts = {};
         let markedCount = 0;
         line.forEach(cell => {
-        if (cell.marked) {
-            categoryCounts[cell.name] = (categoryCounts[cell.name] || 0) + 1;
-            markedCount++;
-        }
+            if (cell.marked) {
+                categoryCounts[cell.name] = (categoryCounts[cell.name] || 0) + 1;
+                markedCount++;
+            }
         });
         if (markedCount !== BOARD_SIZE) return false;
         const hasMoreThanTwoOfSameCategory = Object.values(categoryCounts).some(count => count > 2);
@@ -67,57 +58,41 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
         return validateLine(diag1) || validateLine(diag2);
     }, [validateLine]);
 
-
-    // --- EFECTO PRINCIPAL PARA LA COMUNICACIÓN CON EL SOCKET ---
     useEffect(() => {
-        // El tablero se genera UNA SOLA VEZ cuando el hook se monta, si no existe.
         if (!boardGenerated.current) {
-            console.log('Generando tablero para el jugador...');
             setBoard(generateValidBoard(difficulty));
             boardGenerated.current = true;
         }
 
-        // Listener principal para las actualizaciones de estado del servidor.
         const handleGameStateUpdate = (serverState) => {
             console.log('PLAYER VIEW recibió gameStateUpdate:', serverState);
+            // Si la nueva ronda empieza (sin categoría o con una categoría diferente), limpiamos las predicciones locales.
+            if (!serverState.currentCategory && gameState.currentCategory) {
+              setMyPredictions([]);
+            }
             setGameState(prevState => ({ ...prevState, ...serverState }));
         };
 
         gameSocket.on('gameStateUpdate', handleGameStateUpdate);
         gameSocket.on('error', (err) => setError(err.message || 'Error del servidor'));
 
-        // Limpieza de listeners cuando el componente se desmonta.
         return () => {
             gameSocket.off('gameStateUpdate');
             gameSocket.off('error');
         };
-    }, [difficulty]); // La dificultad puede cambiar si un jugador se une tarde, por lo que debe ser una dependencia.
+    }, [difficulty, gameState.currentCategory]); // Dependencia para resetear predicciones
 
-    // --- ACCIONES DEL JUGADOR
-    
     const handleCellClick = useCallback((index) => {
-        if (!gameState.isMarkingEnabled) {
-            console.log("Intento de marcar pero el marcado no está habilitado.");
-            return;
-        }
-
+        if (!gameState.isMarkingEnabled) return;
         const player = gameState.connectedPlayers.find(p => p.name === playerName);
-        const isPlayerEligible = player && gameState.playerCorrectStatus[player.id];
-        
-        if (!isPlayerEligible) {
-            console.log(`El jugador ${playerName} no es elegible para marcar.`);
-            return;
-        }
-    
+        if (!player || !gameState.playerCorrectStatus[player.id]) return;
+
         setBoard(prevBoard => {
             const newBoard = [...prevBoard];
             const cell = newBoard[index];
-            
             if (gameState.currentCategory && cell.name === gameState.currentCategory.name) {
                 newBoard[index] = { ...cell, marked: !cell.marked };
-                
                 if (checkWinner(newBoard)) {
-                    console.log(`¡Jugador ${playerName} ha cantado bingo!`);
                     gameSocket.winner({ roomCode, playerName });
                 }
                 return newBoard;
@@ -125,16 +100,16 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
             return prevBoard;
         });
     }, [gameState, checkWinner, roomCode, playerName]);
-    
+
     const handlePrediction = useCallback((prediction) => {
-        // En una implementación futura, se podría añadir un estado 'canPredict'
-        // basado en el estado del servidor.
-        gameSocket.submitPrediction({ roomCode, prediction });
+        setMyPredictions(prev => [...prev, prediction]); // Actualiza el estado local
+        gameSocket.submitPrediction({ roomCode, prediction }); // Notifica al servidor
     }, [roomCode]);
 
     return {
         board,
-        ...gameState, // Devolvemos todo el estado del juego que viene del servidor.
+        ...gameState,
+        myPredictions,
         error,
         setError,
         handleCellClick,

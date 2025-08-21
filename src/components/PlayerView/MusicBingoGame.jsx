@@ -12,10 +12,8 @@ const MusicBingoGame = ({ playerName, roomCode, difficulty }) => {
 
   const canPlayerMark = useMemo(() => {
     if (!logic.isMarkingEnabled) return false;
-    
     const currentPlayer = logic.connectedPlayers.find(p => p.name === playerName);
     if (!currentPlayer) return false;
-    
     return !!logic.playerCorrectStatus[currentPlayer.id];
   }, [logic.isMarkingEnabled, logic.connectedPlayers, logic.playerCorrectStatus, playerName]);
 
@@ -40,18 +38,13 @@ const MusicBingoGame = ({ playerName, roomCode, difficulty }) => {
              <p key={winner.id} className="text-center text-yellow-300">{winner.name}</p>
           ))}
         </div>
-        <p className="text-white/70 text-center">
-            Espera a que el Game Master inicie un nuevo juego...
-        </p>
+        <p className="text-white/70 text-center">Espera a que el Game Master inicie un nuevo juego...</p>
       </div>
     </div>
   );
 
   return (
-    <GameLayout
-      roomCode={roomCode}
-      playersCount={logic.connectedPlayers.length}
-    >
+    <GameLayout roomCode={roomCode} playersCount={logic.connectedPlayers.length}>
       {logic.gameOver && renderGameOver()}
       <div className="flex flex-col flex-1 space-y-4">
         
@@ -74,6 +67,7 @@ const MusicBingoGame = ({ playerName, roomCode, difficulty }) => {
         
         <PlayerPredictions
           gameState={logic}
+          predictions={logic.myPredictions}
           onSubmitPrediction={logic.handlePrediction}
         />
       </div>
