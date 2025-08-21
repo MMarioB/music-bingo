@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react'; // <-- Importa useRef
 import { gameSocket } from '../services/socketService';
 
 export const useGameRoomLogic = ({ roomCode, playerName, isHost, onStartGame }) => {
@@ -10,6 +10,9 @@ export const useGameRoomLogic = ({ roomCode, playerName, isHost, onStartGame }) 
     });
     const [error, setError] = useState(null);
     const [isConnected, setIsConnected] = useState(false);
+
+    // <-- CAMBIO: Usamos useRef para asegurar que la conexión se haga solo una vez. -->
+    const hasConnected = useRef(false);
 
     const handleGameStateUpdate = useCallback((newGameState) => {
         console.log('🔄 GameRoom recibió gameStateUpdate:', newGameState);
@@ -23,10 +26,14 @@ export const useGameRoomLogic = ({ roomCode, playerName, isHost, onStartGame }) 
     }, []);
 
     useEffect(() => {
+        // Si ya nos hemos conectado, no hacemos nada más en este efecto.
+        if (hasConnected.current) return;
+
         const connectAndJoin = async () => {
             try {
                 setError(null);
                 await gameSocket.connect();
+                hasConnected.current = true; // <-- Marcamos que ya nos conectamos.
 
                 let roomInfo;
                 if (isHost) {
@@ -50,20 +57,21 @@ export const useGameRoomLogic = ({ roomCode, playerName, isHost, onStartGame }) 
 
         connectAndJoin();
 
+    }, [roomCode, playerName, isHost]); // Dependencias para la ejecución inicial
+
+    useEffect(() => {
+        // Este efecto separado maneja los listeners, que sí queremos
+        // que se registren y limpien si el hook se desmonta/remonta.
         gameSocket.on('gameStateUpdate', handleGameStateUpdate);
         gameSocket.on('error', (err) => setError(err.message));
         gameSocket.on('hostDisconnected', () => setError('El anfitrión se ha desconectado.'));
 
-        // Limpieza
         return () => {
             gameSocket.off('gameStateUpdate');
             gameSocket.off('error');
             gameSocket.off('hostDisconnected');
-            // <-- CAMBIO CRÍTICO: Eliminamos la desconexión automática.
-            // gameSocket.disconnect(); 
-            // La desconexión ahora se maneja en App.jsx al resetear el juego.
         };
-    }, [roomCode, playerName, isHost]);
+    }, [handleGameStateUpdate]); // Depende del callback memoizado
 
     useEffect(() => {
         if (gameState.gameStep === 'wheel' || gameState.gameStep === 'card') {
