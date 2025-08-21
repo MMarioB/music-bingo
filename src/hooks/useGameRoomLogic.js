@@ -63,10 +63,9 @@ export const useGameRoomLogic = ({ roomCode, playerName, isHost, onStartGame }) 
             gameSocket.off('gameStateUpdate');
             gameSocket.off('error');
             gameSocket.off('hostDisconnected');
-            // Desconectar al salir de la vista de la sala
             gameSocket.disconnect();
         };
-    }, [roomCode, playerName, isHost, handleGameStateUpdate]);
+    }, [roomCode, playerName, isHost]); // <-- Dependencias correctas
 
     // Si el estado del juego cambia a 'wheel', notificamos al componente padre
     useEffect(() => {
@@ -77,7 +76,9 @@ export const useGameRoomLogic = ({ roomCode, playerName, isHost, onStartGame }) 
 
     // Acciones que el jugador o el host pueden realizar
     const handleSetReady = useCallback(() => {
-        gameSocket.setPlayerReady({ roomCode });
+        // <-- ¡AQUÍ ESTÁ LA CORRECCIÓN! -->
+        // Enviamos solo el string roomCode, como espera el método.
+        gameSocket.setPlayerReady(roomCode);
     }, [roomCode]);
 
     const handleStartGame = useCallback(() => {
