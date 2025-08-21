@@ -1,7 +1,7 @@
+// MusicBingoGame.js
 import { useState, useEffect } from 'react';
 import { Trophy } from 'lucide-react';
 import PropTypes from 'prop-types';
-
 import { useMusicBingoLogic } from './MusicBingoGameLogic';
 import GameLayout from '../GameLayout';
 import PlayerPredictions from '../PlayerView/PlayerPredictions';
@@ -9,51 +9,34 @@ import GameStatusAlert from '../PlayerView/GameStatusAlert';
 import BingoBoard from './BingoBoard';
 
 const MusicBingoGame = ({ playerName, roomCode, difficulty }) => {
+  // El estado local ahora solo gestiona la UI, no la lógica del juego.
   const [lastMarkedIndex, setLastMarkedIndex] = useState(null);
-  const [hasMarkedThisRound, setHasMarkedThisRound] = useState(false);
 
+  console.log(lastMarkedIndex)
+
+  // El hook ahora nos da todo el estado del juego directamente.
   const logic = useMusicBingoLogic({ playerName, roomCode, difficulty });
 
-  // Lógica para manejar el click en una celda
   const handleMarkCell = (index) => {
-    if (!logic.canMark) return;
-
-    // Caso 1: Desmarcar la celda ya seleccionada
-    if (lastMarkedIndex === index) {
-      logic.handleCellClick(index, true); // Desmarcar
-      setLastMarkedIndex(null);
-      setHasMarkedThisRound(false);
-    }
-    // Caso 2: Cambiar la selección a una nueva celda
-    else if (lastMarkedIndex !== null) {
-      logic.handleCellClick(lastMarkedIndex, true); // Desmarcar la anterior
-      logic.handleCellClick(index); // Marcar la nueva
-      setLastMarkedIndex(index);
-    }
-    // Caso 3: Marcar una celda por primera vez en la ronda
-    else if (!hasMarkedThisRound) {
-      logic.handleCellClick(index);
-      setLastMarkedIndex(index);
-      setHasMarkedThisRound(true);
-    }
+    // La lógica de si se puede marcar ya está dentro de `handleCellClick` en el hook.
+    logic.handleCellClick(index);
+    // La UI local puede decidir cómo manejar la selección visual.
+    setLastMarkedIndex(prev => prev === index ? null : index);
   };
-
-  // Reiniciar el estado de marcado al cambiar de categoría
+  
+  // Reiniciar la selección visual cuando cambia la categoría.
   useEffect(() => {
     setLastMarkedIndex(null);
-    setHasMarkedThisRound(false);
   }, [logic.currentCategory]);
 
-  // Temporizador para limpiar errores de conexión
+  // Temporizador para limpiar errores de conexión.
   useEffect(() => {
     let timer;
-    if (logic.connectionError) {
-      timer = setTimeout(() => {
-        logic.setConnectionError(null);
-      }, 4000);
+    if (logic.error) {
+      timer = setTimeout(() => logic.setError(null), 4000);
     }
     return () => clearTimeout(timer);
-  }, [logic.connectionError, logic.setConnectionError]);
+  }, [logic.error, logic.setError]);
 
   const renderGameOver = () => (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-50">
@@ -62,10 +45,7 @@ const MusicBingoGame = ({ playerName, roomCode, difficulty }) => {
           <Trophy className="h-8 w-8 text-yellow-400 mr-3" />
           ¡Juego Finalizado!
         </h2>
-        {/* ... (resto del contenido del Game Over, sin cambios) ... */}
-        <p className="text-white/70 text-center">
-            Espera a que el Game Master inicie un nuevo juego...
-        </p>
+        <p className="text-white/70 text-center">Espera a que el Game Master inicie un nuevo juego...</p>
       </div>
     </div>
   );
@@ -77,42 +57,30 @@ const MusicBingoGame = ({ playerName, roomCode, difficulty }) => {
       showSelect={false}
     >
       {logic.gameOver && renderGameOver()}
-
       <div className="flex flex-col flex-1 space-y-4">
         
-        {/* Componente centralizado para todas las alertas */}
-        <GameStatusAlert {...logic} lastMarkedIndex={lastMarkedIndex} />
+        <GameStatusAlert {...logic} />
 
-        {/* Encabezado de la categoría actual */}
         {logic.currentCategory && (
-          <div
-            className={`${logic.currentCategory.color} p-3 rounded-lg text-center border border-white/20`}
-            style={{ boxShadow: '0 0 15px rgba(255,255,255,0.1)' }}
-          >
+          <div className={`${logic.currentCategory.color} p-3 rounded-lg text-center border border-white/20`} style={{ boxShadow: '0 0 15px rgba(255,255,255,0.1)' }}>
             <h3 className="font-semibold text-lg text-gray-800">{logic.currentCategory.name}</h3>
           </div>
         )}
 
-        {/* Componente del tablero */}
-        {(logic.gamePhase === 'playing' || logic.currentCategory) && (
+        {/* El tablero se muestra si ya ha sido generado */}
+        {logic.board.length > 0 && (
           <BingoBoard
             board={logic.board}
-            canMark={logic.canMark}
+            canMark={logic.isMarkingEnabled} // Ahora usamos el estado del servidor
             currentCategory={logic.currentCategory}
-            lastMarkedIndex={lastMarkedIndex}
-            hasMarkedThisRound={hasMarkedThisRound}
             onCellClick={handleMarkCell}
           />
         )}
         
-        {/* Componente de predicciones */}
         <PlayerPredictions
-          isRevealed={!!logic.currentSong}
+          isRevealed={!!logic.currentSong?.revealed}
           onSubmitPrediction={logic.handlePrediction}
-          predictions={logic.predictions}
-          currentSongStarted={logic.songStarted}
-          disabled={!logic.canPredict}
-          timeRemaining={logic.predictionTimeRemaining > 0 ? logic.predictionTimeRemaining : null}
+          // El resto de props para predicciones
         />
       </div>
     </GameLayout>
