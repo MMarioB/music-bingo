@@ -116,6 +116,8 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
   const generateNewCard = useCallback(async () => {
     if (!gameState.selectedCategory || !spotify) return;
     setIsLoading(true);
+    setConnectionError(null);
+
     try {
       const randomMusicCategory = Object.keys(ARTISTS)[Math.floor(Math.random() * Object.keys(ARTISTS).length)];
       const artistsInCategory = ARTISTS[randomMusicCategory];
@@ -124,7 +126,15 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
       const randomTrack = response.tracks.items[0];
       if (!randomTrack) throw new Error('No se encontraron canciones.');
       
-      await spotify.playTrack(randomTrack.uri);
+      try {
+        await spotify.playTrack(randomTrack.uri);
+        console.log('✅ Canción enviada a Spotify para reproducción.');
+      } catch (e) {
+        console.error('🔥 Error de Spotify API:', e);
+        setConnectionError('Error de Spotify: No se encontró un dispositivo activo. Asegúrate de tener Spotify abierto.');
+        setIsLoading(false);
+        return; 
+      }
       
       await gameSocket.startSong({ 
           roomCode, 
@@ -141,7 +151,7 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
         setIsTokenValid(false);
         logout();
       } else {
-        setConnectionError('Error al generar la tarjeta');
+        setConnectionError(error.message || 'Error al generar la tarjeta');
       }
     } finally {
       setIsLoading(false);
