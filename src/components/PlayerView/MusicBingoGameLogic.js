@@ -138,15 +138,25 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
             const newBoard = [...prevBoard];
             const cell = newBoard[index];
             
-            if (gameState.currentCategory && cell.name === gameState.currentCategory.name) {
-                newBoard[index] = { ...cell, marked: !cell.marked };
+            // Solo permitir marcar celdas de la categoría actual Y solo si no está ya marcada
+            if (gameState.currentCategory && cell.name === gameState.currentCategory.name && !cell.marked) {
+                newBoard[index] = { ...cell, marked: true };
+                
+                // IMPORTANTE: Resetear el estado de "correcto" del jugador después de marcar
+                // para que solo pueda marcar una celda por acierto
+                setGameState(prev => ({
+                    ...prev,
+                    playerCorrectStatus: {
+                        ...prev.playerCorrectStatus,
+                        [player.id]: false
+                    }
+                }));
                 
                 if (checkWinner(newBoard)) {
                     console.log('Winner detected, sending to server');
-                    // USAR EL MÉTODO WRAPPER EN LUGAR DE EMIT DIRECTO
                     gameSocket.declareWinner({ roomCode, playerName })
                         .then(response => {
-                            if (!response.success) {
+                            if (response && response.success === false) {
                                 console.error('Error declaring winner:', response.error);
                                 setError('Error al declarar ganador');
                             }
