@@ -114,12 +114,15 @@ class GameWebSocket {
     await this._emit('disableMarking', data, false);
   }
   
-  async gameOver(data) {
-    await this._emit('gameOver', data, false);
+  // TEMPORAL: Cambiar a callback para debug
+  enableMarkingDebug(data) {
+    console.log('🔧 DEBUG: Probando enableMarking con callback:', data);
+    return this._emit('enableMarking', data, true);
   }
   
-  async restartGame(data) {
-    await this._emit('restartGame', data, false);
+  disableMarkingDebug(data) {
+    console.log('🔧 DEBUG: Probando disableMarking con callback:', data);
+    return this._emit('disableMarking', data, true);
   }
 
   async submitPrediction(data) {

@@ -216,13 +216,18 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
   }, [roomCode]);
   
   const handleMarkingToggle = useCallback(async () => {
+    console.log('🔧 DEBUG: handleMarkingToggle llamado, isMarkingEnabled:', gameState.isMarkingEnabled);
     try {
       if (gameState.isMarkingEnabled) {
-          // disableMarking es fire-and-forget, no devuelve respuesta
-          await gameSocket.disableMarking({ roomCode });
+          // Probar con callback primero
+          console.log('🔧 DEBUG: Intentando deshabilitar marcado...');
+          const response = await gameSocket.disableMarkingDebug({ roomCode });
+          console.log('🔧 DEBUG: Respuesta disableMarking:', response);
       } else {
-          // enableMarking es fire-and-forget, no devuelve respuesta
-          await gameSocket.enableMarking({ roomCode });
+          // Probar con callback primero
+          console.log('🔧 DEBUG: Intentando habilitar marcado...');
+          const response = await gameSocket.enableMarkingDebug({ roomCode });
+          console.log('🔧 DEBUG: Respuesta enableMarking:', response);
       }
     } catch(error) {
         console.error('Error al cambiar estado de marcado:', error);
