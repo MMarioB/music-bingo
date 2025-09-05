@@ -6,46 +6,68 @@ class GameWebSocket {
     this.eventHandlers = new Map();
     this.isConnecting = false;
     this.connectPromise = null;
+    this.connectionState = 'disconnected'; // 'disconnected', 'connecting', 'connected'
   }
 
   connect() {
-    if (this.socket?.connected) return Promise.resolve();
-    if (this.isConnecting) return this.connectPromise;
+    if (this.connectionState === 'connected' && this.socket?.connected) {
+      return Promise.resolve();
+    }
+    
+    if (this.isConnecting && this.connectPromise) {
+      return this.connectPromise;
+    }
 
     this.isConnecting = true;
+    this.connectionState = 'connecting';
     
+    // Limpiar conexión anterior si existe
     if (this.socket) {
-        this.socket.close();
-        this.socket.removeAllListeners();
+      this.socket.close();
+      this.socket.removeAllListeners();
+      this.socket = null;
     }
 
     this.connectPromise = new Promise((resolve, reject) => {
       console.log('🔌 Intentando conectar al servidor...');
-      this.socket = io(import.meta.env.VITE_WS_URL, {
-        reconnection: true,
-        reconnectionAttempts: 5,
-        reconnectionDelay: 1000,
-        timeout: 10000,
-        transports: ['websocket', 'polling'],
-        forceNew: true,
-      });
+      
+      try {
+        this.socket = io(import.meta.env.VITE_WS_URL, {
+          reconnection: true,
+          reconnectionAttempts: 5,
+          reconnectionDelay: 1000,
+          timeout: 10000,
+          transports: ['websocket', 'polling'],
+          forceNew: true,
+        });
 
-      this.socket.on('connect', () => {
-        console.log('✅ Conectado exitosamente al servidor. ID:', this.socket.id);
+        this.socket.on('connect', () => {
+          console.log('✅ Conectado exitosamente al servidor. ID:', this.socket.id);
+          this.isConnecting = false;
+          this.connectionState = 'connected';
+          this.restoreEventHandlers();
+          resolve();
+        });
+
+        this.socket.on('disconnect', (reason) => {
+          console.warn('❌ Desconectado del servidor:', reason);
+          this.connectionState = 'disconnected';
+          this.isConnecting = false;
+        });
+
+        this.socket.on('connect_error', (error) => {
+          console.error('🔥 Error de conexión:', error.message);
+          this.isConnecting = false;
+          this.connectionState = 'disconnected';
+          reject(error);
+        });
+
+      } catch (error) {
+        console.error('🔥 Error al crear socket:', error);
         this.isConnecting = false;
-        this.restoreEventHandlers();
-        resolve();
-      });
-
-      this.socket.on('disconnect', (reason) => {
-        console.warn('❌ Desconectado del servidor:', reason);
-      });
-
-      this.socket.on('connect_error', (error) => {
-        console.error('🔥 Error de conexión:', error.message);
-        this.isConnecting = false;
+        this.connectionState = 'disconnected';
         reject(error);
-      });
+      }
     });
 
     return this.connectPromise;
@@ -53,6 +75,12 @@ class GameWebSocket {
   
   async _request(eventName, responseEvent, data, timeoutMs = 15000) {
     await this.ensureConnection();
+    
+    // Verificación adicional antes de usar el socket
+    if (!this.socket || typeof this.socket.emit !== 'function') {
+      throw new Error('Socket no disponible o no válido');
+    }
+    
     return new Promise((resolve, reject) => {
       let timeout;
       const handleResponse = (response) => {
@@ -92,71 +120,133 @@ class GameWebSocket {
   // --- MÉTODOS DE NOTIFICACIÓN (Fire-and-Forget) ---
   async submitPrediction(data) {
     await this.ensureConnection();
+    if (!this.socket || typeof this.socket.emit !== 'function') {
+      throw new Error('Socket no disponible para submitPrediction');
+    }
     console.log(`[EMIT] submitPrediction`, data);
     this.socket.emit('submitPrediction', data);
   }
   
   async setPlayerReady(roomCode) {
     await this.ensureConnection();
+    if (!this.socket || typeof this.socket.emit !== 'function') {
+      throw new Error('Socket no disponible para setPlayerReady');
+    }
     console.log(`[EMIT] playerReady`, { roomCode });
     this.socket.emit('playerReady', { roomCode });
   }
   
   async startGame(data) {
     await this.ensureConnection();
+    if (!this.socket || typeof this.socket.emit !== 'function') {
+      throw new Error('Socket no disponible para startGame');
+    }
     console.log(`[EMIT] startGame`, data);
     this.socket.emit('startGame', data);
   }
   
   async revealSong(data) {
     await this.ensureConnection();
+    if (!this.socket || typeof this.socket.emit !== 'function') {
+      throw new Error('Socket no disponible para revealSong');
+    }
     console.log(`[EMIT] revealSong`, data);
     this.socket.emit('revealSong', data);
   }
   
   async updateRoom(data) {
     await this.ensureConnection();
+    if (!this.socket || typeof this.socket.emit !== 'function') {
+      throw new Error('Socket no disponible para updateRoom');
+    }
     console.log(`[EMIT] updateRoom`, data);
     this.socket.emit('updateRoom', data);
   }
 
   async winner(data) {
     await this.ensureConnection();
+    if (!this.socket || typeof this.socket.emit !== 'function') {
+      throw new Error('Socket no disponible para winner');
+    }
     console.log(`[EMIT] winner`, data);
     this.socket.emit('winner', data);
   }
 
   // --- GESTIÓN DE EVENTOS Y CONEXIÓN ---
   async ensureConnection() {
+    if (this.connectionState === 'connected' && this.socket?.connected) {
+      return;
+    }
+    
+    if (this.connectionState === 'connecting' && this.connectPromise) {
+      await this.connectPromise;
+      return;
+    }
+    
+    // Si no está conectado, intentar conectar
+    await this.connect();
+    
+    // Verificar que realmente se conectó
     if (!this.socket?.connected) {
-      if (!this.isConnecting) await this.connect();
-      else await this.connectPromise;
+      throw new Error('No se pudo establecer la conexión');
     }
   }
 
   on(event, handler) {
     this.eventHandlers.set(event, handler);
-    if (this.socket) this.socket.on(event, handler);
+    if (this.socket && typeof this.socket.on === 'function') {
+      this.socket.on(event, handler);
+    }
   }
 
   off(event) {
     this.eventHandlers.delete(event);
-    if (this.socket) this.socket.off(event);
+    if (this.socket && typeof this.socket.off === 'function') {
+      this.socket.off(event);
+    }
   }
 
   restoreEventHandlers() {
-    if (!this.socket) return;
-    this.eventHandlers.forEach((_, event) => this.socket.off(event));
-    this.eventHandlers.forEach((handler, event) => this.socket.on(event, handler));
+    if (!this.socket || typeof this.socket.on !== 'function') return;
+    
+    // Limpiar handlers existentes
+    this.eventHandlers.forEach((_, event) => {
+      if (typeof this.socket.off === 'function') {
+        this.socket.off(event);
+      }
+    });
+    
+    // Restaurar handlers
+    this.eventHandlers.forEach((handler, event) => {
+      if (typeof this.socket.on === 'function') {
+        this.socket.on(event, handler);
+      }
+    });
   }
   
   disconnect() {
+    this.connectionState = 'disconnected';
+    this.isConnecting = false;
+    this.connectPromise = null;
+    
     if (this.socket) {
-      this.socket.disconnect();
+      if (typeof this.socket.disconnect === 'function') {
+        this.socket.disconnect();
+      }
       this.socket = null;
-      this.connectPromise = null;
-      this.isConnecting = false;
     }
+  }
+
+  // Método para debugging
+  getConnectionInfo() {
+    return {
+      connectionState: this.connectionState,
+      isConnecting: this.isConnecting,
+      socketExists: !!this.socket,
+      socketConnected: this.socket?.connected || false,
+      socketId: this.socket?.id || null,
+      hasEmitMethod: !!(this.socket && typeof this.socket.emit === 'function')
+    };
   }
 }
 
