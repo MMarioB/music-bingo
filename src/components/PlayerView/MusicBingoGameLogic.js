@@ -117,7 +117,7 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
         };
     }, [difficulty, gameState.currentCategory]);
 
-    const handleCellClick = useCallback((index) => {
+    const handleCellClick = useCallback(async (index) => {
         if (!gameState.isMarkingEnabled) {
             console.log('Marking not enabled');
             return;
@@ -143,12 +143,18 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
                 
                 if (checkWinner(newBoard)) {
                     console.log('Winner detected, sending to server');
-                    gameSocket.emit('declareWinner', { roomCode, playerName }, (response) => {
-                        if (!response.success) {
-                            console.error('Error declaring winner:', response.error);
+                    // USAR EL MÉTODO WRAPPER EN LUGAR DE EMIT DIRECTO
+                    gameSocket.declareWinner({ roomCode, playerName })
+                        .then(response => {
+                            if (!response.success) {
+                                console.error('Error declaring winner:', response.error);
+                                setError('Error al declarar ganador');
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error declaring winner:', error);
                             setError('Error al declarar ganador');
-                        }
-                    });
+                        });
                 }
                 return newBoard;
             }
@@ -156,14 +162,14 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
         });
     }, [gameState, checkWinner, roomCode, playerName]);
 
-    const handlePrediction = useCallback((prediction) => {
+    const handlePrediction = useCallback(async (prediction) => {
         setMyPredictions(prev => [...prev, prediction]);
-        gameSocket.emit('submitPrediction', { roomCode, prediction }, (response) => {
-            if (!response.success) {
-                console.error('Error submitting prediction:', response.error);
-                setError('Error al enviar predicción');
-            }
-        });
+        try {
+            await gameSocket.submitPrediction({ roomCode, prediction });
+        } catch (error) {
+            console.error('Error submitting prediction:', error);
+            setError('Error al enviar predicción');
+        }
     }, [roomCode]);
 
     return {

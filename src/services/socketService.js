@@ -116,6 +116,11 @@ class GameWebSocket {
     return this._emit('restartGame', data, true); 
   }
 
+  // NUEVO MÉTODO AGREGADO
+  declareWinner(data) { 
+    return this._emit('declareWinner', data, true); 
+  }
+
   // --- MÉTODOS FIRE-AND-FORGET (no esperan respuesta) ---
   async submitPrediction(data) {
     await this._emit('submitPrediction', data, false);

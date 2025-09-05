@@ -36,25 +36,24 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
       try {
         await gameSocket.connect();
         
-        // Usar emit con callback en lugar de método directo
-        gameSocket.emit('joinRoom', { 
-          roomCode, 
+        // USAR EL MÉTODO WRAPPER EN LUGAR DE EMIT DIRECTO
+        const response = await gameSocket.joinRoom(roomCode, { 
           name: 'Game Master', 
           isHost: true 
-        }, (response) => {
-          if (response.success) {
-            console.log('✅ Sala unida/creada como Host. Estado inicial:', response.data);
-            setGameState(prevState => ({
-                ...prevState,
-                connectedPlayers: response.data.players || [],
-                difficulty: response.data.difficulty || initialDifficulty,
-                gameStep: response.data.gameStep || 'waiting',
-            }));
-          } else {
-            console.error('Error al unirse a la sala:', response.error);
-            setConnectionError(response.error);
-          }
         });
+        
+        if (response.success) {
+          console.log('✅ Sala unida/creada como Host. Estado inicial:', response.data);
+          setGameState(prevState => ({
+              ...prevState,
+              connectedPlayers: response.data.players || [],
+              difficulty: response.data.difficulty || initialDifficulty,
+              gameStep: response.data.gameStep || 'waiting',
+          }));
+        } else {
+          console.error('Error al unirse a la sala:', response.error);
+          setConnectionError(response.error);
+        }
         
       } catch (error) {
         console.error('🔥 Error al inicializar conexión del Host:', error);
@@ -97,12 +96,11 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
   
   const handlePlayerCorrectToggle = useCallback(async (playerId) => {
     try {
-      gameSocket.emit('markPlayerCorrect', { roomCode, playerId }, (response) => {
-        if (!response.success) {
-          console.error('Error al marcar jugador:', response.error);
-          setConnectionError('Error al marcar el acierto del jugador');
-        }
-      });
+      const response = await gameSocket.markPlayerCorrect({ roomCode, playerId });
+      if (!response.success) {
+        console.error('Error al marcar jugador:', response.error);
+        setConnectionError('Error al marcar el acierto del jugador');
+      }
     } catch (error) {
       console.error('Error al marcar jugador:', error);
       setConnectionError('Error al marcar el acierto del jugador');
@@ -123,12 +121,11 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
 
   const handleCategorySelected = useCallback(async (category) => {
     try {
-      gameSocket.emit('selectCategory', { roomCode, category }, (response) => {
-        if (!response.success) {
-          console.error('Error al seleccionar categoría:', response.error);
-          setConnectionError(response.error);
-        }
-      });
+      const response = await gameSocket.selectCategory({ roomCode, category });
+      if (!response.success) {
+        console.error('Error al seleccionar categoría:', response.error);
+        setConnectionError(response.error);
+      }
     } catch (error) {
       console.error('Error al seleccionar categoría:', error);
       setConnectionError(error.message);
@@ -172,7 +169,7 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
         return; 
       }
       
-      gameSocket.emit('startSong', { 
+      const response2 = await gameSocket.startSong({ 
           roomCode, 
           track: {
               uri: randomTrack.uri,
@@ -182,12 +179,12 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
               musicCategory: randomMusicCategory,
               spotifyUrl: randomTrack.external_urls.spotify
           }
-      }, (response) => {
-        if (!response.success) {
-          console.error('Error al iniciar canción:', response.error);
-          setConnectionError(response.error);
-        }
       });
+      
+      if (!response2.success) {
+        console.error('Error al iniciar canción:', response2.error);
+        setConnectionError(response2.error);
+      }
       
     } catch (error) {
       console.error("Error generando tarjeta:", error);
@@ -204,12 +201,11 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
 
   const handleRevealSong = useCallback(async () => {
     try {
-      gameSocket.emit('revealSong', { roomCode }, (response) => {
-        if (!response.success) {
-          console.error('Error al revelar canción:', response.error);
-          setConnectionError('Error al revelar la canción');
-        }
-      });
+      const response = await gameSocket.revealSong({ roomCode });
+      if (!response.success) {
+        console.error('Error al revelar canción:', response.error);
+        setConnectionError('Error al revelar la canción');
+      }
     } catch (error) {
       console.error('Error al revelar canción:', error);
       setConnectionError('Error al revelar la canción');
@@ -219,19 +215,17 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
   const handleMarkingToggle = useCallback(async () => {
     try {
       if (gameState.isMarkingEnabled) {
-          gameSocket.emit('disableMarking', { roomCode }, (response) => {
-            if (!response.success) {
-              console.error('Error al deshabilitar marcado:', response.error);
-              setConnectionError('Error al cambiar estado de marcado');
-            }
-          });
+          const response = await gameSocket.disableMarking({ roomCode });
+          if (!response.success) {
+            console.error('Error al deshabilitar marcado:', response.error);
+            setConnectionError('Error al cambiar estado de marcado');
+          }
       } else {
-          gameSocket.emit('enableMarking', { roomCode }, (response) => {
-            if (!response.success) {
-              console.error('Error al habilitar marcado:', response.error);
-              setConnectionError('Error al cambiar estado de marcado');
-            }
-          });
+          const response = await gameSocket.enableMarking({ roomCode });
+          if (!response.success) {
+            console.error('Error al habilitar marcado:', response.error);
+            setConnectionError('Error al cambiar estado de marcado');
+          }
       }
     } catch(error) {
         console.error('Error al cambiar estado de marcado:', error);
@@ -241,12 +235,11 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
 
   const finishGame = useCallback(async () => {
       try {
-          gameSocket.emit('gameOver', { roomCode }, (response) => {
-            if (!response.success) {
-              console.error('Error al finalizar el juego:', response.error);
-              setConnectionError('Error al finalizar el juego');
-            }
-          });
+          const response = await gameSocket.gameOver({ roomCode });
+          if (!response.success) {
+            console.error('Error al finalizar el juego:', response.error);
+            setConnectionError('Error al finalizar el juego');
+          }
       } catch (error) {
           console.error('Error al finalizar el juego:', error);
           setConnectionError('Error al finalizar el juego');
@@ -255,12 +248,11 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
 
   const startNewRound = useCallback(async () => {
     try {
-        gameSocket.emit('restartGame', { roomCode }, (response) => {
-          if (!response.success) {
-            console.error('Error al iniciar nueva ronda:', response.error);
-            setConnectionError('Error al iniciar nueva ronda');
-          }
-        });
+        const response = await gameSocket.restartGame({ roomCode });
+        if (!response.success) {
+          console.error('Error al iniciar nueva ronda:', response.error);
+          setConnectionError('Error al iniciar nueva ronda');
+        }
     } catch(error) {
          console.error('Error al iniciar nueva ronda:', error);
          setConnectionError('Error al iniciar nueva ronda');
