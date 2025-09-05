@@ -143,8 +143,12 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
                 
                 if (checkWinner(newBoard)) {
                     console.log('Winner detected, sending to server');
-                    // Usar el método correcto del socket
-                    gameSocket.emit('declareWinner', { roomCode, playerName });
+                    gameSocket.emit('declareWinner', { roomCode, playerName }, (response) => {
+                        if (!response.success) {
+                            console.error('Error declaring winner:', response.error);
+                            setError('Error al declarar ganador');
+                        }
+                    });
                 }
                 return newBoard;
             }
@@ -154,8 +158,12 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
 
     const handlePrediction = useCallback((prediction) => {
         setMyPredictions(prev => [...prev, prediction]);
-        // Usar emit en lugar de método directo
-        gameSocket.emit('submitPrediction', { roomCode, prediction });
+        gameSocket.emit('submitPrediction', { roomCode, prediction }, (response) => {
+            if (!response.success) {
+                console.error('Error submitting prediction:', response.error);
+                setError('Error al enviar predicción');
+            }
+        });
     }, [roomCode]);
 
     return {
