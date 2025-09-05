@@ -28,7 +28,7 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
     });
     const [board, setBoard] = useState([]);
     const [error, setError] = useState(null);
-    const [myPredictions, setMyPredictions] = useState([]); // Estado local para las predicciones del jugador
+    const [myPredictions, setMyPredictions] = useState([]);
     const boardGenerated = useRef(false);
 
     const validateLine = useCallback((line) => {
@@ -66,34 +66,85 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
 
         const handleGameStateUpdate = (serverState) => {
             console.log('PLAYER VIEW recibió gameStateUpdate:', serverState);
-            // Si la nueva ronda empieza (sin categoría o con una categoría diferente), limpiamos las predicciones locales.
+            // Si la nueva ronda empieza, limpiamos las predicciones locales.
             if (!serverState.currentCategory && gameState.currentCategory) {
-              setMyPredictions([]);
+                setMyPredictions([]);
             }
             setGameState(prevState => ({ ...prevState, ...serverState }));
         };
 
+        const handleError = (err) => {
+            console.error('Socket error:', err);
+            setError(err.message || 'Error del servidor');
+        };
+
+        // Manejadores para eventos específicos del servidor
+        const handleMarkingEnabled = () => {
+            console.log('Marking enabled');
+            setGameState(prev => ({ ...prev, isMarkingEnabled: true }));
+        };
+
+        const handleMarkingDisabled = () => {
+            console.log('Marking disabled');
+            setGameState(prev => ({ ...prev, isMarkingEnabled: false }));
+        };
+
+        const handlePlayerMarked = (data) => {
+            console.log('Player marked correct:', data);
+            setGameState(prev => ({
+                ...prev,
+                playerCorrectStatus: {
+                    ...prev.playerCorrectStatus,
+                    [data.playerId]: data.correct
+                }
+            }));
+        };
+
+        // Registrar todos los event listeners
         gameSocket.on('gameStateUpdate', handleGameStateUpdate);
-        gameSocket.on('error', (err) => setError(err.message || 'Error del servidor'));
+        gameSocket.on('error', handleError);
+        gameSocket.on('markingEnabled', handleMarkingEnabled);
+        gameSocket.on('markingDisabled', handleMarkingDisabled);
+        gameSocket.on('playerMarkedCorrect', handlePlayerMarked);
 
         return () => {
-            gameSocket.off('gameStateUpdate');
-            gameSocket.off('error');
+            // Limpiar todos los event listeners
+            gameSocket.off('gameStateUpdate', handleGameStateUpdate);
+            gameSocket.off('error', handleError);
+            gameSocket.off('markingEnabled', handleMarkingEnabled);
+            gameSocket.off('markingDisabled', handleMarkingDisabled);
+            gameSocket.off('playerMarkedCorrect', handlePlayerMarked);
         };
-    }, [difficulty, gameState.currentCategory]); // Dependencia para resetear predicciones
+    }, [difficulty, gameState.currentCategory]);
 
     const handleCellClick = useCallback((index) => {
-        if (!gameState.isMarkingEnabled) return;
+        if (!gameState.isMarkingEnabled) {
+            console.log('Marking not enabled');
+            return;
+        }
+        
         const player = gameState.connectedPlayers.find(p => p.name === playerName);
-        if (!player || !gameState.playerCorrectStatus[player.id]) return;
+        if (!player) {
+            console.log('Player not found');
+            return;
+        }
+        
+        if (!gameState.playerCorrectStatus[player.id]) {
+            console.log('Player not marked as correct');
+            return;
+        }
 
         setBoard(prevBoard => {
             const newBoard = [...prevBoard];
             const cell = newBoard[index];
+            
             if (gameState.currentCategory && cell.name === gameState.currentCategory.name) {
                 newBoard[index] = { ...cell, marked: !cell.marked };
+                
                 if (checkWinner(newBoard)) {
-                    gameSocket.winner({ roomCode, playerName });
+                    console.log('Winner detected, sending to server');
+                    // Usar el método correcto del socket
+                    gameSocket.emit('declareWinner', { roomCode, playerName });
                 }
                 return newBoard;
             }
@@ -102,8 +153,9 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
     }, [gameState, checkWinner, roomCode, playerName]);
 
     const handlePrediction = useCallback((prediction) => {
-        setMyPredictions(prev => [...prev, prediction]); // Actualiza el estado local
-        gameSocket.submitPrediction({ roomCode, prediction }); // Notifica al servidor
+        setMyPredictions(prev => [...prev, prediction]);
+        // Usar emit en lugar de método directo
+        gameSocket.emit('submitPrediction', { roomCode, prediction });
     }, [roomCode]);
 
     return {
