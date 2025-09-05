@@ -14,7 +14,6 @@ class GameWebSocket {
 
     this.isConnecting = true;
     
-    // Limpiar socket anterior completamente
     if (this.socket) {
         this.socket.close();
         this.socket.removeAllListeners();
@@ -62,128 +61,204 @@ class GameWebSocket {
     return this.connectPromise;
   }
   
-  // Método más simple y seguro
-  async _safeEmit(eventName, data, useCallback = false, timeoutMs = 15000) {
+  // MÉTODO HÍBRIDO SEGURO: Para métodos que emiten eventos Y usan callbacks
+  async _hybridEmit(eventName, responseEventName, data, timeoutMs = 15000) {
     await this.ensureConnection();
     
-    // Verificación extra de seguridad
-    if (!this.socket) {
-      throw new Error('Socket no inicializado');
-    }
-    
-    if (typeof this.socket.emit !== 'function') {
-      throw new Error('Socket.emit no es una función');
-    }
-    
-    if (!this.socket.connected) {
-      throw new Error('Socket no está conectado');
+    if (!this.socket?.connected || typeof this.socket.emit !== 'function') {
+      throw new Error(`Socket no válido para ${eventName}`);
     }
 
-    console.log(`[EMIT${useCallback ? '-CALLBACK' : ''}] ${eventName}`, data);
-    
-    if (useCallback) {
-      return new Promise((resolve, reject) => {
-        const timeout = setTimeout(() => {
-          reject(new Error(`Timeout en ${eventName}`));
-        }, timeoutMs);
-        
-        try {
-          this.socket.emit(eventName, data, (response) => {
-            clearTimeout(timeout);
-            if (response?.error) {
-              reject(new Error(response.error));
-            } else {
-              resolve(response);
-            }
-          });
-        } catch (error) {
+    return new Promise((resolve, reject) => {
+      let resolved = false;
+      
+      const cleanup = () => {
+        if (this.socket?.off && typeof this.socket.off === 'function') {
+          this.socket.off(responseEventName, handleEvent);
+          this.socket.off('error', handleError);
+        }
+      };
+      
+      const handleEvent = (response) => {
+        if (resolved) return;
+        resolved = true;
+        cleanup();
+        resolve(response);
+      };
+      
+      const handleError = (error) => {
+        if (resolved) return;
+        resolved = true;
+        cleanup();
+        reject(error);
+      };
+      
+      const timeout = setTimeout(() => {
+        if (resolved) return;
+        resolved = true;
+        cleanup();
+        reject(new Error(`Timeout: ${eventName}`));
+      }, timeoutMs);
+      
+      // Escuchar el evento de respuesta
+      if (this.socket?.on && typeof this.socket.on === 'function') {
+        this.socket.once(responseEventName, handleEvent);
+        this.socket.once('error', handleError);
+      }
+      
+      console.log(`[EMIT-HYBRID] ${eventName}`, data);
+      
+      try {
+        // Emit con callback (tu servidor también usa callbacks)
+        this.socket.emit(eventName, data, (callbackResponse) => {
           clearTimeout(timeout);
+          // Si hay error en callback, rechazar inmediatamente
+          if (callbackResponse?.error) {
+            if (!resolved) {
+              resolved = true;
+              cleanup();
+              reject(new Error(callbackResponse.error));
+            }
+          }
+          // Si no hay error, seguir esperando el evento
+        });
+      } catch (error) {
+        clearTimeout(timeout);
+        if (!resolved) {
+          resolved = true;
+          cleanup();
           reject(error);
         }
-      });
-    } else {
-      // Fire and forget - más seguro
-      try {
-        this.socket.emit(eventName, data);
-      } catch (error) {
-        console.error(`Error emitiendo ${eventName}:`, error);
-        throw error;
       }
+    });
+  }
+
+  // MÉTODO CALLBACK SIMPLE: Para métodos que solo usan callbacks
+  async _callbackEmit(eventName, data, timeoutMs = 15000) {
+    await this.ensureConnection();
+    
+    if (!this.socket?.connected || typeof this.socket.emit !== 'function') {
+      throw new Error(`Socket no válido para ${eventName}`);
+    }
+
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        reject(new Error(`Timeout: ${eventName}`));
+      }, timeoutMs);
+      
+      console.log(`[EMIT-CALLBACK] ${eventName}`, data);
+      
+      try {
+        this.socket.emit(eventName, data, (response) => {
+          clearTimeout(timeout);
+          if (response?.error) {
+            reject(new Error(response.error));
+          } else {
+            resolve(response);
+          }
+        });
+      } catch (error) {
+        clearTimeout(timeout);
+        reject(error);
+      }
+    });
+  }
+
+  // MÉTODO FIRE-AND-FORGET: Para métodos que no esperan respuesta
+  async _fireAndForget(eventName, data) {
+    await this.ensureConnection();
+    
+    if (!this.socket?.connected || typeof this.socket.emit !== 'function') {
+      throw new Error(`Socket no válido para ${eventName}`);
+    }
+
+    console.log(`[EMIT] ${eventName}`, data);
+    
+    try {
+      this.socket.emit(eventName, data);
+    } catch (error) {
+      console.error(`Error emitiendo ${eventName}:`, error);
+      throw error;
     }
   }
 
-  // --- MÉTODOS SIMPLIFICADOS SEGÚN TU SERVIDOR ---
+  // --- MÉTODOS SEGÚN TU SERVIDOR EXACTO ---
   
-  async createRoom(roomConfig) {
-    return this._safeEmit('createRoom', roomConfig, true);
+  // createRoom: Tu servidor emite 'roomCreated' Y usa callback
+  createRoom(roomConfig) {
+    return this._hybridEmit('createRoom', 'roomCreated', roomConfig);
   }
   
-  async joinRoom(roomCode, playerInfo) {
-    return this._safeEmit('joinRoom', { roomCode, ...playerInfo }, true);
+  // joinRoom: Tu servidor emite 'roomJoined' Y usa callback
+  joinRoom(roomCode, playerInfo) {
+    return this._hybridEmit('joinRoom', 'roomJoined', { roomCode, ...playerInfo });
   }
   
-  async selectCategory(data) {
-    return this._safeEmit('selectCategory', data, true);
+  // selectCategory: Tu servidor emite 'categorySelected' Y usa callback
+  selectCategory(data) {
+    return this._hybridEmit('selectCategory', 'categorySelected', data);
   }
   
-  async startSong(data) {
-    return this._safeEmit('startSong', data, true);
+  // startSong: Tu servidor emite 'songStarted' Y usa callback
+  startSong(data) {
+    return this._hybridEmit('startSong', 'songStarted', data);
   }
   
-  async markPlayerCorrect(data) {
-    return this._safeEmit('markPlayerCorrect', data, true);
+  // gameOver: Tu servidor emite 'gameOverConfirmed' Y usa callback
+  gameOver(data) {
+    return this._hybridEmit('gameOver', 'gameOverConfirmed', data);
   }
   
-  async enableMarking(data) {
-    return this._safeEmit('enableMarking', data, true);
+  // restartGame: Tu servidor emite 'gameRestarted' Y usa callback
+  restartGame(data) {
+    return this._hybridEmit('restartGame', 'gameRestarted', data);
   }
   
-  async disableMarking(data) {
-    return this._safeEmit('disableMarking', data, true);
+  // Estos solo usan callback según tu servidor
+  markPlayerCorrect(data) {
+    return this._callbackEmit('markPlayerCorrect', data);
   }
   
-  async gameOver(data) {
-    return this._safeEmit('gameOver', data, true);
+  enableMarking(data) {
+    return this._callbackEmit('enableMarking', data);
   }
   
-  async restartGame(data) {
-    return this._safeEmit('restartGame', data, true);
+  disableMarking(data) {
+    return this._callbackEmit('disableMarking', data);
   }
 
   // --- MÉTODOS FIRE-AND-FORGET ---
   async submitPrediction(data) {
-    return this._safeEmit('submitPrediction', data, false);
+    return this._fireAndForget('submitPrediction', data);
   }
   
   async setPlayerReady(roomCode) {
-    return this._safeEmit('playerReady', { roomCode }, false);
+    return this._fireAndForget('playerReady', { roomCode });
   }
   
   async startGame(data) {
-    return this._safeEmit('startGame', data, false);
+    return this._fireAndForget('startGame', data);
   }
   
   async revealSong(data) {
-    return this._safeEmit('revealSong', data, false);
+    return this._fireAndForget('revealSong', data);
   }
   
   async updateRoom(data) {
-    return this._safeEmit('updateRoom', data, false);
+    return this._fireAndForget('updateRoom', data);
   }
 
   async winner(data) {
-    return this._safeEmit('declareWinner', data, false);
+    return this._fireAndForget('declareWinner', data);
   }
 
   async declareWinner(data) {
-    return this._safeEmit('declareWinner', data, false);
+    return this._fireAndForget('declareWinner', data);
   }
 
   // --- GESTIÓN DE EVENTOS Y CONEXIÓN ---
   async ensureConnection() {
-    if (this.socket?.connected) {
-      return;
-    }
+    if (this.socket?.connected) return;
     
     if (this.isConnecting && this.connectPromise) {
       await this.connectPromise;
@@ -192,7 +267,6 @@ class GameWebSocket {
     
     await this.connect();
     
-    // Verificación final
     if (!this.socket?.connected) {
       throw new Error('No se pudo establecer la conexión');
     }
@@ -215,7 +289,6 @@ class GameWebSocket {
   restoreEventHandlers() {
     if (!this.socket?.on) return;
     
-    // Limpiar y restaurar handlers
     this.eventHandlers.forEach((_, event) => {
       if (this.socket?.off) this.socket.off(event);
     });
@@ -239,30 +312,14 @@ class GameWebSocket {
     }
   }
 
-  // Método para debugging más detallado
   getConnectionInfo() {
     return {
       socketExists: !!this.socket,
       socketConnected: this.socket?.connected || false,
       socketId: this.socket?.id || null,
       isConnecting: this.isConnecting,
-      hasEmitMethod: this.socket && typeof this.socket.emit === 'function',
-      socketType: this.socket ? this.socket.constructor.name : null,
-      socketMethods: this.socket ? Object.getOwnPropertyNames(Object.getPrototypeOf(this.socket)).filter(name => typeof this.socket[name] === 'function') : []
+      hasEmitMethod: this.socket && typeof this.socket.emit === 'function'
     };
-  }
-
-  // Método para debugging el socket
-  inspectSocket() {
-    console.log('🔍 Socket inspection:', {
-      socket: this.socket,
-      type: typeof this.socket,
-      constructor: this.socket?.constructor?.name,
-      connected: this.socket?.connected,
-      id: this.socket?.id,
-      emit: typeof this.socket?.emit,
-      methods: this.socket ? Object.getOwnPropertyNames(this.socket) : []
-    });
   }
 }
 
