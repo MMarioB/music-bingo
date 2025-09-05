@@ -42,7 +42,8 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
           isHost: true 
         });
         
-        if (response.success) {
+        // Manejar respuesta undefined o sin success
+        if (response && response.success) {
           console.log('✅ Sala unida/creada como Host. Estado inicial:', response.data);
           setGameState(prevState => ({
               ...prevState,
@@ -50,9 +51,17 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
               difficulty: response.data.difficulty || initialDifficulty,
               gameStep: response.data.gameStep || 'waiting',
           }));
-        } else {
+        } else if (response && response.success === false) {
           console.error('Error al unirse a la sala:', response.error);
           setConnectionError(response.error);
+        } else {
+          // Si response es undefined o no tiene estructura esperada, 
+          // asumir que la conexión fue exitosa (el servidor actualizará vía gameStateUpdate)
+          console.log('✅ Conexión establecida, esperando actualización de estado...');
+          setGameState(prevState => ({
+              ...prevState,
+              gameStep: 'waiting',
+          }));
         }
         
       } catch (error) {

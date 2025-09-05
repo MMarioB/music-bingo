@@ -96,32 +96,32 @@ class GameWebSocket {
     return this._emit('startSong', data, true); 
   }
   
-  markPlayerCorrect(data) { 
-    return this._emit('markPlayerCorrect', data, true); 
-  }
-  
-  enableMarking(data) { 
-    return this._emit('enableMarking', data, true); 
-  }
-  
-  disableMarking(data) { 
-    return this._emit('disableMarking', data, true); 
-  }
-  
-  gameOver(data) { 
-    return this._emit('gameOver', data, true); 
-  }
-  
-  restartGame(data) { 
-    return this._emit('restartGame', data, true); 
-  }
-
   // NUEVO MÉTODO AGREGADO
   declareWinner(data) { 
     return this._emit('declareWinner', data, true); 
   }
 
   // --- MÉTODOS FIRE-AND-FORGET (no esperan respuesta) ---
+  async markPlayerCorrect(data) {
+    await this._emit('markPlayerCorrect', data, false);
+  }
+  
+  async enableMarking(data) {
+    await this._emit('enableMarking', data, false);
+  }
+  
+  async disableMarking(data) {
+    await this._emit('disableMarking', data, false);
+  }
+  
+  async gameOver(data) {
+    await this._emit('gameOver', data, false);
+  }
+  
+  async restartGame(data) {
+    await this._emit('restartGame', data, false);
+  }
+
   async submitPrediction(data) {
     await this._emit('submitPrediction', data, false);
   }

@@ -138,19 +138,25 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
             const newBoard = [...prevBoard];
             const cell = newBoard[index];
             
-            // Solo permitir marcar celdas de la categoría actual Y solo si no está ya marcada
-            if (gameState.currentCategory && cell.name === gameState.currentCategory.name && !cell.marked) {
-                newBoard[index] = { ...cell, marked: true };
+            // Permitir marcar/desmarcar celdas de la categoría actual
+            if (gameState.currentCategory && cell.name === gameState.currentCategory.name) {
                 
-                // IMPORTANTE: Resetear el estado de "correcto" del jugador después de marcar
-                // para que solo pueda marcar una celda por acierto
-                setGameState(prev => ({
-                    ...prev,
-                    playerCorrectStatus: {
-                        ...prev.playerCorrectStatus,
-                        [player.id]: false
-                    }
-                }));
+                // Si ya hay una celda marcada de esta categoría, desmárquela primero
+                // (solo permite una celda marcada por categoría por acierto)
+                const alreadyMarkedIndex = newBoard.findIndex(c => 
+                    c.name === gameState.currentCategory.name && c.marked
+                );
+                
+                if (alreadyMarkedIndex !== -1 && alreadyMarkedIndex !== index) {
+                    // Desmarcar la celda previamente marcada
+                    newBoard[alreadyMarkedIndex] = { 
+                        ...newBoard[alreadyMarkedIndex], 
+                        marked: false 
+                    };
+                }
+                
+                // Toggle de la celda clickeada
+                newBoard[index] = { ...cell, marked: !cell.marked };
                 
                 if (checkWinner(newBoard)) {
                     console.log('Winner detected, sending to server');
