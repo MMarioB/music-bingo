@@ -1,142 +1,291 @@
-import { useEffect } from 'react';
-import { Button } from '../ui/button';
-import { Card } from '../ui/card';
-import { Alert, AlertDescription } from '../ui/alert';
-import { motion, AnimatePresence } from 'framer-motion';
-import { ExternalLinkIcon, MusicIcon, CalendarIcon, RefreshCwIcon, AlertCircle, Check, Trophy } from 'lucide-react';
-import CategoryWheel from '../Wheel/CategoryWheel';
-import PredictionsPanel from './PredictionsPanel';
-import GameLayout from '../GameLayout';
-import PropTypes from 'prop-types';
-import { useGameMasterLogic } from './GameMasterLogic';
+import { useState, useCallback, useEffect } from 'react';
+import { useSpotify } from '../../hooks/useSpotify';
+import { gameSocket } from '../../services/socketService';
+import { ARTISTS } from './constants';
 
-const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
-  const {
-    currentCard,
-    isLoading,
-    selectedCategory,
-    gameStep,
-    connectedPlayers,
+const getInitialGameState = () => ({
+  currentCard: null,
+  currentCategory: null, // Cambiado de selectedCategory
+  gameStep: 'init',
+  connectedPlayers: [],
+  isMarkingEnabled: false,
+  allPlayersReady: false,
+  songPlaying: false,
+  playerPredictions: {},
+  playerCorrectStatus: {},
+  gameOver: false,
+  winners: [],
+});
+
+export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
+  const { spotify, loggedIn, login, logout, token } = useSpotify();
+  
+  const [gameState, setGameState] = useState(getInitialGameState());
+  const [isLoading, setIsLoading] = useState(false);
+  const [difficulty, setDifficulty] = useState(initialDifficulty);
+  const [connectionError, setConnectionError] = useState(null);
+  const [isTokenValid, setIsTokenValid] = useState(true);
+
+  useEffect(() => {
+    if (!loggedIn || !isTokenValid || !roomCode) {
+      if (!token) setGameState(prev => ({...prev, gameStep: 'init'}));
+      return;
+    }
+
+    const initializeSocketConnection = async () => {
+      try {
+        await gameSocket.connect();
+        
+        // Usar emit con callback en lugar de método directo
+        gameSocket.emit('joinRoom', { 
+          roomCode, 
+          name: 'Game Master', 
+          isHost: true 
+        }, (response) => {
+          if (response.success) {
+            console.log('✅ Sala unida/creada como Host. Estado inicial:', response.data);
+            setGameState(prevState => ({
+                ...prevState,
+                connectedPlayers: response.data.players || [],
+                difficulty: response.data.difficulty || initialDifficulty,
+                gameStep: response.data.gameStep || 'waiting',
+            }));
+          } else {
+            console.error('Error al unirse a la sala:', response.error);
+            setConnectionError(response.error);
+          }
+        });
+        
+      } catch (error) {
+        console.error('🔥 Error al inicializar conexión del Host:', error);
+        setConnectionError(error.message);
+      }
+    };
+    
+    initializeSocketConnection();
+
+    const handleGameStateUpdate = (newGameState) => {
+        console.log('GameMaster recibió gameStateUpdate:', newGameState);
+        setGameState(prevState => ({ ...prevState, ...newGameState }));
+    };
+    
+    const handlePlayerPrediction = ({ playerName, prediction }) => {
+        console.log(`[PREDICTION RECEIVED] ${playerName}: ${prediction}`);
+        setGameState(prev => ({
+            ...prev,
+            playerPredictions: {
+                ...prev.playerPredictions,
+                [playerName]: [...(prev.playerPredictions[playerName] || []), prediction]
+            }
+        }));
+    };
+    
+    const handleError = (error) => {
+      setConnectionError(error.message || 'Error desconocido');
+    };
+
+    gameSocket.on('gameStateUpdate', handleGameStateUpdate);
+    gameSocket.on('playerPrediction', handlePlayerPrediction);
+    gameSocket.on('error', handleError);
+
+    return () => {
+      gameSocket.off('gameStateUpdate', handleGameStateUpdate);
+      gameSocket.off('playerPrediction', handlePlayerPrediction);
+      gameSocket.off('error', handleError);
+    };
+  }, [loggedIn, isTokenValid, roomCode, initialDifficulty]);
+  
+  const handlePlayerCorrectToggle = useCallback(async (playerId) => {
+    try {
+      gameSocket.emit('markPlayerCorrect', { roomCode, playerId }, (response) => {
+        if (!response.success) {
+          console.error('Error al marcar jugador:', response.error);
+          setConnectionError('Error al marcar el acierto del jugador');
+        }
+      });
+    } catch (error) {
+      console.error('Error al marcar jugador:', error);
+      setConnectionError('Error al marcar el acierto del jugador');
+    }
+  }, [roomCode]);
+
+  const handleDifficultyChange = useCallback(async (newDifficulty) => {
+    try {
+      setDifficulty(newDifficulty);
+      // Este método probablemente no existe en el servidor, lo comentamos por ahora
+      // await gameSocket.updateRoom({ roomCode, difficulty: newDifficulty });
+    } catch (error) {
+      console.error('Error al cambiar dificultad:', error);
+      setConnectionError(error.message);
+      setDifficulty(difficulty);
+    }
+  }, [roomCode, difficulty]);
+
+  const handleCategorySelected = useCallback(async (category) => {
+    try {
+      gameSocket.emit('selectCategory', { roomCode, category }, (response) => {
+        if (!response.success) {
+          console.error('Error al seleccionar categoría:', response.error);
+          setConnectionError(response.error);
+        }
+      });
+    } catch (error) {
+      console.error('Error al seleccionar categoría:', error);
+      setConnectionError(error.message);
+    }
+  }, [roomCode]);
+
+  const generateNewCard = useCallback(async () => {
+    // CORREGIDO: usar currentCategory en lugar de selectedCategory
+    if (!gameState.currentCategory || !spotify) {
+      console.log('No hay categoría seleccionada o Spotify no está disponible');
+      setConnectionError('Debe seleccionar una categoría primero');
+      return;
+    }
+    
+    setIsLoading(true);
+    setConnectionError(null);
+
+    try {
+      const randomMusicCategory = Object.keys(ARTISTS)[Math.floor(Math.random() * Object.keys(ARTISTS).length)];
+      const artistsInCategory = ARTISTS[randomMusicCategory];
+      const randomArtist = artistsInCategory[Math.floor(Math.random() * artistsInCategory.length)];
+      const response = await spotify.searchTracks(`artist:"${randomArtist}"`, { limit: 50, market: 'ES' });
+      
+      if (!response.tracks.items.length) {
+        throw new Error('No se encontraron canciones para este artista.');
+      }
+      
+      const randomTrack = response.tracks.items[Math.floor(Math.random() * response.tracks.items.length)];
+      
+      if (!randomTrack) {
+        throw new Error('No se encontraron canciones.');
+      }
+      
+      try {
+        await spotify.playTrack(randomTrack.uri);
+        console.log('✅ Canción enviada a Spotify para reproducción.');
+      } catch (e) {
+        console.error('🔥 Error de Spotify API:', e);
+        setConnectionError('Error de Spotify: No se encontró un dispositivo activo. Asegúrate de tener Spotify abierto.');
+        setIsLoading(false);
+        return; 
+      }
+      
+      gameSocket.emit('startSong', { 
+          roomCode, 
+          track: {
+              uri: randomTrack.uri,
+              title: randomTrack.name,
+              artist: randomTrack.artists[0].name,
+              year: parseInt(randomTrack.album.release_date.split('-')[0]),
+              musicCategory: randomMusicCategory,
+              spotifyUrl: randomTrack.external_urls.spotify
+          }
+      }, (response) => {
+        if (!response.success) {
+          console.error('Error al iniciar canción:', response.error);
+          setConnectionError(response.error);
+        }
+      });
+      
+    } catch (error) {
+      console.error("Error generando tarjeta:", error);
+      if (error?.status === 401 || error?.body?.error?.status === 401) {
+        setIsTokenValid(false);
+        logout();
+      } else {
+        setConnectionError(error.message || 'Error al generar la tarjeta');
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  }, [gameState.currentCategory, spotify, roomCode, logout]); // Cambiado selectedCategory por currentCategory
+
+  const handleRevealSong = useCallback(async () => {
+    try {
+      gameSocket.emit('revealSong', { roomCode }, (response) => {
+        if (!response.success) {
+          console.error('Error al revelar canción:', response.error);
+          setConnectionError('Error al revelar la canción');
+        }
+      });
+    } catch (error) {
+      console.error('Error al revelar canción:', error);
+      setConnectionError('Error al revelar la canción');
+    }
+  }, [roomCode]);
+  
+  const handleMarkingToggle = useCallback(async () => {
+    try {
+      if (gameState.isMarkingEnabled) {
+          gameSocket.emit('disableMarking', { roomCode }, (response) => {
+            if (!response.success) {
+              console.error('Error al deshabilitar marcado:', response.error);
+              setConnectionError('Error al cambiar estado de marcado');
+            }
+          });
+      } else {
+          gameSocket.emit('enableMarking', { roomCode }, (response) => {
+            if (!response.success) {
+              console.error('Error al habilitar marcado:', response.error);
+              setConnectionError('Error al cambiar estado de marcado');
+            }
+          });
+      }
+    } catch(error) {
+        console.error('Error al cambiar estado de marcado:', error);
+        setConnectionError('Error al cambiar estado de marcado');
+    }
+  }, [roomCode, gameState.isMarkingEnabled]);
+
+  const finishGame = useCallback(async () => {
+      try {
+          gameSocket.emit('gameOver', { roomCode }, (response) => {
+            if (!response.success) {
+              console.error('Error al finalizar el juego:', response.error);
+              setConnectionError('Error al finalizar el juego');
+            }
+          });
+      } catch (error) {
+          console.error('Error al finalizar el juego:', error);
+          setConnectionError('Error al finalizar el juego');
+      }
+  }, [roomCode]);
+
+  const startNewRound = useCallback(async () => {
+    try {
+        gameSocket.emit('restartGame', { roomCode }, (response) => {
+          if (!response.success) {
+            console.error('Error al iniciar nueva ronda:', response.error);
+            setConnectionError('Error al iniciar nueva ronda');
+          }
+        });
+    } catch(error) {
+         console.error('Error al iniciar nueva ronda:', error);
+         setConnectionError('Error al iniciar nueva ronda');
+    }
+  }, [roomCode]);
+
+  // CORREGIDO: Retornar currentCategory como selectedCategory para compatibilidad con la vista
+  return {
+    ...gameState, 
+    selectedCategory: gameState.currentCategory, // Para compatibilidad con la vista
     difficulty,
+    isLoading,
     connectionError,
-    isMarkingEnabled,
-    playerPredictions,
-    // 'songPlaying' se eliminó de aquí porque no se usaba
+    isTokenValid,
+    loggedIn,
+    login,
+    logout,
+    setConnectionError,
     handlePlayerCorrectToggle,
+    handleDifficultyChange,
     handleCategorySelected,
     generateNewCard,
     handleRevealSong,
     handleMarkingToggle,
     startNewRound,
-    playerCorrectStatus,
-    winners,
-    gameOver,
-    finishGame,
-    setConnectionError
-  } = useGameMasterLogic({ roomCode, initialDifficulty });
-
-  useEffect(() => {
-    let timer;
-    if (connectionError) {
-      timer = setTimeout(() => setConnectionError(null), 5000);
-    }
-    return () => clearTimeout(timer);
-  }, [connectionError, setConnectionError]);
-
-  const renderMainContent = () => (
-    <AnimatePresence mode="wait">
-      {gameStep === 'wheel' ? (
-        <motion.div key="wheel" initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }} className="flex-1 flex flex-col">
-          <CategoryWheel difficulty={difficulty} onCategorySelected={handleCategorySelected} />
-        </motion.div>
-      ) : (
-        <motion.div key="card-section" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="flex-1 flex flex-col">
-          {winners.length > 0 && !gameOver && (
-            <Alert className="mb-4 bg-purple-500/20 border-purple-500/50">
-              <div className="w-full">
-                <div className="flex justify-between items-center mb-2">
-                  <h3 className="font-semibold text-white flex items-center"><Trophy className="h-5 w-5 text-yellow-400 mr-2" />{winners.length > 1 ? '¡Hay varios ganadores!' : '¡Tenemos un ganador!'}</h3>
-                  <Button onClick={finishGame} className="bg-purple-600 hover:bg-purple-700 text-white text-sm">Finalizar Juego</Button>
-                </div>
-                <div className="space-y-1">
-                  {winners.map(winner => (<div key={winner.id} className="text-white flex items-center gap-2 bg-purple-500/10 py-1 px-2 rounded"><Trophy className="h-4 w-4 text-yellow-400" /><span>{winner.name}</span></div>))}
-                </div>
-              </div>
-            </Alert>
-          )}
-          {selectedCategory && (
-            <div className={`${selectedCategory.color} p-3 rounded-lg flex items-center justify-center gap-3 border border-white/20 mb-4`} style={{ boxShadow: '0 0 15px rgba(255,255,255,0.1)' }}>
-              <div className="flex items-center gap-2">{selectedCategory.icon && <selectedCategory.icon size={24} className="text-gray-800" />}<span className="text-base font-medium text-gray-800">{selectedCategory.name}</span></div>
-            </div>
-          )}
-          {!currentCard ? (
-            <Button onClick={generateNewCard} disabled={isLoading} className="w-full h-10 bg-gradient-to-r from-purple-600/80 to-indigo-600/80 hover:from-purple-600 hover:to-indigo-600 border border-purple-400/50" style={{ boxShadow: '0 0 15px rgba(168,85,247,0.3)' }}>{isLoading ? 'Generando...' : 'Generar Tarjeta'}</Button>
-          ) : (
-            <Card className="bg-black/30 border border-white/20 p-4">
-              <div className="space-y-3">
-                <div className={`transition-all duration-500 ${currentCard.revealed ? '' : 'blur-md'}`}>
-                  <div className="grid grid-cols-2 gap-3 mb-3">
-                    <div className="col-span-2 text-center"><h2 className="text-xl font-bold text-white">{currentCard.title}</h2><div className="flex justify-center items-center space-x-2 text-purple-300"><MusicIcon className="w-4 h-4" /><span className="text-base">{currentCard.artist}</span></div></div>
-                    <div className="bg-white/10 backdrop-blur-sm rounded-lg p-2 flex items-center justify-between"><CalendarIcon className="w-5 h-5 text-purple-400" /><span className="text-xl font-bold text-white">{currentCard.year}</span></div>
-                    <div className="bg-white/10 backdrop-blur-sm rounded-lg p-2 flex items-center justify-between"><MusicIcon className="w-5 h-5 text-purple-400" /><span className="text-sm text-purple-300">{currentCard.musicCategory}</span></div>
-                  </div>
-                </div>
-                {!currentCard.revealed ? (
-                  <div className="grid grid-cols-2 gap-2">
-                    <Button onClick={handleRevealSong} className="col-span-2 h-10 bg-gradient-to-r from-purple-600/80 to-indigo-600/80 hover:from-purple-600 hover:to-indigo-600 border border-purple-400/50" style={{ boxShadow: '0 0 15px rgba(168,85,247,0.3)' }}><ExternalLinkIcon className="mr-2 h-4 w-4" />Revelar Canción</Button>
-                    <Button variant="outline" className="col-span-2 h-10 border-purple-400/50 text-purple-300 hover:bg-purple-500/20" onClick={() => window.open(currentCard.spotifyUrl, '_blank')}><ExternalLinkIcon className="mr-2 h-4 w-4" />Abrir en Spotify</Button>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    <Button onClick={handleMarkingToggle} disabled={!Object.values(playerCorrectStatus || {}).some(correct => correct) && !isMarkingEnabled} className={`w-full h-10 transition-all duration-300 ${isMarkingEnabled ? 'bg-yellow-500/80 hover:bg-yellow-500 border-yellow-400' : Object.values(playerCorrectStatus || {}).some(correct => correct) ? 'bg-green-500/80 hover:bg-green-500 border-green-400' : 'bg-gray-500/50 border-gray-400 cursor-not-allowed'} border`}>{isMarkingEnabled ? 'Deshabilitar Marcado' : Object.values(playerCorrectStatus || {}).some(correct => correct) ? 'Habilitar Marcado para Acertantes' : 'Marca al menos un acertante'}</Button>
-                    <Button onClick={startNewRound} variant="outline" className="w-full h-10 border-white/20 text-white/80 hover:bg-white/10"><RefreshCwIcon className="w-4 h-4 mr-2" />Nueva Ronda</Button>
-                  </div>
-                )}
-              </div>
-            </Card>
-          )}
-          {connectedPlayers.length > 0 && (
-            <div className="mt-4">
-              <h3 className="font-semibold text-lg text-white mb-3 flex items-center justify-between"><span>Jugadores Conectados</span>{currentCard?.revealed && <span className="text-sm text-white/60">{isMarkingEnabled ? 'Marcado habilitado' : 'Marca a los acertantes'}</span>}</h3>
-              <div className="bg-black/30 rounded-lg divide-y divide-white/10 border border-white/20">
-                {connectedPlayers.map((player) => (
-                  <div key={player.id} className={`flex items-center justify-between p-3 transition-colors duration-200 ${playerCorrectStatus[player.id] ? 'bg-green-500/20' : winners.some(w => w.id === player.id) ? 'bg-purple-500/20' : ''}`}>
-                    <div className="flex items-center gap-3">
-                      {currentCard?.revealed && !isMarkingEnabled && !player.isHost && (
-                        <div onClick={() => handlePlayerCorrectToggle(player.id)} className={`w-5 h-5 rounded border flex items-center justify-center cursor-pointer ${playerCorrectStatus[player.id] ? 'bg-green-500 border-green-500 opacity-80' : 'border-white/50 hover:border-white/80'}`}>
-                          {playerCorrectStatus[player.id] && (<motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}><Check className="w-4 h-4 text-white" /></motion.div>)}
-                        </div>
-                      )}
-                      <span className="font-medium text-white">{player.name}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {winners.some(w => w.id === player.id) && (<span className="text-xs bg-purple-500/30 text-purple-300 px-2 py-1 rounded-full border border-purple-400/50"><Trophy className="h-3 w-3 inline mr-1" />Ganador</span>)}
-                      {playerCorrectStatus[player.id] && !winners.some(w => w.id === player.id) && (<span className="text-xs bg-green-500/30 text-green-300 px-2 py-1 rounded-full">¡Acierto!</span>)}
-                      {player.isHost && (<span className="text-xs bg-purple-500/30 text-purple-300 px-2 py-1 rounded-full border border-purple-400/50">Game Master</span>)}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </motion.div>
-      )}
-    </AnimatePresence>
-  );
-
-  return (
-    <GameLayout roomCode={roomCode} playersCount={connectedPlayers.length}>
-      {connectionError && <Alert variant="destructive" className="mb-4 bg-red-500/20 border border-red-500/50"><AlertCircle className="h-4 w-4 text-white" /><AlertDescription className="text-white">{connectionError}</AlertDescription></Alert>}
-      {gameOver && <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-50"><div className="bg-black/90 border border-purple-500/50 rounded-lg p-6 max-w-lg w-full"><h2 className="text-2xl font-bold text-white text-center mb-6 flex items-center justify-center"><Trophy className="h-8 w-8 text-yellow-400 mr-3" />¡Juego Finalizado!</h2><div className="mb-6"><h3 className="text-lg font-semibold text-white mb-3">{winners.length > 1 ? 'Ganadores:' : 'Ganador:'}</h3><div className="space-y-2">{winners.map(winner => (<div key={winner.id} className="bg-purple-500/20 border border-purple-500/50 rounded-lg p-3 flex items-center"><Trophy className="h-5 w-5 text-yellow-400 mr-2" /><span className="text-white font-medium">{winner.name}</span></div>))}</div></div><Button onClick={startNewRound} className="w-full bg-green-600 hover:bg-green-700 text-white py-3">Iniciar Nuevo Juego</Button></div></div>}
-      {renderMainContent()}
-      <PredictionsPanel predictions={playerPredictions} />
-    </GameLayout>
-  );
+    finishGame
+  };
 };
-
-GameMaster.propTypes = { 
-  roomCode: PropTypes.string.isRequired, 
-  difficulty: PropTypes.oneOf(['principiante', 'experto']).isRequired 
-};
-
-export default GameMaster;
