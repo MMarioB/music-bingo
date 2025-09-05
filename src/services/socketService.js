@@ -72,8 +72,59 @@ class GameWebSocket {
     return this.connectPromise;
   }
   
-  // CORREGIDO: Método interno que usa callbacks como espera el servidor
-  async _requestWithCallback(eventName, data, timeoutMs = 15000) {
+  // HÍBRIDO: Para métodos que usan callback Y emiten eventos (como createRoom, joinRoom)
+  async _hybridRequest(eventName, responseEvent, data, timeoutMs = 15000) {
+    await this.ensureConnection();
+    
+    if (!this.socket || typeof this.socket.emit !== 'function') {
+      throw new Error('Socket no disponible o no válido');
+    }
+    
+    return new Promise((resolve, reject) => {
+      let timeout;
+      let callbackHandled = false;
+      
+      // Escuchar el evento de respuesta
+      const handleResponse = (response) => {
+        if (callbackHandled) return;
+        callbackHandled = true;
+        clearTimeout(timeout);
+        resolve(response);
+      };
+      
+      const handleError = (error) => {
+        if (callbackHandled) return;
+        callbackHandled = true;
+        clearTimeout(timeout);
+        reject(error);
+      };
+      
+      timeout = setTimeout(() => {
+        if (callbackHandled) return;
+        callbackHandled = true;
+        this.socket.off(responseEvent, handleResponse);
+        this.socket.off('error', handleError);
+        reject(new Error(`Timeout: No se recibió respuesta para '${eventName}' a tiempo.`));
+      }, timeoutMs);
+      
+      this.socket.once(responseEvent, handleResponse);
+      this.socket.once('error', handleError);
+      
+      console.log(`[EMIT-HYBRID] ${eventName}`, data);
+      
+      // Emit con callback Y escuchar evento
+      this.socket.emit(eventName, data, (callbackResponse) => {
+        // Si el callback tiene error, rechazar
+        if (callbackResponse && callbackResponse.error) {
+          handleError(new Error(callbackResponse.error));
+        }
+        // Si no, seguir esperando el evento de respuesta
+      });
+    });
+  }
+
+  // CALLBACK SOLO: Para métodos que solo usan callback
+  async _callbackRequest(eventName, data, timeoutMs = 15000) {
     await this.ensureConnection();
     
     if (!this.socket || typeof this.socket.emit !== 'function') {
@@ -98,44 +149,54 @@ class GameWebSocket {
     });
   }
 
-  // --- MÉTODOS DE PETICIÓN-RESPUESTA (usan callbacks como espera el servidor) ---
+  // --- MÉTODOS SEGÚN TU SERVIDOR ---
+  
+  // createRoom: Emite 'roomCreated' Y usa callback
   createRoom(roomConfig) { 
-    return this._requestWithCallback('createRoom', roomConfig); 
+    return this._hybridRequest('createRoom', 'roomCreated', roomConfig); 
   }
   
+  // joinRoom: Emite 'roomJoined' Y usa callback
   joinRoom(roomCode, playerInfo) { 
-    return this._requestWithCallback('joinRoom', { roomCode, ...playerInfo }); 
+    return this._hybridRequest('joinRoom', 'roomJoined', { roomCode, ...playerInfo }); 
   }
   
+  // selectCategory: Emite 'categorySelected' Y usa callback
   selectCategory(data) { 
-    return this._requestWithCallback('selectCategory', data); 
+    return this._hybridRequest('selectCategory', 'categorySelected', data); 
   }
   
+  // startSong: Emite 'songStarted' Y usa callback
   startSong(data) { 
-    return this._requestWithCallback('startSong', data); 
+    return this._hybridRequest('startSong', 'songStarted', data); 
   }
   
+  // markPlayerCorrect: Solo callback (según tu servidor)
   markPlayerCorrect(data) { 
-    return this._requestWithCallback('markPlayerCorrect', data); 
+    return this._callbackRequest('markPlayerCorrect', data); 
   }
   
+  // enableMarking: Solo callback
   enableMarking(data) { 
-    return this._requestWithCallback('enableMarking', data); 
+    return this._callbackRequest('enableMarking', data); 
   }
   
+  // disableMarking: Solo callback
   disableMarking(data) { 
-    return this._requestWithCallback('disableMarking', data); 
+    return this._callbackRequest('disableMarking', data); 
   }
   
+  // gameOver: Emite 'gameOverConfirmed' Y usa callback
   gameOver(data) { 
-    return this._requestWithCallback('gameOver', data); 
+    return this._hybridRequest('gameOver', 'gameOverConfirmed', data); 
   }
   
+  // restartGame: Emite 'gameRestarted' Y usa callback
   restartGame(data) { 
-    return this._requestWithCallback('restartGame', data); 
+    return this._hybridRequest('restartGame', 'gameRestarted', data); 
   }
 
-  // --- MÉTODOS DE NOTIFICACIÓN (Fire-and-Forget como espera el servidor) ---
+  // --- MÉTODOS FIRE-AND-FORGET ---
   async submitPrediction(data) {
     await this.ensureConnection();
     if (!this.socket || typeof this.socket.emit !== 'function') {
@@ -181,7 +242,7 @@ class GameWebSocket {
     this.socket.emit('updateRoom', data);
   }
 
-  // CORREGIDO: Cambié de 'winner' a 'declareWinner' para coincidir con el servidor
+  // Tu servidor escucha 'declareWinner'
   async declareWinner(data) {
     await this.ensureConnection();
     if (!this.socket || typeof this.socket.emit !== 'function') {
@@ -191,7 +252,7 @@ class GameWebSocket {
     this.socket.emit('declareWinner', data);
   }
 
-  // Mantengo el método winner por compatibilidad, pero apunta a declareWinner
+  // Alias para compatibilidad
   async winner(data) {
     return this.declareWinner(data);
   }
