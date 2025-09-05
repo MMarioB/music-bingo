@@ -6,7 +6,7 @@ class GameWebSocket {
     this.eventHandlers = new Map();
     this.isConnecting = false;
     this.connectPromise = null;
-    this.connectionState = 'disconnected'; // 'disconnected', 'connecting', 'connected'
+    this.connectionState = 'disconnected';
   }
 
   connect() {
@@ -21,7 +21,6 @@ class GameWebSocket {
     this.isConnecting = true;
     this.connectionState = 'connecting';
     
-    // Limpiar conexión anterior si existe
     if (this.socket) {
       this.socket.close();
       this.socket.removeAllListeners();
@@ -73,51 +72,70 @@ class GameWebSocket {
     return this.connectPromise;
   }
   
-  async _request(eventName, responseEvent, data, timeoutMs = 15000) {
+  // CORREGIDO: Método interno que usa callbacks como espera el servidor
+  async _requestWithCallback(eventName, data, timeoutMs = 15000) {
     await this.ensureConnection();
     
-    // Verificación adicional antes de usar el socket
     if (!this.socket || typeof this.socket.emit !== 'function') {
       throw new Error('Socket no disponible o no válido');
     }
     
     return new Promise((resolve, reject) => {
-      let timeout;
-      const handleResponse = (response) => {
-        clearTimeout(timeout);
-        this.socket.off('error', handleError);
-        resolve(response);
-      };
-      const handleError = (error) => {
-        clearTimeout(timeout);
-        this.socket.off(responseEvent, handleResponse);
-        reject(error);
-      };
-      timeout = setTimeout(() => {
-        this.socket.off(responseEvent, handleResponse);
-        this.socket.off('error', handleError);
+      const timeout = setTimeout(() => {
         reject(new Error(`Timeout: No se recibió respuesta para '${eventName}' a tiempo.`));
       }, timeoutMs);
       
-      this.socket.once(responseEvent, handleResponse);
-      this.socket.once('error', handleError);
-      console.log(`[EMIT-REQ] ${eventName}`, data);
-      this.socket.emit(eventName, data);
+      console.log(`[EMIT-CALLBACK] ${eventName}`, data);
+      
+      this.socket.emit(eventName, data, (response) => {
+        clearTimeout(timeout);
+        if (response && response.error) {
+          reject(new Error(response.error));
+        } else {
+          resolve(response);
+        }
+      });
     });
   }
 
-  // --- MÉTODOS DE PETICIÓN-RESPUESTA (usan _request) ---
-  createRoom(roomConfig) { return this._request('createRoom', 'roomCreated', roomConfig); }
-  joinRoom(roomCode, playerInfo) { return this._request('joinRoom', 'roomJoined', { roomCode, ...playerInfo }); }
-  selectCategory(data) { return this._request('selectCategory', 'categorySelected', data); }
-  startSong(data) { return this._request('startSong', 'songStarted', data); }
-  markPlayerCorrect(data) { return this._request('markPlayerCorrect', 'playerMarked', data); }
-  enableMarking(data) { return this._request('enableMarking', 'markingEnabled', data); }
-  disableMarking(data) { return this._request('disableMarking', 'markingDisabled', data); }
-  gameOver(data) { return this._request('gameOver', 'gameOverConfirmed', data); }
-  restartGame(data) { return this._request('restartGame', 'gameRestarted', data); }
+  // --- MÉTODOS DE PETICIÓN-RESPUESTA (usan callbacks como espera el servidor) ---
+  createRoom(roomConfig) { 
+    return this._requestWithCallback('createRoom', roomConfig); 
+  }
+  
+  joinRoom(roomCode, playerInfo) { 
+    return this._requestWithCallback('joinRoom', { roomCode, ...playerInfo }); 
+  }
+  
+  selectCategory(data) { 
+    return this._requestWithCallback('selectCategory', data); 
+  }
+  
+  startSong(data) { 
+    return this._requestWithCallback('startSong', data); 
+  }
+  
+  markPlayerCorrect(data) { 
+    return this._requestWithCallback('markPlayerCorrect', data); 
+  }
+  
+  enableMarking(data) { 
+    return this._requestWithCallback('enableMarking', data); 
+  }
+  
+  disableMarking(data) { 
+    return this._requestWithCallback('disableMarking', data); 
+  }
+  
+  gameOver(data) { 
+    return this._requestWithCallback('gameOver', data); 
+  }
+  
+  restartGame(data) { 
+    return this._requestWithCallback('restartGame', data); 
+  }
 
-  // --- MÉTODOS DE NOTIFICACIÓN (Fire-and-Forget) ---
+  // --- MÉTODOS DE NOTIFICACIÓN (Fire-and-Forget como espera el servidor) ---
   async submitPrediction(data) {
     await this.ensureConnection();
     if (!this.socket || typeof this.socket.emit !== 'function') {
@@ -130,7 +148,7 @@ class GameWebSocket {
   async setPlayerReady(roomCode) {
     await this.ensureConnection();
     if (!this.socket || typeof this.socket.emit !== 'function') {
-      throw new Error('Socket no disponible para setPlayerReady');
+      throw new Error('Socket no disponible para playerReady');
     }
     console.log(`[EMIT] playerReady`, { roomCode });
     this.socket.emit('playerReady', { roomCode });
@@ -163,13 +181,19 @@ class GameWebSocket {
     this.socket.emit('updateRoom', data);
   }
 
-  async winner(data) {
+  // CORREGIDO: Cambié de 'winner' a 'declareWinner' para coincidir con el servidor
+  async declareWinner(data) {
     await this.ensureConnection();
     if (!this.socket || typeof this.socket.emit !== 'function') {
-      throw new Error('Socket no disponible para winner');
+      throw new Error('Socket no disponible para declareWinner');
     }
-    console.log(`[EMIT] winner`, data);
-    this.socket.emit('winner', data);
+    console.log(`[EMIT] declareWinner`, data);
+    this.socket.emit('declareWinner', data);
+  }
+
+  // Mantengo el método winner por compatibilidad, pero apunta a declareWinner
+  async winner(data) {
+    return this.declareWinner(data);
   }
 
   // --- GESTIÓN DE EVENTOS Y CONEXIÓN ---
@@ -183,10 +207,8 @@ class GameWebSocket {
       return;
     }
     
-    // Si no está conectado, intentar conectar
     await this.connect();
     
-    // Verificar que realmente se conectó
     if (!this.socket?.connected) {
       throw new Error('No se pudo establecer la conexión');
     }
@@ -209,14 +231,12 @@ class GameWebSocket {
   restoreEventHandlers() {
     if (!this.socket || typeof this.socket.on !== 'function') return;
     
-    // Limpiar handlers existentes
     this.eventHandlers.forEach((_, event) => {
       if (typeof this.socket.off === 'function') {
         this.socket.off(event);
       }
     });
     
-    // Restaurar handlers
     this.eventHandlers.forEach((handler, event) => {
       if (typeof this.socket.on === 'function') {
         this.socket.on(event, handler);
@@ -237,7 +257,6 @@ class GameWebSocket {
     }
   }
 
-  // Método para debugging
   getConnectionInfo() {
     return {
       connectionState: this.connectionState,
