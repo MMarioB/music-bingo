@@ -216,24 +216,28 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
     }
   }, [roomCode]);
   
-  const handleMarkingToggle = useCallback(async () => {
-    console.log('🔧 DEBUG: handleMarkingToggle llamado, isMarkingEnabled:', gameState.isMarkingEnabled);
-    try {
-      if (gameState.isMarkingEnabled) {
-          // Probar con callback primero
-          console.log('🔧 DEBUG: Intentando deshabilitar marcado...');
-          const response = await gameSocket.disableMarkingDebug({ roomCode });
-          console.log('🔧 DEBUG: Respuesta disableMarking:', response);
-      } else {
-          // Probar con callback primero
-          console.log('🔧 DEBUG: Intentando habilitar marcado...');
-          const response = await gameSocket.enableMarkingDebug({ roomCode });
-          console.log('🔧 DEBUG: Respuesta enableMarking:', response);
-      }
-    } catch(error) {
-        console.error('Error al cambiar estado de marcado:', error);
-        setConnectionError('Error al cambiar estado de marcado');
-    }
+  const handleMarkingToggle = useCallback(() => {
+    // Esta función ya no necesita ser 'async'.
+    // Su único trabajo es enviar el comando. La actualización de la UI
+    // la manejará SIEMPRE el listener de 'gameStateUpdate'.
+    
+    const action = gameState.isMarkingEnabled ? 'disableMarking' : 'enableMarking';
+    const data = { roomCode };
+  
+    console.log(`🚀 Disparando acción '${action}' al servidor...`);
+    
+    // Usamos el método que espera un callback para poder capturar errores.
+    gameSocket[action](data)
+      .then(response => {
+        // Opcional: loguear que el servidor ha recibido el comando.
+        console.log(`✅ Acción '${action}' confirmada por el servidor.`, response);
+      })
+      .catch(error => {
+        // Si el servidor responde con un error, lo mostramos.
+        console.error(`🔥 Error en la acción '${action}':`, error);
+        setConnectionError(`Error al cambiar el estado de marcado: ${error.message}`);
+      });
+  
   }, [roomCode, gameState.isMarkingEnabled]);
 
   const finishGame = useCallback(async () => {
