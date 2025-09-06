@@ -6,6 +6,7 @@ class GameWebSocket {
     this.eventHandlers = new Map();
     this.isConnecting = false;
     this.connectPromise = null;
+    this.lastRoomData = null; // NUEVO: Guardar datos de la última sala
   }
 
   connect() {
@@ -32,10 +33,21 @@ class GameWebSocket {
         forceNew: true,
       });
 
-      this.socket.on('connect', () => {
+      this.socket.on('connect', async () => {
         console.log('✅ Conectado exitosamente al servidor. ID:', this.socket.id);
         this.isConnecting = false;
         this.restoreEventHandlers();
+        
+        // NUEVO: Auto-rejoin si tenemos datos de sala guardados
+        if (this.lastRoomData) {
+          console.log('🔄 Auto-rejoin detectado, reestableciendo sala...');
+          try {
+            await this._rejoinRoom();
+          } catch (error) {
+            console.error('Error en auto-rejoin:', error);
+          }
+        }
+        
         resolve();
       });
 
@@ -51,6 +63,27 @@ class GameWebSocket {
     });
 
     return this.connectPromise;
+  }
+  
+  // NUEVO: Método para re-unirse automáticamente
+  async _rejoinRoom() {
+    if (!this.lastRoomData) return;
+    
+    console.log('🔄 Ejecutando rejoin con datos:', this.lastRoomData);
+    
+    const response = await this._emit(
+      'joinRoom', 
+      { ...this.lastRoomData, reconnecting: true }, 
+      true
+    );
+    
+    if (response?.error) {
+      console.error('Error en rejoin:', response.error);
+      // Si falla el rejoin, limpiar los datos
+      this.lastRoomData = null;
+    } else {
+      console.log('✅ Rejoin exitoso');
+    }
   }
   
   // MÉTODO ÚNICO: callback para request-response, directo para fire-and-forget
@@ -81,10 +114,23 @@ class GameWebSocket {
 
   // --- MÉTODOS QUE ESPERAN RESPUESTA (callback) ---
   createRoom(roomConfig) { 
+    // NUEVO: Guardar datos para posible reconexión
+    this.lastRoomData = {
+      roomCode: roomConfig.roomCode,
+      name: 'Game Master',
+      isHost: true
+    };
+    
     return this._emit('createRoom', roomConfig, true); 
   }
   
   joinRoom(roomCode, playerInfo) { 
+    // NUEVO: Guardar datos para posible reconexión
+    this.lastRoomData = {
+      roomCode,
+      ...playerInfo
+    };
+    
     return this._emit('joinRoom', { roomCode, ...playerInfo }, true); 
   }
   
@@ -149,6 +195,14 @@ class GameWebSocket {
     await this._emit('winner', data, false);
   }
 
+  async gameOver(data) {
+    await this._emit('gameOver', data, false);
+  }
+
+  async restartGame(data) {
+    await this._emit('restartGame', data, false);
+  }
+
   // --- GESTIÓN DE EVENTOS Y CONEXIÓN ---
   async ensureConnection() {
     if (!this.socket?.connected) {
@@ -175,6 +229,7 @@ class GameWebSocket {
   
   disconnect() {
     if (this.socket) {
+      this.lastRoomData = null; // NUEVO: Limpiar datos al desconectar manualmente
       this.socket.disconnect();
       this.socket = null;
       this.connectPromise = null;
