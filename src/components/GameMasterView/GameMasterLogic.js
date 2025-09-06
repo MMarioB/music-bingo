@@ -36,10 +36,11 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
       try {
         await gameSocket.connect();
         
-        // USAR EL MÉTODO WRAPPER EN LUGAR DE EMIT DIRECTO
+        // USAR EL MÉTODO WRAPPER EN LUGAR DE EMIT DIRECTO CON FLAG DE RECONEXIÓN
         const response = await gameSocket.joinRoom(roomCode, { 
           name: 'Game Master', 
-          isHost: true 
+          isHost: true,
+          reconnecting: true  // Agregar flag de reconexión
         });
         
         // Manejar respuesta undefined o sin success
