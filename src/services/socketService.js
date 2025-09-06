@@ -6,11 +6,13 @@ class GameWebSocket {
     this.eventHandlers = new Map();
     this.isConnecting = false;
     this.connectPromise = null;
-    this.lastRoomData = null; // NUEVO: Guardar datos de la última sala
+    this.lastRoomData = null;
+    this.reconnectionAttempts = 0; // NUEVO: Contador de intentos
+    this.maxReconnectionAttempts = 3; // NUEVO: Máximo de intentos
   }
 
   connect() {
-    if (this.socket?.connected) return Promise.resolve();
+    if (this.socket && this.socket.connected) return Promise.resolve();
     if (this.isConnecting) return this.connectPromise;
 
     this.isConnecting = true;
@@ -36,15 +38,17 @@ class GameWebSocket {
       this.socket.on('connect', async () => {
         console.log('✅ Conectado exitosamente al servidor. ID:', this.socket.id);
         this.isConnecting = false;
+        this.reconnectionAttempts = 0; // NUEVO: Reset contador
         this.restoreEventHandlers();
         
-        // NUEVO: Auto-rejoin si tenemos datos de sala guardados
+        // MODIFICADO: Auto-rejoin si tenemos datos de sala guardados
         if (this.lastRoomData) {
           console.log('🔄 Auto-rejoin detectado, reestableciendo sala...');
           try {
             await this._rejoinRoom();
           } catch (error) {
             console.error('Error en auto-rejoin:', error);
+            this._handleRejoinFailure(error);
           }
         }
         
@@ -53,6 +57,24 @@ class GameWebSocket {
 
       this.socket.on('disconnect', (reason) => {
         console.warn('❌ Desconectado del servidor:', reason);
+        // NUEVO: Manejar diferentes tipos de desconexión
+        if (reason === 'io server disconnect') {
+          console.log('🚨 Servidor nos desconectó intencionalmente');
+          this._handleServerDisconnect();
+        }
+      });
+
+      // NUEVO: Eventos para reconexión de host
+      this.socket.on('hostDisconnected', (data) => {
+        console.log('⚠️ Host desconectado:', data.message);
+        // Mostrar mensaje de espera a los jugadores
+        this._showHostDisconnectedMessage(data.message);
+      });
+
+      this.socket.on('hostReconnected', (data) => {
+        console.log('✅ Host reconectado:', data.message);
+        // Ocultar mensaje de espera
+        this._hideHostDisconnectedMessage();
       });
 
       this.socket.on('connect_error', (error) => {
@@ -65,24 +87,107 @@ class GameWebSocket {
     return this.connectPromise;
   }
   
-  // NUEVO: Método para re-unirse automáticamente
+  // MODIFICADO: Manejo robusto de rejoin con reintentos
   async _rejoinRoom() {
     if (!this.lastRoomData) return;
     
-    console.log('🔄 Ejecutando rejoin con datos:', this.lastRoomData);
+    this.reconnectionAttempts++;
+    console.log(`🔄 Intento de rejoin ${this.reconnectionAttempts}/${this.maxReconnectionAttempts}:`, this.lastRoomData);
     
-    const response = await this._emit(
-      'joinRoom', 
-      { ...this.lastRoomData, reconnecting: true }, 
-      true
-    );
-    
-    if (response?.error) {
-      console.error('Error en rejoin:', response.error);
-      // Si falla el rejoin, limpiar los datos
-      this.lastRoomData = null;
-    } else {
+    try {
+      const response = await this._emit(
+        'joinRoom', 
+        { ...this.lastRoomData, reconnecting: true }, 
+        true,
+        10000 // NUEVO: Timeout más corto para rejoin
+      );
+      
+      if (response && response.error) {
+        throw new Error(response.error);
+      }
+      
       console.log('✅ Rejoin exitoso');
+      this.reconnectionAttempts = 0;
+      return response;
+      
+    } catch (error) {
+      console.error(`❌ Rejoin falló (intento ${this.reconnectionAttempts}):`, error.message);
+      throw error;
+    }
+  }
+  
+  // NUEVO: Manejar fallos de rejoin con reintentos automáticos
+  _handleRejoinFailure(error) {
+    console.log(error);
+    if (this.reconnectionAttempts >= this.maxReconnectionAttempts) {
+      console.error('💀 Máximo de intentos de reconexión alcanzado');
+      this.lastRoomData = null;
+      this._showReconnectionFailedMessage();
+      return;
+    }
+    
+    // Reintentar después de un delay exponencial
+    const delay = Math.min(2000 * Math.pow(2, this.reconnectionAttempts - 1), 10000);
+    console.log(`⏱️ Reintentando rejoin en ${delay}ms...`);
+    
+    setTimeout(async () => {
+      try {
+        await this._rejoinRoom();
+      } catch (retryError) {
+        this._handleRejoinFailure(retryError);
+      }
+    }, delay);
+  }
+
+  // NUEVO: Manejar desconexión intencional del servidor
+  _handleServerDisconnect() {
+    this.lastRoomData = null;
+    this._showServerDisconnectMessage();
+  }
+
+  // NUEVO: Métodos para UI (implementar según tu framework)
+  _showHostDisconnectedMessage(message) {
+    console.log('🔔 Mostrar mensaje:', message);
+    // Implementar según tu UI - ejemplo:
+    // const statusEl = document.getElementById('connection-status');
+    // if (statusEl) statusEl.textContent = message;
+    
+    // O si usas React/Vue, emitir evento personalizado:
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('hostDisconnected', { detail: { message } }));
+    }
+  }
+
+  _hideHostDisconnectedMessage() {
+    console.log('🔔 Ocultar mensaje de host desconectado');
+    // Implementar según tu UI
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('hostReconnected'));
+    }
+  }
+
+  _showReconnectionFailedMessage() {
+    console.log('🔔 Mostrar: La sesión ha expirado, redirigiendo...');
+    // Implementar según tu UI
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('reconnectionFailed'));
+      
+      // Opcional: Redirigir automáticamente después de mostrar mensaje
+      setTimeout(() => {
+        window.location.href = '/';
+      }, 3000);
+    }
+  }
+
+  _showServerDisconnectMessage() {
+    console.log('🔔 Mostrar: Desconectado del servidor');
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('serverDisconnect'));
+      
+      // Opcional: Redirigir automáticamente
+      setTimeout(() => {
+        window.location.href = '/';
+      }, 2000);
     }
   }
   
@@ -100,7 +205,7 @@ class GameWebSocket {
         
         this.socket.emit(eventName, data, (response) => {
           clearTimeout(timeout);
-          if (response?.error) {
+          if (response && response.error) {
             reject(new Error(response.error));
           } else {
             resolve(response);
@@ -142,7 +247,6 @@ class GameWebSocket {
     return this._emit('startSong', data, true); 
   }
   
-  // NUEVO MÉTODO AGREGADO
   declareWinner(data) { 
     return this._emit('declareWinner', data, true); 
   }
@@ -152,15 +256,57 @@ class GameWebSocket {
     await this._emit('markPlayerCorrect', data, false);
   }
   
+  // MODIFICADO: Cambiar a callback para detectar errores de "Sala no encontrada"
   async enableMarking(data) {
-    await this._emit('enableMarking', data, false);
+    try {
+      const response = await this._emit('enableMarking', data, true, 10000);
+      console.log('✅ EnableMarking exitoso:', response);
+      return response;
+    } catch (error) {
+      console.error('❌ Error al habilitar marcado:', error.message);
+      
+      // Si es error de sala no encontrada y somos host, intentar reconectar
+      if (error.message.includes('Sala no encontrada') && this.lastRoomData && this.lastRoomData.isHost) {
+        console.log('🔄 Intentando reconectar por error de sala...');
+        try {
+          await this._rejoinRoom();
+          // Reintentar la acción original
+          return await this._emit('enableMarking', data, true, 5000);
+        } catch (rejoinError) {
+          console.error('❌ Fallo al reconectar:', rejoinError.message);
+        }
+      }
+      
+      throw error;
+    }
   }
   
+  // MODIFICADO: Cambiar a callback para detectar errores de "Sala no encontrada"
   async disableMarking(data) {
-    await this._emit('disableMarking', data, false);
+    try {
+      const response = await this._emit('disableMarking', data, true, 10000);
+      console.log('✅ DisableMarking exitoso:', response);
+      return response;
+    } catch (error) {
+      console.error('❌ Error al deshabilitar marcado:', error.message);
+      
+      // Si es error de sala no encontrada y somos host, intentar reconectar
+      if (error.message.includes('Sala no encontrada') && this.lastRoomData && this.lastRoomData.isHost) {
+        console.log('🔄 Intentando reconectar por error de sala...');
+        try {
+          await this._rejoinRoom();
+          // Reintentar la acción original
+          return await this._emit('disableMarking', data, true, 5000);
+        } catch (rejoinError) {
+          console.error('❌ Fallo al reconectar:', rejoinError.message);
+        }
+      }
+      
+      throw error;
+    }
   }
-  
-  // TEMPORAL: Cambiar a callback para debug
+
+  // MANTENER: Métodos de debug temporales
   enableMarkingDebug(data) {
     console.log('🔧 DEBUG: Probando enableMarking con callback:', data);
     return this._emit('enableMarking', data, true);
@@ -205,7 +351,7 @@ class GameWebSocket {
 
   // --- GESTIÓN DE EVENTOS Y CONEXIÓN ---
   async ensureConnection() {
-    if (!this.socket?.connected) {
+    if (!this.socket || !this.socket.connected) {
       if (!this.isConnecting) await this.connect();
       else await this.connectPromise;
     }
@@ -227,14 +373,49 @@ class GameWebSocket {
     this.eventHandlers.forEach((handler, event) => this.socket.on(event, handler));
   }
   
+  // NUEVO: Método para limpiar datos de sala manualmente
+  clearRoomData() {
+    this.lastRoomData = null;
+    this.reconnectionAttempts = 0;
+    console.log('🧹 Datos de sala limpiados');
+  }
+
+  // NUEVO: Método para verificar si tenemos datos de sala
+  hasRoomData() {
+    return !!this.lastRoomData;
+  }
+
+  // NUEVO: Método para obtener datos de sala (solo lectura)
+  getRoomData() {
+    return this.lastRoomData ? { ...this.lastRoomData } : null;
+  }
+  
   disconnect() {
     if (this.socket) {
-      this.lastRoomData = null; // NUEVO: Limpiar datos al desconectar manualmente
+      this.clearRoomData(); // MODIFICADO: Usar método centralizado
       this.socket.disconnect();
       this.socket = null;
       this.connectPromise = null;
       this.isConnecting = false;
     }
+  }
+
+  // NUEVO: Método para reconexión manual (útil para UI)
+  async forceReconnect() {
+    console.log('🔄 Forzando reconexión...');
+    this.disconnect();
+    return await this.connect();
+  }
+
+  // NUEVO: Obtener estado de conexión
+  getConnectionState() {
+    return {
+      connected: this.socket ? this.socket.connected : false,
+      connecting: this.isConnecting,
+      hasRoomData: this.hasRoomData(),
+      reconnectionAttempts: this.reconnectionAttempts,
+      socketId: this.socket ? this.socket.id : null
+    };
   }
 }
 
