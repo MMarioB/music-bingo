@@ -122,13 +122,13 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
             console.log('Marking not enabled');
             return;
         }
-        
+
         const player = gameState.connectedPlayers.find(p => p.name === playerName);
         if (!player) {
             console.log('Player not found');
             return;
         }
-        
+
         if (!gameState.playerCorrectStatus[player.id]) {
             console.log('Player not marked as correct');
             return;
@@ -137,27 +137,15 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
         setBoard(prevBoard => {
             const newBoard = [...prevBoard];
             const cell = newBoard[index];
-            
+
             // Permitir marcar/desmarcar celdas de la categoría actual
             if (gameState.currentCategory && cell.name === gameState.currentCategory.name) {
-                
-                // Si ya hay una celda marcada de esta categoría, desmárquela primero
-                // (solo permite una celda marcada por categoría por acierto)
-                const alreadyMarkedIndex = newBoard.findIndex(c => 
-                    c.name === gameState.currentCategory.name && c.marked
-                );
-                
-                if (alreadyMarkedIndex !== -1 && alreadyMarkedIndex !== index) {
-                    // Desmarcar la celda previamente marcada
-                    newBoard[alreadyMarkedIndex] = { 
-                        ...newBoard[alreadyMarkedIndex], 
-                        marked: false 
-                    };
-                }
-                
+
                 // Toggle de la celda clickeada
+                // NOTA: Permitimos múltiples celdas marcadas de la misma categoría
+                // (una por cada acierto). No desmarcamos celdas previamente marcadas.
                 newBoard[index] = { ...cell, marked: !cell.marked };
-                
+
                 if (checkWinner(newBoard)) {
                     console.log('Winner detected, sending to server');
                     gameSocket.declareWinner({ roomCode, playerName })
