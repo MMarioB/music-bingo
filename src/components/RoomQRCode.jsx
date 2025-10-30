@@ -8,8 +8,8 @@ import PropTypes from 'prop-types';
 const RoomQRCode = ({ roomCode }) => {
   const [copied, setCopied] = useState(false);
 
-  // Construir la URL completa para unirse a la sala
-  const joinUrl = `${window.location.origin}/join?room=${roomCode}`;
+  // Construir la URL completa con query param para auto-join
+  const joinUrl = `${window.location.origin}?room=${roomCode}`;
 
   const handleCopyLink = async () => {
     try {
@@ -26,7 +26,7 @@ const RoomQRCode = ({ roomCode }) => {
       try {
         await navigator.share({
           title: 'Music Bingo',
-          text: `¡Únete a mi sala de Music Bingo!`,
+          text: `¡Únete a mi sala de Music Bingo! Código: ${roomCode}`,
           url: joinUrl,
         });
       } catch (error) {
