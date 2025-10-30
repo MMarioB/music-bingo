@@ -25,6 +25,35 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
   const [difficulty, setDifficulty] = useState(initialDifficulty);
   const [connectionError, setConnectionError] = useState(null);
   const [isTokenValid, setIsTokenValid] = useState(true);
+  const [tokenWarning, setTokenWarning] = useState(null);
+
+  // Check Spotify token expiration periodically
+  useEffect(() => {
+    if (!loggedIn || !token) return;
+
+    const checkTokenExpiration = () => {
+      const expirationTime = localStorage.getItem('spotify_token_expiration');
+      if (!expirationTime) return;
+
+      const timeUntilExpiration = parseInt(expirationTime) - Date.now();
+      const minutesUntilExpiration = timeUntilExpiration / 60000;
+
+      if (minutesUntilExpiration < 10 && minutesUntilExpiration > 0) {
+        setTokenWarning(`⚠️ El token de Spotify expirará en ${Math.floor(minutesUntilExpiration)} minutos. Considera finalizar la partida pronto.`);
+      } else if (timeUntilExpiration <= 0) {
+        setConnectionError('❌ Token de Spotify expirado. Por favor, vuelve a iniciar sesión.');
+        setIsTokenValid(false);
+        logout();
+      } else {
+        setTokenWarning(null); // Clear warning if we have more than 10 minutes
+      }
+    };
+
+    checkTokenExpiration();
+    const interval = setInterval(checkTokenExpiration, 60000); // Check every minute
+
+    return () => clearInterval(interval);
+  }, [loggedIn, token, logout]);
 
   useEffect(() => {
     if (!loggedIn || !isTokenValid || !roomCode) {
@@ -89,6 +118,12 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
             (!prevState.currentSong || newGameState.currentSong.uri !== prevState.currentSong.uri)) {
           console.log('🔄 Nueva canción detectada, reseteando predicciones');
           updates.playerPredictions = {};
+        }
+
+        // Resetear playerCorrectStatus cuando empieza una nueva ronda (sin canción actual)
+        if (!newGameState.currentSong && prevState.currentSong) {
+          console.log('🔄 Nueva ronda detectada, reseteando estado de acertantes');
+          updates.playerCorrectStatus = {};
         }
 
         return updates;
@@ -317,6 +352,7 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
     isLoading,
     connectionError,
     isTokenValid,
+    tokenWarning,
     loggedIn,
     login,
     logout,

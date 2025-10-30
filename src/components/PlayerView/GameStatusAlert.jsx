@@ -14,7 +14,7 @@ const alertConfig = {
 };
 
 const getAlertInfo = ({ gameState, playerName }) => {
-  const { gameStep, isMarkingEnabled, playerCorrectStatus, currentCategory, currentSong, winners, connectionError, hasMarkedInCurrentRound } = gameState;
+  const { gameStep, isMarkingEnabled, playerCorrectStatus, currentCategory, currentSong, winners, connectionError, hasMarkedInCurrentRound, markingJustDisabled } = gameState;
 
   // Prioridad 1: Errores de conexión
   if (connectionError) return { type: 'error', message: `❌ ${connectionError}` };
@@ -38,6 +38,10 @@ const getAlertInfo = ({ gameState, playerName }) => {
         }
         return { type: 'success', message: '✅ ¡Has acertado! Espera a que el Game Master seleccione una categoría para marcar.' };
       } else {
+        // Detectar si se acaba de deshabilitar el marcado
+        if (markingJustDisabled) {
+          return { type: 'info', message: '✅ Marcado deshabilitado. Preparando siguiente ronda...' };
+        }
         return { type: 'waiting', message: '⏳ ¡Has acertado! Espera a que el Game Master habilite el marcado.' };
       }
     } else {
