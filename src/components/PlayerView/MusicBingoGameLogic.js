@@ -31,8 +31,32 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
     const [myPredictions, setMyPredictions] = useState([]);
     const [hasMarkedInCurrentRound, setHasMarkedInCurrentRound] = useState(false);
     const [markingJustDisabled, setMarkingJustDisabled] = useState(false);
+    const [serverWaking, setServerWaking] = useState(false);
     const boardGenerated = useRef(false);
     const previousMarkingEnabled = useRef(false);
+
+    // Listen for server waking events
+    useEffect(() => {
+        const handleServerWaking = (event) => {
+            console.log('🔔 Player recibió serverWaking event');
+            setServerWaking(true);
+            setError(event.detail?.message || '⏳ El servidor está despertando...');
+        };
+
+        const handleServerAwake = () => {
+            console.log('🔔 Player recibió serverAwake event');
+            setServerWaking(false);
+            setError(null);
+        };
+
+        window.addEventListener('serverWaking', handleServerWaking);
+        window.addEventListener('serverAwake', handleServerAwake);
+
+        return () => {
+            window.removeEventListener('serverWaking', handleServerWaking);
+            window.removeEventListener('serverAwake', handleServerAwake);
+        };
+    }, []);
 
     const validateLine = useCallback((line) => {
         const categoryCounts = {};
@@ -232,6 +256,7 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
         ...gameState,
         myPredictions,
         error,
+        serverWaking,
         setError,
         handleCellClick,
         handlePrediction,

@@ -19,11 +19,12 @@ const MusicBingoGame = ({ playerName, roomCode, difficulty }) => {
 
   useEffect(() => {
     let timer;
-    if (logic.error) {
+    // No auto-limpiar el error si el servidor está despertando
+    if (logic.error && !logic.serverWaking) {
       timer = setTimeout(() => logic.setError(null), 5000);
     }
     return () => clearTimeout(timer);
-  }, [logic.error, logic.setError]);
+  }, [logic.error, logic.serverWaking, logic.setError]);
 
   const renderGameOver = () => (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-50">

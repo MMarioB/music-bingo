@@ -11,13 +11,18 @@ const alertConfig = {
   waiting: { className: "bg-purple-500/20 border-purple-400/50 text-purple-300", Icon: Clock },
   marked: { className: "bg-emerald-500/20 border-emerald-400/50 text-emerald-300", Icon: CheckCircle },
   pending: { className: "bg-orange-500/20 border-orange-400/50 text-orange-300", Icon: Target },
+  serverWaking: { className: "bg-cyan-500/20 border-cyan-500/50 text-cyan-300", Icon: InfoIcon },
 };
 
 const getAlertInfo = ({ gameState, playerName }) => {
-  const { gameStep, isMarkingEnabled, playerCorrectStatus, currentCategory, currentSong, winners, connectionError, hasMarkedInCurrentRound, markingJustDisabled } = gameState;
+  const { gameStep, isMarkingEnabled, playerCorrectStatus, currentCategory, currentSong, winners, connectionError, hasMarkedInCurrentRound, markingJustDisabled, serverWaking, error } = gameState;
 
-  // Prioridad 1: Errores de conexión
+  // Prioridad 1: Servidor despertando (mensaje especial cyan)
+  if (serverWaking && error) return { type: 'serverWaking', message: error };
+
+  // Prioridad 2: Errores de conexión
   if (connectionError) return { type: 'error', message: `❌ ${connectionError}` };
+  if (error) return { type: 'error', message: `❌ ${error}` };
 
   const player = gameState.connectedPlayers.find(p => p.name === playerName);
   const isWinner = winners.some(w => w.id === player?.id);

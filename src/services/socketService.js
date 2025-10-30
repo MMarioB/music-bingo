@@ -9,6 +9,8 @@ class GameWebSocket {
     this.lastRoomData = null;
     this.reconnectionAttempts = 0; // NUEVO: Contador de intentos
     this.maxReconnectionAttempts = 3; // NUEVO: Máximo de intentos
+    this.serverWaking = false; // NUEVO: Flag para servidor despertando
+    this.connectionStartTime = null; // NUEVO: Para detectar tiempos largos
   }
 
   connect() {
@@ -46,21 +48,42 @@ class GameWebSocket {
     }
 
     this.isConnecting = true;
+    this.connectionStartTime = Date.now(); // NUEVO: Registrar inicio de conexión
 
     this.connectPromise = new Promise((resolve, reject) => {
       console.log('🔌 Intentando conectar al servidor...');
-      
+
+      // NUEVO: Detectar si tarda más de 3 segundos (servidor probablemente dormido)
+      const wakingCheckTimer = setTimeout(() => {
+        if (this.isConnecting && !this.serverWaking) {
+          this.serverWaking = true;
+          console.log('⏳ Servidor parece estar dormido, despertando...');
+          this._notifyServerWaking();
+        }
+      }, 3000);
+
       this.socket = io(import.meta.env.VITE_WS_URL, {
         reconnection: true,
         reconnectionAttempts: 5,
         reconnectionDelay: 1000,
-        timeout: 10000,
+        timeout: 30000, // MODIFICADO: Aumentar timeout a 30s para servidor dormido
         transports: ['websocket', 'polling'],
         forceNew: true,
       });
 
       this.socket.on('connect', async () => {
-        console.log('✅ Conectado exitosamente al servidor. ID:', this.socket.id);
+        clearTimeout(wakingCheckTimer); // NUEVO: Limpiar timer
+
+        const connectionTime = Date.now() - this.connectionStartTime;
+        console.log(`✅ Conectado exitosamente al servidor. ID: ${this.socket.id} (${connectionTime}ms)`);
+
+        // NUEVO: Si estaba despertando, notificar que ya despertó
+        if (this.serverWaking) {
+          console.log('🎉 Servidor ha despertado exitosamente');
+          this._notifyServerAwake();
+          this.serverWaking = false;
+        }
+
         this.isConnecting = false;
         this.reconnectionAttempts = 0; // NUEVO: Reset contador
         this.restoreEventHandlers();
@@ -207,11 +230,29 @@ class GameWebSocket {
     console.log('🔔 Mostrar: Desconectado del servidor');
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('serverDisconnect'));
-      
+
       // Opcional: Redirigir automáticamente
       setTimeout(() => {
         window.location.href = '/';
       }, 2000);
+    }
+  }
+
+  // NUEVO: Notificar que el servidor está despertando
+  _notifyServerWaking() {
+    console.log('🔔 Mostrar: Servidor despertando...');
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('serverWaking', {
+        detail: { message: '⏳ El servidor está despertando, esto puede tomar unos segundos...' }
+      }));
+    }
+  }
+
+  // NUEVO: Notificar que el servidor ha despertado
+  _notifyServerAwake() {
+    console.log('🔔 Servidor despierto');
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('serverAwake'));
     }
   }
   
@@ -448,6 +489,7 @@ class GameWebSocket {
     return {
       connected: this.socket ? this.socket.connected : false,
       connecting: this.isConnecting,
+      serverWaking: this.serverWaking, // NUEVO: Indicar si servidor está despertando
       hasRoomData: this.hasRoomData(),
       reconnectionAttempts: this.reconnectionAttempts,
       socketId: this.socket ? this.socket.id : null
