@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { gameSocket } from '../../services/socketService';
 import { useGameSounds } from '../../hooks/useGameSounds';
+import { useConfetti } from '../../hooks/useConfetti';
 import { BOARD_SIZE, MIN_DIFFERENT_CATEGORIES, CATEGORIES_A, CATEGORIES_B } from '../Wheel/constants';
 
 const generateValidBoard = (difficulty) => {
@@ -36,8 +37,9 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
     const boardGenerated = useRef(false);
     const previousMarkingEnabled = useRef(false);
 
-    // Hook de sonidos
+    // Hooks de sonidos y confetti
     const sounds = useGameSounds();
+    const confetti = useConfetti();
 
     // Listen for server waking events
     useEffect(() => {
@@ -145,10 +147,11 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
         const handlePlayerMarked = (data) => {
             console.log('Player marked correct:', data);
 
-            // Tocar sonido de éxito si este jugador fue marcado como correcto
+            // Tocar sonido de éxito y confetti si este jugador fue marcado como correcto
             const currentPlayer = gameState.connectedPlayers.find(p => p.name === playerName);
             if (currentPlayer && data.playerId === currentPlayer.id && data.correct) {
                 sounds.playSuccess();
+                confetti.fireSuccessConfetti();
             }
 
             setGameState(prev => ({
@@ -208,6 +211,7 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
             if (previousSongRef.current !== null) {
                 // No es la primera canción, es una nueva ronda
                 sounds.playNewRound();
+                confetti.fireNewRoundConfetti();
             }
         }
         previousSongRef.current = gameState.currentSong;
@@ -270,6 +274,7 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
                 if (checkWinner(newBoard)) {
                     console.log('Winner detected, sending to server');
                     sounds.playBingo(); // ¡BINGO!
+                    confetti.fireBingoConfetti(); // 🎉 Confetti épico!
                     gameSocket.declareWinner({ roomCode, playerName })
                         .then(response => {
                             if (response && response.success === false) {

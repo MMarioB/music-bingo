@@ -46,12 +46,35 @@ const BingoBoard = ({ board, currentCategory, canMark, onCellClick }) => {
                       : 'cursor-default border-white/20'
                   }
                   ${cell.marked ? 'scale-95 shadow-inner' : 'shadow hover:shadow-md'}
-                  ${isCurrentCategory && !cell.marked ? 'animate-pulse' : ''}
                 `}
                 onClick={() => handleCellClick(index, cell)}
                 disabled={!isMarkable}
                 aria-label={`Casilla ${cell.name} ${cell.marked ? '(marcada)' : ''}`}
                 title={`${cell.name}${isCurrentCategory ? ' - Categoría actual' : ''}${cell.marked ? ' ✓' : ''}`}
+                // Animaciones mejoradas
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{
+                  scale: 1,
+                  opacity: 1,
+                  ...(isCurrentCategory && !cell.marked && canMark && {
+                    scale: [1, 1.05, 1],
+                    boxShadow: [
+                      '0 0 0px rgba(168, 85, 247, 0)',
+                      '0 0 20px rgba(168, 85, 247, 0.5)',
+                      '0 0 0px rgba(168, 85, 247, 0)'
+                    ],
+                  })
+                }}
+                transition={{
+                  scale: { duration: 0.3, delay: index * 0.02 },
+                  opacity: { duration: 0.3, delay: index * 0.02 },
+                  ...(isCurrentCategory && !cell.marked && canMark && {
+                    repeat: Infinity,
+                    duration: 2,
+                  })
+                }}
+                whileHover={isMarkable ? { scale: 1.1, rotate: [0, -2, 2, 0] } : {}}
+                whileTap={isMarkable ? { scale: 0.95 } : {}}
               >
                 {/* Indicador visual de categoría actual */}
                 {isCurrentCategory && !cell.marked && canMark && (
@@ -62,12 +85,23 @@ const BingoBoard = ({ board, currentCategory, canMark, onCellClick }) => {
 
                 {/* Checkmark cuando está marcada */}
                 {cell.marked && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-black/20 backdrop-blur-sm rounded-lg">
-                    <Check
-                      className="text-green-400 w-6 md:w-10 h-6 md:h-10"
-                      style={{ filter: 'drop-shadow(0 0 8px rgb(74 222 128 / 0.5))' }}
-                    />
-                  </div>
+                  <motion.div
+                    className="absolute inset-0 flex items-center justify-center bg-black/20 backdrop-blur-sm rounded-lg"
+                    initial={{ scale: 0, rotate: -180 }}
+                    animate={{ scale: 1, rotate: 0 }}
+                    transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+                  >
+                    <motion.div
+                      initial={{ scale: 0 }}
+                      animate={{ scale: [1, 1.3, 1] }}
+                      transition={{ duration: 0.5 }}
+                    >
+                      <Check
+                        className="text-green-400 w-6 md:w-10 h-6 md:h-10"
+                        style={{ filter: 'drop-shadow(0 0 8px rgb(74 222 128 / 0.5))' }}
+                      />
+                    </motion.div>
+                  </motion.div>
                 )}
               </motion.button>
             );
