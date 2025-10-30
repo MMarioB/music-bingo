@@ -143,8 +143,13 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
 
       // NOTA: No hacemos actualización optimista aquí.
       // El estado se actualizará cuando recibamos el evento 'playerMarkedCorrect' del servidor
-      await gameSocket.markPlayerCorrect({ roomCode, playerId });
-      console.log('✅ Solicitud de marcado enviada al servidor');
+      const response = await gameSocket.markPlayerCorrect({ roomCode, playerId });
+
+      if (response && response.error) {
+        throw new Error(response.error);
+      }
+
+      console.log('✅ Solicitud de marcado confirmada por el servidor');
 
     } catch (error) {
       console.error('Error al marcar jugador:', error);

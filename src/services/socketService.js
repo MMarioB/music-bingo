@@ -247,14 +247,15 @@ class GameWebSocket {
     return this._emit('startSong', data, true); 
   }
   
-  declareWinner(data) { 
-    return this._emit('declareWinner', data, true); 
+  declareWinner(data) {
+    return this._emit('declareWinner', data, true);
+  }
+
+  markPlayerCorrect(data) {
+    return this._emit('markPlayerCorrect', data, true);
   }
 
   // --- MÉTODOS FIRE-AND-FORGET (no esperan respuesta) ---
-  async markPlayerCorrect(data) {
-    await this._emit('markPlayerCorrect', data, false);
-  }
   
   // MODIFICADO: Cambiar a callback para detectar errores de "Sala no encontrada"
   async enableMarking(data) {
