@@ -26,6 +26,30 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
   const [connectionError, setConnectionError] = useState(null);
   const [isTokenValid, setIsTokenValid] = useState(true);
   const [tokenWarning, setTokenWarning] = useState(null);
+  const [serverWaking, setServerWaking] = useState(false);
+
+  // Listen for server waking events
+  useEffect(() => {
+    const handleServerWaking = (event) => {
+      console.log('🔔 GameMaster recibió serverWaking event');
+      setServerWaking(true);
+      setConnectionError(event.detail?.message || '⏳ El servidor está despertando...');
+    };
+
+    const handleServerAwake = () => {
+      console.log('🔔 GameMaster recibió serverAwake event');
+      setServerWaking(false);
+      setConnectionError(null);
+    };
+
+    window.addEventListener('serverWaking', handleServerWaking);
+    window.addEventListener('serverAwake', handleServerAwake);
+
+    return () => {
+      window.removeEventListener('serverWaking', handleServerWaking);
+      window.removeEventListener('serverAwake', handleServerAwake);
+    };
+  }, []);
 
   // Check Spotify token expiration periodically
   useEffect(() => {
@@ -353,6 +377,7 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
     connectionError,
     isTokenValid,
     tokenWarning,
+    serverWaking,
     loggedIn,
     login,
     logout,
