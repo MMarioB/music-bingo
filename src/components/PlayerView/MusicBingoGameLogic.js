@@ -30,6 +30,7 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
     const [error, setError] = useState(null);
     const [myPredictions, setMyPredictions] = useState([]);
     const [hasMarkedInCurrentRound, setHasMarkedInCurrentRound] = useState(false);
+    const [markingJustDisabled, setMarkingJustDisabled] = useState(false);
     const boardGenerated = useRef(false);
     const previousMarkingEnabled = useRef(false);
 
@@ -68,11 +69,23 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
 
         const handleGameStateUpdate = (serverState) => {
             console.log('PLAYER VIEW recibió gameStateUpdate:', serverState);
-            // Si la nueva ronda empieza, limpiamos las predicciones locales.
-            if (!serverState.currentCategory && gameState.currentCategory) {
-                setMyPredictions([]);
-            }
-            setGameState(prevState => ({ ...prevState, ...serverState }));
+
+            setGameState(prevState => {
+                const updates = { ...prevState, ...serverState };
+
+                // Si la nueva ronda empieza, limpiamos las predicciones locales
+                if (!serverState.currentCategory && prevState.currentCategory) {
+                    setMyPredictions([]);
+                }
+
+                // Resetear playerCorrectStatus cuando empieza una nueva ronda (sin canción actual)
+                if (!serverState.currentSong && prevState.currentSong) {
+                    console.log('🔄 Nueva ronda detectada, reseteando estado de acertantes');
+                    updates.playerCorrectStatus = {};
+                }
+
+                return updates;
+            });
         };
 
         const handleError = (err) => {
@@ -89,6 +102,9 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
         const handleMarkingDisabled = () => {
             console.log('Marking disabled');
             setGameState(prev => ({ ...prev, isMarkingEnabled: false }));
+            setMarkingJustDisabled(true);
+            // Resetear el flag después de 3 segundos
+            setTimeout(() => setMarkingJustDisabled(false), 3000);
         };
 
         const handlePlayerMarked = (data) => {
@@ -220,5 +236,6 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
         handleCellClick,
         handlePrediction,
         hasMarkedInCurrentRound,
+        markingJustDisabled,
     };
 };
