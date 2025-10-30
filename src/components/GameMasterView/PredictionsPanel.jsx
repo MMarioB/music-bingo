@@ -11,12 +11,11 @@ const PredictionsPanel = ({
     const [isExpanded, setIsExpanded] = useState(false);
 
     // Convertir las predicciones del objeto a array
-    const predictionsList = Object.entries(predictions).reduce((acc, [playerName, playerPredictions]) => {
-        return [...acc, ...playerPredictions.map(pred => ({
-            player: playerName,
-            prediction: pred
-        }))];
-    }, []);
+    // Ahora cada jugador tiene solo su ÚLTIMA predicción (string), no un array
+    const predictionsList = Object.entries(predictions || {}).map(([playerName, prediction]) => ({
+        player: playerName,
+        prediction: prediction
+    }));
 
     // Crear lista de resultados cuando la canción está revelada
     const resultsList = currentSong?.revealed ? predictionsList.map(pred => ({
