@@ -99,13 +99,40 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
       setConnectionError(error.message || 'Error desconocido');
     };
 
+    const handlePlayerMarked = (data) => {
+      console.log('🎯 GameMaster recibió playerMarkedCorrect:', data);
+      setGameState(prev => ({
+        ...prev,
+        playerCorrectStatus: {
+          ...prev.playerCorrectStatus,
+          [data.playerId]: data.correct
+        }
+      }));
+    };
+
+    const handleMarkingEnabled = () => {
+      console.log('✅ GameMaster recibió markingEnabled');
+      setGameState(prev => ({ ...prev, isMarkingEnabled: true }));
+    };
+
+    const handleMarkingDisabled = () => {
+      console.log('❌ GameMaster recibió markingDisabled');
+      setGameState(prev => ({ ...prev, isMarkingEnabled: false }));
+    };
+
     gameSocket.on('gameStateUpdate', handleGameStateUpdate);
     gameSocket.on('playerPrediction', handlePlayerPrediction);
+    gameSocket.on('playerMarkedCorrect', handlePlayerMarked);
+    gameSocket.on('markingEnabled', handleMarkingEnabled);
+    gameSocket.on('markingDisabled', handleMarkingDisabled);
     gameSocket.on('error', handleError);
 
     return () => {
       gameSocket.off('gameStateUpdate', handleGameStateUpdate);
       gameSocket.off('playerPrediction', handlePlayerPrediction);
+      gameSocket.off('playerMarkedCorrect', handlePlayerMarked);
+      gameSocket.off('markingEnabled', handleMarkingEnabled);
+      gameSocket.off('markingDisabled', handleMarkingDisabled);
       gameSocket.off('error', handleError);
     };
   }, [loggedIn, isTokenValid, roomCode, initialDifficulty, token]);
@@ -114,29 +141,14 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
     try {
       console.log('🎯 Marcando jugador como correcto:', playerId);
 
-      // Actualización optimista del estado local
-      setGameState(prev => ({
-        ...prev,
-        playerCorrectStatus: {
-          ...prev.playerCorrectStatus,
-          [playerId]: !prev.playerCorrectStatus[playerId]
-        }
-      }));
-
+      // NOTA: No hacemos actualización optimista aquí.
+      // El estado se actualizará cuando recibamos el evento 'playerMarkedCorrect' del servidor
       await gameSocket.markPlayerCorrect({ roomCode, playerId });
+      console.log('✅ Solicitud de marcado enviada al servidor');
 
     } catch (error) {
       console.error('Error al marcar jugador:', error);
       setConnectionError('Error al marcar el acierto del jugador');
-
-      // Revertir el cambio optimista si hay error
-      setGameState(prev => ({
-        ...prev,
-        playerCorrectStatus: {
-          ...prev.playerCorrectStatus,
-          [playerId]: !prev.playerCorrectStatus[playerId]
-        }
-      }));
     }
   }, [roomCode]);
 
@@ -245,34 +257,15 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
 
     console.log(`🚀 Cambiando estado de marcado a: ${newMarkingState}`);
 
-    // Actualización optimista del estado local
-    setGameState(prev => ({
-      ...prev,
-      isMarkingEnabled: newMarkingState
-    }));
-
     try {
+      // NOTA: No hacemos actualización optimista aquí.
+      // El estado se actualizará cuando recibamos los eventos 'markingEnabled' o 'markingDisabled' del servidor
       const response = await gameSocket[action]({ roomCode });
       console.log(`✅ Acción '${action}' confirmada:`, response);
-
-      // Verificar que el servidor confirme el estado esperado
-      if (response && response.data && response.data.isMarkingEnabled !== newMarkingState) {
-        console.warn('⚠️ Estado de marcado no coincide, ajustando...');
-        setGameState(prev => ({
-          ...prev,
-          isMarkingEnabled: response.data.isMarkingEnabled
-        }));
-      }
 
     } catch (error) {
       console.error(`🔥 Error en '${action}':`, error);
       setConnectionError(`Error al cambiar el estado de marcado: ${error.message}`);
-
-      // Revertir el cambio optimista si hay error
-      setGameState(prev => ({
-        ...prev,
-        isMarkingEnabled: !newMarkingState
-      }));
     }
   }, [roomCode, gameState.isMarkingEnabled]);
 
