@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { gameSocket } from '../../services/socketService';
+import { useGameSounds } from '../../hooks/useGameSounds';
 import { BOARD_SIZE, MIN_DIFFERENT_CATEGORIES, CATEGORIES_A, CATEGORIES_B } from '../Wheel/constants';
 
 const generateValidBoard = (difficulty) => {
@@ -34,6 +35,9 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
     const [serverWaking, setServerWaking] = useState(false);
     const boardGenerated = useRef(false);
     const previousMarkingEnabled = useRef(false);
+
+    // Hook de sonidos
+    const sounds = useGameSounds();
 
     // Listen for server waking events
     useEffect(() => {
@@ -120,6 +124,13 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
         // Manejadores para eventos específicos del servidor
         const handleMarkingEnabled = () => {
             console.log('Marking enabled');
+
+            // Tocar sonido de notificación si este jugador puede marcar
+            const currentPlayer = gameState.connectedPlayers.find(p => p.name === playerName);
+            if (currentPlayer && gameState.playerCorrectStatus[currentPlayer.id]) {
+                sounds.playNotification();
+            }
+
             setGameState(prev => ({ ...prev, isMarkingEnabled: true }));
         };
 
@@ -133,6 +144,13 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
 
         const handlePlayerMarked = (data) => {
             console.log('Player marked correct:', data);
+
+            // Tocar sonido de éxito si este jugador fue marcado como correcto
+            const currentPlayer = gameState.connectedPlayers.find(p => p.name === playerName);
+            if (currentPlayer && data.playerId === currentPlayer.id && data.correct) {
+                sounds.playSuccess();
+            }
+
             setGameState(prev => ({
                 ...prev,
                 playerCorrectStatus: {
@@ -169,6 +187,32 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
         previousMarkingEnabled.current = gameState.isMarkingEnabled;
     }, [gameState.isMarkingEnabled]);
 
+    // Detectar cuando el jugador NO acierta (sonido de error)
+    useEffect(() => {
+        const currentPlayer = gameState.connectedPlayers.find(p => p.name === playerName);
+        if (!currentPlayer) return;
+
+        // Si la canción está revelada y hay alguien marcado como correcto pero este jugador no
+        const someoneMarkedCorrect = Object.values(gameState.playerCorrectStatus || {}).some(status => status === true);
+        const thisPlayerCorrect = gameState.playerCorrectStatus[currentPlayer.id];
+
+        if (gameState.currentSong?.revealed && someoneMarkedCorrect && !thisPlayerCorrect) {
+            sounds.playError();
+        }
+    }, [gameState.currentSong?.revealed, gameState.playerCorrectStatus, gameState.connectedPlayers, playerName, sounds]);
+
+    // Detectar nueva ronda (nueva canción)
+    const previousSongRef = useRef(null);
+    useEffect(() => {
+        if (gameState.currentSong && gameState.currentSong !== previousSongRef.current) {
+            if (previousSongRef.current !== null) {
+                // No es la primera canción, es una nueva ronda
+                sounds.playNewRound();
+            }
+        }
+        previousSongRef.current = gameState.currentSong;
+    }, [gameState.currentSong, sounds]);
+
     const handleCellClick = useCallback(async (index) => {
         if (!gameState.isMarkingEnabled) {
             console.log('Marking not enabled');
@@ -199,6 +243,7 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
                         // Desmarcar la celda
                         newBoard[index] = { ...cell, marked: false };
                         setHasMarkedInCurrentRound(false);
+                        sounds.playMark(); // Sonido al desmarcar
                         console.log('↩️ Celda desmarcada, flag de ronda reseteado');
                         return newBoard;
                     } else {
@@ -219,10 +264,12 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
 
                 // Marcar que ya usamos nuestra marca para esta ronda
                 setHasMarkedInCurrentRound(true);
+                sounds.playMark(); // Sonido al marcar
                 console.log('✅ Celda marcada, flag de ronda activado');
 
                 if (checkWinner(newBoard)) {
                     console.log('Winner detected, sending to server');
+                    sounds.playBingo(); // ¡BINGO!
                     gameSocket.declareWinner({ roomCode, playerName })
                         .then(response => {
                             if (response && response.success === false) {
