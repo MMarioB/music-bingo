@@ -12,16 +12,40 @@ class GameWebSocket {
   }
 
   connect() {
+    // Si ya está conectado, retornar inmediatamente
     if (this.socket && this.socket.connected) return Promise.resolve();
+
+    // Si ya estamos conectando, esperar a esa promesa
     if (this.isConnecting) return this.connectPromise;
 
-    this.isConnecting = true;
-    
-    if (this.socket) {
-        this.socket.close();
-        this.socket.removeAllListeners();
-        this.socket = null;
+    // Si hay un socket existente pero desconectado, esperar a que se reconecte automáticamente
+    if (this.socket && !this.socket.connected) {
+      console.log('⏳ Socket existe pero está desconectado, esperando reconexión automática...');
+
+      return new Promise((resolve) => {
+        // Esperar al evento 'connect' del socket existente
+        const onConnect = () => {
+          console.log('✅ Reconexión automática exitosa');
+          this.socket.off('connect', onConnect);
+          resolve();
+        };
+
+        this.socket.once('connect', onConnect);
+
+        // Si después de 5 segundos no se reconecta, forzar nueva conexión
+        setTimeout(() => {
+          if (!this.socket.connected) {
+            console.log('⚠️ Reconexión automática falló, creando nueva conexión...');
+            this.socket.off('connect', onConnect);
+            this.socket.close();
+            this.socket = null;
+            this.connect().then(resolve);
+          }
+        }, 5000);
+      });
     }
+
+    this.isConnecting = true;
 
     this.connectPromise = new Promise((resolve, reject) => {
       console.log('🔌 Intentando conectar al servidor...');
@@ -193,16 +217,27 @@ class GameWebSocket {
   
   // MÉTODO ÚNICO: callback para request-response, directo para fire-and-forget
   async _emit(eventName, data, expectResponse = false, timeoutMs = 15000) {
-    await this.ensureConnection();
-    
+    try {
+      await this.ensureConnection();
+    } catch (error) {
+      console.error(`❌ Error al asegurar conexión para ${eventName}:`, error);
+      if (expectResponse) {
+        throw error;
+      } else {
+        // Para fire-and-forget, solo logueamos el error y continuamos
+        console.warn(`⚠️ No se pudo enviar ${eventName} (fire-and-forget), conexión no disponible`);
+        return;
+      }
+    }
+
     console.log(`[EMIT${expectResponse ? '-CALLBACK' : ''}] ${eventName}`, data);
-    
+
     if (expectResponse) {
       return new Promise((resolve, reject) => {
         const timeout = setTimeout(() => {
           reject(new Error(`Timeout: ${eventName}`));
         }, timeoutMs);
-        
+
         this.socket.emit(eventName, data, (response) => {
           clearTimeout(timeout);
           if (response && response.error) {
