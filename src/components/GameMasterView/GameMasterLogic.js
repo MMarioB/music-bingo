@@ -285,10 +285,17 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
 
   const startNewRound = useCallback(async () => {
     try {
-      await gameSocket.restartGame({ roomCode });
+      console.log('🔄 Iniciando nueva ronda...');
+      const response = await gameSocket.restartGame({ roomCode });
+
+      if (response && response.error) {
+        throw new Error(response.error);
+      }
+
+      console.log('✅ Nueva ronda iniciada exitosamente');
     } catch (error) {
-      console.error('Error al iniciar nueva ronda:', error);
-      setConnectionError('Error al iniciar nueva ronda');
+      console.error('❌ Error al iniciar nueva ronda:', error);
+      setConnectionError(`Error al iniciar nueva ronda: ${error.message}`);
     }
   }, [roomCode]);
 
