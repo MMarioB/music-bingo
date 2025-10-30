@@ -73,15 +73,26 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
       console.log('🎮 GameMaster recibió gameStateUpdate:', newGameState);
 
       // CRÍTICO: Actualizar TODO el estado que viene del servidor
-      setGameState(prevState => ({
-        ...prevState,
-        ...newGameState,
-        // Asegurar que estos campos críticos se actualicen
-        isMarkingEnabled: newGameState.isMarkingEnabled !== undefined
-          ? newGameState.isMarkingEnabled
-          : prevState.isMarkingEnabled,
-        playerCorrectStatus: newGameState.playerCorrectStatus || prevState.playerCorrectStatus,
-      }));
+      setGameState(prevState => {
+        const updates = {
+          ...prevState,
+          ...newGameState,
+          // Asegurar que estos campos críticos se actualicen
+          isMarkingEnabled: newGameState.isMarkingEnabled !== undefined
+            ? newGameState.isMarkingEnabled
+            : prevState.isMarkingEnabled,
+          playerCorrectStatus: newGameState.playerCorrectStatus || prevState.playerCorrectStatus,
+        };
+
+        // Resetear predicciones cuando empieza una nueva canción
+        if (newGameState.currentSong &&
+            (!prevState.currentSong || newGameState.currentSong.uri !== prevState.currentSong.uri)) {
+          console.log('🔄 Nueva canción detectada, reseteando predicciones');
+          updates.playerPredictions = {};
+        }
+
+        return updates;
+      });
     };
 
     const handlePlayerPrediction = ({ playerName, prediction }) => {
@@ -90,7 +101,7 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
         ...prev,
         playerPredictions: {
           ...prev.playerPredictions,
-          [playerName]: [...(prev.playerPredictions[playerName] || []), prediction]
+          [playerName]: prediction  // Solo la última predicción, no un array
         }
       }));
     };
