@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import MusicBingoGame from "../components/PlayerView/MusicBingoGame";
 import GameMaster from "../components/GameMasterView/GameMaster";
 import GameRoom from "../components/GameRoom";
@@ -19,6 +19,23 @@ function App() {
     difficulty: 'principiante',
     error: null
   });
+
+  // Detectar código de sala en URL al cargar
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const roomFromUrl = urlParams.get('room');
+
+    if (roomFromUrl) {
+      console.log('🔗 Código de sala detectado en URL:', roomFromUrl);
+      // Auto-seleccionar jugador y pre-rellenar código
+      setGameState(prev => ({
+        ...prev,
+        selectedRole: 'player',
+        roomCode: roomFromUrl.toUpperCase(),
+        phase: 'name-input',
+      }));
+    }
+  }, []);
 
   const handleError = useCallback((errorMessage) => {
     setGameState(prev => ({
@@ -127,6 +144,12 @@ function App() {
         <h2 className="text-2xl font-bold text-center text-white mb-6">
           {gameState.selectedRole === 'master' ? 'Crear sala' : 'Unirse a sala'}
         </h2>
+        {gameState.selectedRole === 'player' && gameState.roomCode && (
+          <div className="mb-4 p-3 bg-purple-500/20 border border-purple-400/50 rounded-lg text-center">
+            <p className="text-purple-200 text-sm mb-1">Sala detectada</p>
+            <p className="text-purple-300 font-bold text-xl tracking-wider">{gameState.roomCode}</p>
+          </div>
+        )}
         <Input
           type="text"
           placeholder="Tu nombre"
