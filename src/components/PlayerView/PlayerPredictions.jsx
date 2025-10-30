@@ -7,7 +7,7 @@ import { Send, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 // El componente ahora es más "tonto" y recibe menos props.
-const PlayerPredictions = ({ gameState, onSubmitPrediction }) => {
+const PlayerPredictions = ({ gameState, onSubmitPrediction, myPredictions = [] }) => {
   const [prediction, setPrediction] = useState('');
   const [error, setError] = useState('');
 
@@ -39,9 +39,34 @@ const PlayerPredictions = ({ gameState, onSubmitPrediction }) => {
 
   return (
     <div className="relative bottom-4 sm:bottom-6 right-4 sm:right-6 flex flex-col items-end gap-3 z-40 mb-20">
-      {/* La lista de predicciones no necesita estar en el gameState, puede ser local */}
-      {/* (Se podría añadir al gameState si se quiere persistencia entre sesiones) */}
-      
+      {/* Mostrar mis predicciones */}
+      {myPredictions.length > 0 && gameState.songPlaying && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-black/60 backdrop-blur-sm border border-purple-500/30 rounded-lg p-3 max-w-xs"
+        >
+          <h3 className="text-xs font-semibold text-purple-300 mb-2">Tus predicciones:</h3>
+          <div className="space-y-1 max-h-32 overflow-y-auto">
+            {myPredictions.map((pred, index) => (
+              <div
+                key={index}
+                className={`text-sm px-2 py-1 rounded ${
+                  index === myPredictions.length - 1
+                    ? 'bg-purple-500/30 text-purple-200 font-medium'
+                    : 'bg-white/5 text-white/60'
+                }`}
+              >
+                {pred}
+                {index === myPredictions.length - 1 && (
+                  <span className="text-xs ml-2 text-purple-400">(última)</span>
+                )}
+              </div>
+            ))}
+          </div>
+        </motion.div>
+      )}
+
       <AnimatePresence>
         {gameState.songPlaying && (
           <motion.form
@@ -91,6 +116,7 @@ PlayerPredictions.propTypes = {
   // Ahora solo necesita el estado del juego y la función de submit
   gameState: PropTypes.object.isRequired,
   onSubmitPrediction: PropTypes.func.isRequired,
+  myPredictions: PropTypes.array,
 };
 
 export default PlayerPredictions;
