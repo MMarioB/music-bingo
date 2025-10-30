@@ -381,8 +381,8 @@ class GameWebSocket {
     await this._emit('gameOver', data, false);
   }
 
-  async restartGame(data) {
-    await this._emit('restartGame', data, false);
+  restartGame(data) {
+    return this._emit('restartGame', data, true, 10000);
   }
 
   // --- GESTIÓN DE EVENTOS Y CONEXIÓN ---
