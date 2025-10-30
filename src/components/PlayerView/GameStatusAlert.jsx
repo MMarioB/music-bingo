@@ -38,12 +38,17 @@ const getAlertInfo = ({ gameState, playerName }) => {
         }
         return { type: 'success', message: '✅ ¡Has acertado! Espera a que el Game Master seleccione una categoría para marcar.' };
       } else {
-        return { type: 'waiting', message: '⏳ ¡Has acertado! Espera a que el Game Master te marque como correcto y habilite el marcado.' };
+        return { type: 'waiting', message: '⏳ ¡Has acertado! Espera a que el Game Master habilite el marcado.' };
       }
     } else {
-      if (currentSong?.revealed) {
+      // Verificar si el Game Master ya empezó a revisar (marcó a alguien o habilitó el marcado)
+      const gameMasterHasStartedReview = isMarkingEnabled || Object.values(playerCorrectStatus || {}).some(status => status === true);
+
+      if (currentSong?.revealed && gameMasterHasStartedReview) {
+        // Solo mostrar error si el GM ya empezó a marcar a la gente
         return { type: 'error', message: '❌ No has acertado esta vez. ¡Sigue intentando en la próxima ronda!' };
-      } else {
+      } else if (currentSong?.revealed) {
+        // Canción revelada pero GM aún no ha revisado → todos esperan
         return { type: 'pending', message: '🎵 Canción revelada. Espera a que el Game Master revise las predicciones...' };
       }
     }
