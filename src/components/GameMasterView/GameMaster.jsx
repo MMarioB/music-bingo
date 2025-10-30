@@ -7,6 +7,7 @@ import { ExternalLinkIcon, MusicIcon, CalendarIcon, RefreshCwIcon, AlertCircle, 
 import CategoryWheel from '../Wheel/CategoryWheel';
 import PredictionsPanel from './PredictionsPanel';
 import RoomQRCode from '../RoomQRCode';
+import SongHistory from '../SongHistory';
 import GameLayout from '../GameLayout';
 import PropTypes from 'prop-types';
 import { useGameMasterLogic } from './GameMasterLogic';
@@ -22,6 +23,7 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
     connectionError,
     tokenWarning,
     serverWaking,
+    songHistory,
     isMarkingEnabled,
     playerPredictions,
     handlePlayerCorrectToggle,
@@ -140,6 +142,7 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
       {gameOver && <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-50"><div className="bg-black/90 border border-purple-500/50 rounded-lg p-6 max-w-lg w-full"><h2 className="text-2xl font-bold text-white text-center mb-6 flex items-center justify-center"><Trophy className="h-8 w-8 text-yellow-400 mr-3" />¡Juego Finalizado!</h2><div className="mb-6"><h3 className="text-lg font-semibold text-white mb-3">{winners.length > 1 ? 'Ganadores:' : 'Ganador:'}</h3><div className="space-y-2">{winners.map(winner => (<div key={winner.id} className="bg-purple-500/20 border border-purple-500/50 rounded-lg p-3 flex items-center"><Trophy className="h-5 w-5 text-yellow-400 mr-2" /><span className="text-white font-medium">{winner.name}</span></div>))}</div></div><Button onClick={startNewRound} className="w-full bg-green-600 hover:bg-green-700 text-white py-3">Iniciar Nuevo Juego</Button></div></div>}
       {renderMainContent()}
       <RoomQRCode roomCode={roomCode} />
+      <SongHistory songs={songHistory} />
       <PredictionsPanel predictions={playerPredictions} />
     </GameLayout>
   );

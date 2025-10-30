@@ -27,6 +27,7 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
   const [isTokenValid, setIsTokenValid] = useState(true);
   const [tokenWarning, setTokenWarning] = useState(null);
   const [serverWaking, setServerWaking] = useState(false);
+  const [songHistory, setSongHistory] = useState([]);
 
   // Listen for server waking events
   useEffect(() => {
@@ -142,6 +143,12 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
             (!prevState.currentSong || newGameState.currentSong.uri !== prevState.currentSong.uri)) {
           console.log('🔄 Nueva canción detectada, reseteando predicciones');
           updates.playerPredictions = {};
+        }
+
+        // Añadir canción al historial cuando se revela por primera vez
+        if (newGameState.currentSong?.revealed && prevState.currentSong && !prevState.currentSong.revealed) {
+          console.log('📜 Canción revelada, añadiendo al historial');
+          setSongHistory(prev => [newGameState.currentSong, ...prev].slice(0, 10)); // Mantener solo últimas 10
         }
 
         // Resetear playerCorrectStatus cuando empieza una nueva ronda (sin canción actual)
@@ -378,6 +385,7 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
     isTokenValid,
     tokenWarning,
     serverWaking,
+    songHistory,
     loggedIn,
     login,
     logout,
