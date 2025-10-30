@@ -146,12 +146,6 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
             return;
         }
 
-        // Verificar si ya marcó una celda en esta ronda
-        if (hasMarkedInCurrentRound) {
-            console.log('⚠️ Ya has marcado una celda en esta ronda de marcado');
-            return;
-        }
-
         setBoard(prevBoard => {
             const newBoard = [...prevBoard];
             const cell = newBoard[index];
@@ -159,9 +153,24 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
             // Permitir marcar/desmarcar celdas de la categoría actual
             if (gameState.currentCategory && cell.name === gameState.currentCategory.name) {
 
-                // Solo permitir marcar, no desmarcar (si ya está marcada, ignorar)
+                // Si la celda ya está marcada, permitir desmarcársela SOLO si ya había marcado en esta ronda
                 if (cell.marked) {
-                    console.log('⚠️ Esta celda ya está marcada');
+                    if (hasMarkedInCurrentRound) {
+                        // Desmarcar la celda
+                        newBoard[index] = { ...cell, marked: false };
+                        setHasMarkedInCurrentRound(false);
+                        console.log('↩️ Celda desmarcada, flag de ronda reseteado');
+                        return newBoard;
+                    } else {
+                        // Esta celda fue marcada en una ronda anterior, no se puede desmarcar
+                        console.log('⚠️ Esta celda fue marcada en una ronda anterior, no se puede desmarcar');
+                        return prevBoard;
+                    }
+                }
+
+                // Si ya marcó una celda en esta ronda, no puede marcar otra
+                if (hasMarkedInCurrentRound) {
+                    console.log('⚠️ Ya has marcado una celda en esta ronda. Desmarca la anterior primero.');
                     return prevBoard;
                 }
 
