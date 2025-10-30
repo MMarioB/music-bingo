@@ -12,10 +12,11 @@ const MusicBingoGame = ({ playerName, roomCode, difficulty }) => {
 
   const canPlayerMark = useMemo(() => {
     if (!logic.isMarkingEnabled) return false;
+    if (logic.hasMarkedInCurrentRound) return false; // Ya marcó una celda en esta ronda
     const currentPlayer = logic.connectedPlayers.find(p => p.name === playerName);
     if (!currentPlayer) return false;
     return !!logic.playerCorrectStatus[currentPlayer.id];
-  }, [logic.isMarkingEnabled, logic.connectedPlayers, logic.playerCorrectStatus, playerName]);
+  }, [logic.isMarkingEnabled, logic.hasMarkedInCurrentRound, logic.connectedPlayers, logic.playerCorrectStatus, playerName]);
 
   useEffect(() => {
     let timer;
