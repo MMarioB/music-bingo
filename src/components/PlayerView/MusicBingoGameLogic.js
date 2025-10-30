@@ -29,7 +29,9 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
     const [board, setBoard] = useState([]);
     const [error, setError] = useState(null);
     const [myPredictions, setMyPredictions] = useState([]);
+    const [hasMarkedInCurrentRound, setHasMarkedInCurrentRound] = useState(false);
     const boardGenerated = useRef(false);
+    const previousMarkingEnabled = useRef(false);
 
     const validateLine = useCallback((line) => {
         const categoryCounts = {};
@@ -117,6 +119,16 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
         };
     }, [difficulty, gameState.currentCategory]);
 
+    // Resetear el flag de marcado cuando se habilita una nueva ronda de marcado
+    useEffect(() => {
+        // Detectar cuando isMarkingEnabled cambia de false a true (nueva ronda de marcado)
+        if (gameState.isMarkingEnabled && !previousMarkingEnabled.current) {
+            console.log('🔄 Nueva ronda de marcado iniciada, reseteando flag');
+            setHasMarkedInCurrentRound(false);
+        }
+        previousMarkingEnabled.current = gameState.isMarkingEnabled;
+    }, [gameState.isMarkingEnabled]);
+
     const handleCellClick = useCallback(async (index) => {
         if (!gameState.isMarkingEnabled) {
             console.log('Marking not enabled');
@@ -134,6 +146,12 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
             return;
         }
 
+        // Verificar si ya marcó una celda en esta ronda
+        if (hasMarkedInCurrentRound) {
+            console.log('⚠️ Ya has marcado una celda en esta ronda de marcado');
+            return;
+        }
+
         setBoard(prevBoard => {
             const newBoard = [...prevBoard];
             const cell = newBoard[index];
@@ -141,10 +159,18 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
             // Permitir marcar/desmarcar celdas de la categoría actual
             if (gameState.currentCategory && cell.name === gameState.currentCategory.name) {
 
-                // Toggle de la celda clickeada
-                // NOTA: Permitimos múltiples celdas marcadas de la misma categoría
-                // (una por cada acierto). No desmarcamos celdas previamente marcadas.
-                newBoard[index] = { ...cell, marked: !cell.marked };
+                // Solo permitir marcar, no desmarcar (si ya está marcada, ignorar)
+                if (cell.marked) {
+                    console.log('⚠️ Esta celda ya está marcada');
+                    return prevBoard;
+                }
+
+                // Marcar la celda
+                newBoard[index] = { ...cell, marked: true };
+
+                // Marcar que ya usamos nuestra marca para esta ronda
+                setHasMarkedInCurrentRound(true);
+                console.log('✅ Celda marcada, flag de ronda activado');
 
                 if (checkWinner(newBoard)) {
                     console.log('Winner detected, sending to server');
@@ -164,7 +190,7 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
             }
             return prevBoard;
         });
-    }, [gameState, checkWinner, roomCode, playerName]);
+    }, [gameState, checkWinner, roomCode, playerName, hasMarkedInCurrentRound]);
 
     const handlePrediction = useCallback(async (prediction) => {
         setMyPredictions(prev => [...prev, prediction]);
@@ -184,5 +210,6 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
         setError,
         handleCellClick,
         handlePrediction,
+        hasMarkedInCurrentRound,
     };
 };
