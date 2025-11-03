@@ -19,7 +19,8 @@ export const useGameRoomLogic = ({ roomCode, playerName, isHost, onStartGame }) 
         setGameState(prevState => ({
             ...prevState,
             players: newGameState.connectedPlayers || prevState.players,
-            difficulty: newGameState.difficulty || prevState.difficulty,
+            // BUGFIX: Usar !== undefined para aceptar cualquier valor truthy del servidor
+            difficulty: newGameState.difficulty !== undefined ? newGameState.difficulty : prevState.difficulty,
             allPlayersReady: (newGameState.connectedPlayers || []).every(p => p.ready || p.isHost),
             gameStep: newGameState.gameStep || prevState.gameStep,
         }));
