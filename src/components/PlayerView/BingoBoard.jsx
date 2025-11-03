@@ -6,6 +6,22 @@ import { Check } from 'lucide-react';
 
 const BingoBoard = ({ board, currentCategory, currentSong, canMark, onCellClick }) => {
 
+  // Log para debug cuando canMark es true
+  if (canMark && board && board.length > 0) {
+    const targetCategory = currentSong?.revealed && currentSong?.category
+      ? currentSong.category
+      : currentCategory?.name;
+
+    console.log('🔍 DEBUG BingoBoard cuando canMark=true:', {
+      canMark,
+      currentCategory,
+      currentSong,
+      targetCategory,
+      casillasEnTablero: board.map(c => c.name),
+      casillasMarcables: board.filter(c => c.name === targetCategory).map(c => c.name)
+    });
+  }
+
   const handleCellClick = (index, cell) => {
     // En modo experto: si la canción está revelada, usar su categoría
     // En modo principiante: usar currentCategory
