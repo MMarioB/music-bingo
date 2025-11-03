@@ -11,10 +11,26 @@ const MusicBingoGame = ({ playerName, roomCode, difficulty }) => {
   const logic = useMusicBingoLogic({ playerName, roomCode, difficulty });
 
   const canPlayerMark = useMemo(() => {
-    if (!logic.isMarkingEnabled) return false;
     const currentPlayer = logic.connectedPlayers.find(p => p.name === playerName);
-    if (!currentPlayer) return false;
-    return !!logic.playerCorrectStatus[currentPlayer.id];
+
+    console.log('🔍 DEBUG canPlayerMark:', {
+      isMarkingEnabled: logic.isMarkingEnabled,
+      currentPlayer: currentPlayer,
+      playerCorrectStatus: logic.playerCorrectStatus,
+      isPlayerMarkedCorrect: currentPlayer ? logic.playerCorrectStatus[currentPlayer.id] : undefined
+    });
+
+    if (!logic.isMarkingEnabled) {
+      console.log('❌ NO puede marcar: isMarkingEnabled = false');
+      return false;
+    }
+    if (!currentPlayer) {
+      console.log('❌ NO puede marcar: jugador no encontrado');
+      return false;
+    }
+    const canMark = !!logic.playerCorrectStatus[currentPlayer.id];
+    console.log(canMark ? '✅ SÍ puede marcar' : '❌ NO puede marcar: no está en playerCorrectStatus');
+    return canMark;
   }, [logic.isMarkingEnabled, logic.connectedPlayers, logic.playerCorrectStatus, playerName]);
 
   useEffect(() => {

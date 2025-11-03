@@ -98,9 +98,14 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
         }
 
         const handleGameStateUpdate = (serverState) => {
-            console.log('PLAYER VIEW recibió gameStateUpdate:', serverState);
+            console.log('📡 PLAYER VIEW recibió gameStateUpdate:', serverState);
 
             setGameState(prevState => {
+                console.log('📊 Estado ANTERIOR:', {
+                    playerCorrectStatus: prevState.playerCorrectStatus,
+                    isMarkingEnabled: prevState.isMarkingEnabled
+                });
+
                 // BUGFIX: Merge inteligente de playerCorrectStatus
                 // No sobrescribir con objeto vacío si el servidor no envía datos
                 const updates = { ...prevState, ...serverState };
@@ -111,12 +116,18 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
                         ...prevState.playerCorrectStatus,
                         ...serverState.playerCorrectStatus
                     };
+                    console.log('🔄 playerCorrectStatus después del MERGE:', updates.playerCorrectStatus);
                 }
 
                 // Si la nueva ronda empieza, limpiamos las predicciones locales
                 if (!serverState.currentCategory && prevState.currentCategory) {
                     setMyPredictions([]);
                 }
+
+                console.log('📊 Estado NUEVO:', {
+                    playerCorrectStatus: updates.playerCorrectStatus,
+                    isMarkingEnabled: updates.isMarkingEnabled
+                });
 
                 return updates;
             });
@@ -129,15 +140,24 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
 
         // Manejadores para eventos específicos del servidor
         const handleMarkingEnabled = () => {
-            console.log('Marking enabled');
+            console.log('🟢 MARKING ENABLED recibido');
 
             // Tocar sonido de notificación si este jugador puede marcar
             const currentPlayer = gameState.connectedPlayers.find(p => p.name === playerName);
+            console.log('🔍 Jugador actual al habilitar marcado:', currentPlayer);
+            console.log('🔍 playerCorrectStatus al habilitar marcado:', gameState.playerCorrectStatus);
+
             if (currentPlayer && gameState.playerCorrectStatus[currentPlayer.id]) {
+                console.log('✅ Este jugador puede marcar, reproduciendo notificación');
                 sounds.playNotification();
+            } else {
+                console.log('❌ Este jugador NO puede marcar');
             }
 
-            setGameState(prev => ({ ...prev, isMarkingEnabled: true }));
+            setGameState(prev => {
+                console.log('📊 Habilitando marcado, estado actual:', prev.playerCorrectStatus);
+                return { ...prev, isMarkingEnabled: true };
+            });
         };
 
         const handleMarkingDisabled = () => {
@@ -149,7 +169,7 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
         };
 
         const handlePlayerMarked = (data) => {
-            console.log('Player marked correct:', data);
+            console.log('🎯 Player marked correct:', data);
 
             // Tocar sonido de éxito y confetti si este jugador fue marcado como correcto
             const currentPlayer = gameState.connectedPlayers.find(p => p.name === playerName);
@@ -158,13 +178,17 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
                 confetti.fireSuccessConfetti();
             }
 
-            setGameState(prev => ({
-                ...prev,
-                playerCorrectStatus: {
+            setGameState(prev => {
+                const newStatus = {
                     ...prev.playerCorrectStatus,
                     [data.playerId]: data.correct
-                }
-            }));
+                };
+                console.log('📊 playerCorrectStatus DESPUÉS de marcar:', newStatus);
+                return {
+                    ...prev,
+                    playerCorrectStatus: newStatus
+                };
+            });
         };
 
         // Registrar todos los event listeners
