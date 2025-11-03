@@ -10,16 +10,23 @@ const BingoBoard = ({ board, currentCategory, canMark, onCellClick }) => {
     console.log('🎯 BingoBoard - Click en celda:', {
       index,
       cellName: cell.name,
+      cellColor: cell.color,
       currentCategory: currentCategory?.name,
+      currentCategoryFull: currentCategory,
       canMark,
-      isRightCategory: cell.name === currentCategory?.name
+      isRightCategory: cell.name === currentCategory?.name,
+      cellMarked: cell.marked
     });
 
     if (canMark && cell.name === currentCategory?.name) {
+      console.log('✅ Marcando celda', index);
       onCellClick(index);
     } else {
       console.log('⚠️ Click ignorado:', {
-        reason: !canMark ? 'No puede marcar' : 'Categoría incorrecta'
+        reason: !canMark ? 'No puede marcar (canMark=false)' : `Categoría incorrecta: celda='${cell.name}' vs current='${currentCategory?.name}'`,
+        canMark,
+        cellName: cell.name,
+        currentCategoryName: currentCategory?.name
       });
     }
   };
