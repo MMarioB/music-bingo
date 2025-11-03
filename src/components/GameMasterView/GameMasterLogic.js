@@ -135,8 +135,16 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
           isMarkingEnabled: newGameState.isMarkingEnabled !== undefined
             ? newGameState.isMarkingEnabled
             : prevState.isMarkingEnabled,
-          playerCorrectStatus: newGameState.playerCorrectStatus || prevState.playerCorrectStatus,
         };
+
+        // BUGFIX: Merge inteligente de playerCorrectStatus
+        // No sobrescribir con objeto vacío, hacer merge para preservar estado local
+        if (newGameState.playerCorrectStatus !== undefined) {
+          updates.playerCorrectStatus = {
+            ...prevState.playerCorrectStatus,
+            ...newGameState.playerCorrectStatus
+          };
+        }
 
         // Resetear predicciones cuando empieza una nueva canción
         if (newGameState.currentSong &&

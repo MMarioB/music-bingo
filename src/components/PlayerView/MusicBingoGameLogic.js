@@ -101,20 +101,22 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
             console.log('PLAYER VIEW recibió gameStateUpdate:', serverState);
 
             setGameState(prevState => {
+                // BUGFIX: Merge inteligente de playerCorrectStatus
+                // No sobrescribir con objeto vacío si el servidor no envía datos
                 const updates = { ...prevState, ...serverState };
+
+                // Si el servidor envía playerCorrectStatus, hacer merge en lugar de reemplazar
+                if (serverState.playerCorrectStatus !== undefined) {
+                    updates.playerCorrectStatus = {
+                        ...prevState.playerCorrectStatus,
+                        ...serverState.playerCorrectStatus
+                    };
+                }
 
                 // Si la nueva ronda empieza, limpiamos las predicciones locales
                 if (!serverState.currentCategory && prevState.currentCategory) {
                     setMyPredictions([]);
                 }
-
-                // BUGFIX: NO resetear playerCorrectStatus automáticamente
-                // El servidor es la fuente de verdad y debe controlar este estado.
-                // Resetear aquí causa una race condition que impide marcar casillas.
-                // if (!serverState.currentSong && prevState.currentSong) {
-                //     console.log('🔄 Nueva ronda detectada, reseteando estado de acertantes');
-                //     updates.playerCorrectStatus = {};
-                // }
 
                 return updates;
             });
