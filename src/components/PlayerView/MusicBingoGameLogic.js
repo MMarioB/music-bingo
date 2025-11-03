@@ -111,20 +111,9 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
                 // No sobrescribir con objeto vacío si el servidor no envía datos
                 const updates = { ...prevState, ...serverState };
 
-                // IMPORTANTE: Resetear playerCorrectStatus cuando hay una NUEVA canción
-                // Detectamos nueva canción por cambio de URI (no por ausencia de canción)
-                if (serverState.currentSong &&
-                    prevState.currentSong &&
-                    serverState.currentSong.uri !== prevState.currentSong.uri) {
-                    console.log('🆕 Nueva canción detectada, reseteando playerCorrectStatus');
-                    updates.playerCorrectStatus = {};
-                }
-
                 // Si el servidor envía playerCorrectStatus, hacer merge en lugar de reemplazar
-                // (pero solo si NO acabamos de resetear por nueva canción)
-                if (serverState.playerCorrectStatus !== undefined &&
-                    !(serverState.currentSong && prevState.currentSong &&
-                      serverState.currentSong.uri !== prevState.currentSong.uri)) {
+                // Esto preserva el estado local mientras acepta actualizaciones del servidor
+                if (serverState.playerCorrectStatus !== undefined) {
                     updates.playerCorrectStatus = {
                         ...prevState.playerCorrectStatus,
                         ...serverState.playerCorrectStatus

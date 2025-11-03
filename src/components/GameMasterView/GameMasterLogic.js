@@ -137,21 +137,16 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
             : prevState.isMarkingEnabled,
         };
 
-        // IMPORTANTE: Resetear playerCorrectStatus y predicciones cuando hay una NUEVA canción
-        // Detectamos nueva canción por cambio de URI
+        // Resetear predicciones cuando empieza una nueva canción
         if (newGameState.currentSong &&
             (!prevState.currentSong || newGameState.currentSong.uri !== prevState.currentSong.uri)) {
-          console.log('🔄 Nueva canción detectada, reseteando predicciones y playerCorrectStatus');
+          console.log('🔄 Nueva canción detectada, reseteando predicciones');
           updates.playerPredictions = {};
-          updates.playerCorrectStatus = {};
         }
 
         // BUGFIX: Merge inteligente de playerCorrectStatus
         // No sobrescribir con objeto vacío, hacer merge para preservar estado local
-        // (pero solo si NO acabamos de resetear por nueva canción)
-        if (newGameState.playerCorrectStatus !== undefined &&
-            !(newGameState.currentSong && (!prevState.currentSong ||
-              newGameState.currentSong.uri !== prevState.currentSong.uri))) {
+        if (newGameState.playerCorrectStatus !== undefined) {
           updates.playerCorrectStatus = {
             ...prevState.playerCorrectStatus,
             ...newGameState.playerCorrectStatus
