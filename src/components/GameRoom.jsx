@@ -8,6 +8,7 @@ import { AlertCircle, Users, CheckCircle, Crown, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import PropTypes from 'prop-types';
 import { useGameRoomLogic } from '../hooks/useGameRoomLogic'; // <-- Importa el nuevo hook
+import RoomQRCode from './RoomQRCode';
 
 const GameRoom = ({ roomCode, playerName, isHost, onStartGame }) => {
   const {
@@ -90,6 +91,10 @@ const GameRoom = ({ roomCode, playerName, isHost, onStartGame }) => {
               </Button>
               {!isGameReadyToStart && (<div className="text-sm text-center space-y-1"><p className="text-yellow-300">{players.length < 2 ? 'Se necesitan al menos 2 jugadores' : 'Esperando que todos estén listos'}</p></div>)}
             </Card>
+          )}
+
+          {isHost && (
+            <RoomQRCode roomCode={roomCode} />
           )}
 
           <div className="bg-black/40 backdrop-blur-lg rounded-xl border border-white/10 overflow-hidden">
