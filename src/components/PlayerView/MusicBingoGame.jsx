@@ -78,6 +78,7 @@ const MusicBingoGame = ({ playerName, roomCode, difficulty }) => {
             board={logic.board}
             canMark={canPlayerMark}
             currentCategory={logic.currentCategory}
+            currentSong={logic.currentSong}
             onCellClick={logic.handleCellClick}
           />
         )}
