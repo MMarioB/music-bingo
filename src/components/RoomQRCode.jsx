@@ -1,7 +1,7 @@
 import { QRCodeSVG } from 'qrcode.react';
 import { Card } from './ui/card';
 import { Button } from './ui/button';
-import { Share2, Copy, Check } from 'lucide-react';
+import { Share2, Copy, Check, MessageCircle, Send } from 'lucide-react';
 import { useState } from 'react';
 import PropTypes from 'prop-types';
 
@@ -37,6 +37,18 @@ const RoomQRCode = ({ roomCode }) => {
     }
   };
 
+  const handleWhatsApp = () => {
+    const message = `🎵 ¡Únete a mi partida de *Music Bingo*! 🎵\n\n🎮 Código: *${roomCode}*\n🔗 Link directo: ${joinUrl}\n\n¡Vamos a ver quién tiene mejor oído musical! 🎶`;
+    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
+    window.open(whatsappUrl, '_blank');
+  };
+
+  const handleTelegram = () => {
+    const message = `🎵 ¡Únete a mi partida de Music Bingo! 🎵\n\n🎮 Código: ${roomCode}\n¡Vamos a ver quién tiene mejor oído musical! 🎶`;
+    const telegramUrl = `https://t.me/share/url?url=${encodeURIComponent(joinUrl)}&text=${encodeURIComponent(message)}`;
+    window.open(telegramUrl, '_blank');
+  };
+
   return (
     <Card className="bg-black/40 border-white/20 p-4">
       <div className="flex flex-col items-center space-y-3">
@@ -59,37 +71,61 @@ const RoomQRCode = ({ roomCode }) => {
         </div>
 
         {/* Botones de compartir */}
-        <div className="flex gap-2 w-full">
-          <Button
-            onClick={handleCopyLink}
-            size="sm"
-            variant="outline"
-            className="flex-1 border-white/20 text-white/80 hover:bg-white/10"
-          >
-            {copied ? (
-              <>
-                <Check className="h-4 w-4 mr-1" />
-                Copiado
-              </>
-            ) : (
-              <>
-                <Copy className="h-4 w-4 mr-1" />
-                Copiar Link
-              </>
-            )}
-          </Button>
-
-          {navigator.share && (
+        <div className="space-y-2 w-full">
+          {/* Fila 1: WhatsApp y Telegram */}
+          <div className="grid grid-cols-2 gap-2">
             <Button
-              onClick={handleShare}
+              onClick={handleWhatsApp}
+              size="sm"
+              className="bg-green-600/80 hover:bg-green-600 border-green-500 text-white"
+            >
+              <MessageCircle className="h-4 w-4 mr-1" />
+              WhatsApp
+            </Button>
+
+            <Button
+              onClick={handleTelegram}
+              size="sm"
+              className="bg-blue-500/80 hover:bg-blue-500 border-blue-400 text-white"
+            >
+              <Send className="h-4 w-4 mr-1" />
+              Telegram
+            </Button>
+          </div>
+
+          {/* Fila 2: Copiar y Compartir */}
+          <div className="flex gap-2">
+            <Button
+              onClick={handleCopyLink}
               size="sm"
               variant="outline"
               className="flex-1 border-white/20 text-white/80 hover:bg-white/10"
             >
-              <Share2 className="h-4 w-4 mr-1" />
-              Compartir
+              {copied ? (
+                <>
+                  <Check className="h-4 w-4 mr-1" />
+                  Copiado
+                </>
+              ) : (
+                <>
+                  <Copy className="h-4 w-4 mr-1" />
+                  Copiar
+                </>
+              )}
             </Button>
-          )}
+
+            {navigator.share && (
+              <Button
+                onClick={handleShare}
+                size="sm"
+                variant="outline"
+                className="flex-1 border-white/20 text-white/80 hover:bg-white/10"
+              >
+                <Share2 className="h-4 w-4 mr-1" />
+                Compartir
+              </Button>
+            )}
+          </div>
         </div>
       </div>
     </Card>
