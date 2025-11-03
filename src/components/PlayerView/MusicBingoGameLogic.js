@@ -93,6 +93,7 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
 
     useEffect(() => {
         if (!boardGenerated.current) {
+            console.log('🎲 Generando tablero INICIAL con difficulty:', difficulty);
             setBoard(generateValidBoard(difficulty));
             boardGenerated.current = true;
         }
@@ -100,9 +101,12 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
 
     // BUGFIX: Regenerar tablero cuando cambie la dificultad ANTES de empezar el juego
     useEffect(() => {
+        console.log('🔍 useEffect regeneración tablero - difficulty:', difficulty, 'gameStep:', gameState.gameStep, 'boardGenerated:', boardGenerated.current);
         if (boardGenerated.current && gameState.gameStep !== 'playing') {
-            console.log('🔄 Dificultad cambiada, regenerando tablero:', difficulty);
+            console.log('🔄 Dificultad cambiada, regenerando tablero con:', difficulty);
             setBoard(generateValidBoard(difficulty));
+        } else if (gameState.gameStep === 'playing') {
+            console.log('⚠️ NO regenerando tablero porque gameStep = playing');
         }
     }, [difficulty, gameState.gameStep]);
 
