@@ -151,11 +151,13 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
           setSongHistory(prev => [newGameState.currentSong, ...prev].slice(0, 10)); // Mantener solo últimas 10
         }
 
-        // Resetear playerCorrectStatus cuando empieza una nueva ronda (sin canción actual)
-        if (!newGameState.currentSong && prevState.currentSong) {
-          console.log('🔄 Nueva ronda detectada, reseteando estado de acertantes');
-          updates.playerCorrectStatus = {};
-        }
+        // BUGFIX: NO resetear playerCorrectStatus automáticamente
+        // El servidor es la fuente de verdad y debe controlar este estado.
+        // Resetear aquí causa una race condition que impide marcar casillas.
+        // if (!newGameState.currentSong && prevState.currentSong) {
+        //   console.log('🔄 Nueva ronda detectada, reseteando estado de acertantes');
+        //   updates.playerCorrectStatus = {};
+        // }
 
         return updates;
       });

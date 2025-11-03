@@ -108,11 +108,13 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
                     setMyPredictions([]);
                 }
 
-                // Resetear playerCorrectStatus cuando empieza una nueva ronda (sin canción actual)
-                if (!serverState.currentSong && prevState.currentSong) {
-                    console.log('🔄 Nueva ronda detectada, reseteando estado de acertantes');
-                    updates.playerCorrectStatus = {};
-                }
+                // BUGFIX: NO resetear playerCorrectStatus automáticamente
+                // El servidor es la fuente de verdad y debe controlar este estado.
+                // Resetear aquí causa una race condition que impide marcar casillas.
+                // if (!serverState.currentSong && prevState.currentSong) {
+                //     console.log('🔄 Nueva ronda detectada, reseteando estado de acertantes');
+                //     updates.playerCorrectStatus = {};
+                // }
 
                 return updates;
             });
