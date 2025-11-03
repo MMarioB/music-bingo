@@ -96,7 +96,17 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
             setBoard(generateValidBoard(difficulty));
             boardGenerated.current = true;
         }
+    }, []); // Solo se ejecuta una vez al montar
 
+    // BUGFIX: Regenerar tablero cuando cambie la dificultad ANTES de empezar el juego
+    useEffect(() => {
+        if (boardGenerated.current && gameState.gameStep !== 'playing') {
+            console.log('🔄 Dificultad cambiada, regenerando tablero:', difficulty);
+            setBoard(generateValidBoard(difficulty));
+        }
+    }, [difficulty, gameState.gameStep]);
+
+    useEffect(() => {
         const handleGameStateUpdate = (serverState) => {
             console.log('📡 PLAYER VIEW recibió gameStateUpdate:', serverState);
 
