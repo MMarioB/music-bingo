@@ -4,29 +4,36 @@ import { Card } from '../ui/card';
 import { motion } from 'framer-motion';
 import { Check } from 'lucide-react';
 
-const BingoBoard = ({ board, currentCategory, canMark, onCellClick }) => {
+const BingoBoard = ({ board, currentCategory, currentSong, canMark, onCellClick }) => {
 
   const handleCellClick = (index, cell) => {
+    // En modo experto: si la canción está revelada, usar su categoría
+    // En modo principiante: usar currentCategory
+    const targetCategory = currentSong?.revealed && currentSong?.category
+      ? currentSong.category
+      : currentCategory?.name;
+
     console.log('🎯 BingoBoard - Click en celda:', {
       index,
       cellName: cell.name,
       cellColor: cell.color,
       currentCategory: currentCategory?.name,
-      currentCategoryFull: currentCategory,
+      currentSong: currentSong,
+      targetCategory,
       canMark,
-      isRightCategory: cell.name === currentCategory?.name,
+      isRightCategory: cell.name === targetCategory,
       cellMarked: cell.marked
     });
 
-    if (canMark && cell.name === currentCategory?.name) {
+    if (canMark && cell.name === targetCategory) {
       console.log('✅ Marcando celda', index);
       onCellClick(index);
     } else {
       console.log('⚠️ Click ignorado:', {
-        reason: !canMark ? 'No puede marcar (canMark=false)' : `Categoría incorrecta: celda='${cell.name}' vs current='${currentCategory?.name}'`,
+        reason: !canMark ? 'No puede marcar (canMark=false)' : `Categoría incorrecta: celda='${cell.name}' vs target='${targetCategory}'`,
         canMark,
         cellName: cell.name,
-        currentCategoryName: currentCategory?.name
+        targetCategory
       });
     }
   };
@@ -36,9 +43,15 @@ const BingoBoard = ({ board, currentCategory, canMark, onCellClick }) => {
       <Card className="bg-black/30 border border-white/20 p-2 md:p-4">
         <div className="grid grid-cols-5 gap-1 md:gap-3">
           {board && board.map((cell, index) => {
+            // En modo experto: si la canción está revelada, usar su categoría
+            // En modo principiante: usar currentCategory
+            const targetCategory = currentSong?.revealed && currentSong?.category
+              ? currentSong.category
+              : currentCategory?.name;
+
             // La lógica de si una celda es "marcable"
-            const isMarkable = canMark && cell.name === currentCategory?.name;
-            const isCurrentCategory = cell.name === currentCategory?.name;
+            const isMarkable = canMark && cell.name === targetCategory;
+            const isCurrentCategory = cell.name === targetCategory;
 
             return (
               <motion.button
@@ -123,6 +136,7 @@ BingoBoard.propTypes = {
   board: PropTypes.array.isRequired,
   canMark: PropTypes.bool.isRequired,
   currentCategory: PropTypes.object,
+  currentSong: PropTypes.object,
   onCellClick: PropTypes.func.isRequired,
 };
 
