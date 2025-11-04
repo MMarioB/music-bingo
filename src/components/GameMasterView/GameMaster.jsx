@@ -118,26 +118,60 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
               {isLoading ? 'Generando...' : selectedCategory ? 'Generar Tarjeta' : 'Selecciona una categoría primero'}
             </Button>
           ) : (
-            <Card className="bg-black/30 border border-white/20 p-4">
-              <div className="space-y-3">
-                {/* Información de la canción */}
-                <div className={`transition-all duration-500 ${currentCard.revealed ? '' : 'blur-md'}`}>
-                  <div className="grid grid-cols-2 gap-3 mb-3">
-                    <div className="col-span-2 text-center">
+            <Card className="bg-black/30 border border-white/20 overflow-hidden">
+              {/* Carátula del álbum con efecto de revelado */}
+              {currentCard.albumImage && (
+                <div className={`relative transition-all duration-500 ${currentCard.revealed ? '' : 'blur-md grayscale'}`}>
+                  <img
+                    src={currentCard.albumImage}
+                    alt={`${currentCard.title} - ${currentCard.artist}`}
+                    className="w-full aspect-square object-cover"
+                  />
+                  {/* Overlay con gradiente */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+
+                  {/* Info superpuesta en la imagen */}
+                  {currentCard.revealed && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="absolute bottom-0 left-0 right-0 p-4"
+                    >
+                      <h2 className="text-xl font-bold text-white drop-shadow-lg mb-1">
+                        {currentCard.title}
+                      </h2>
+                      <div className="flex items-center text-purple-200 drop-shadow-lg">
+                        <MusicIcon className="w-4 h-4 mr-2" />
+                        <span className="text-base">{currentCard.artist}</span>
+                      </div>
+                    </motion.div>
+                  )}
+                </div>
+              )}
+
+              <div className="p-4 space-y-3">
+                {/* Info de la canción (si no hay imagen o cuando no está revelada) */}
+                {(!currentCard.albumImage || !currentCard.revealed) && (
+                  <div className={`transition-all duration-500 ${currentCard.revealed ? '' : 'blur-md'}`}>
+                    <div className="text-center mb-3">
                       <h2 className="text-xl font-bold text-white">{currentCard.title}</h2>
                       <div className="flex justify-center items-center space-x-2 text-purple-300">
                         <MusicIcon className="w-4 h-4" />
                         <span className="text-base">{currentCard.artist}</span>
                       </div>
                     </div>
-                    <div className="bg-white/10 backdrop-blur-sm rounded-lg p-2 flex items-center justify-between">
-                      <CalendarIcon className="w-5 h-5 text-purple-400" />
-                      <span className="text-xl font-bold text-white">{currentCard.year}</span>
-                    </div>
-                    <div className="bg-white/10 backdrop-blur-sm rounded-lg p-2 flex items-center justify-between">
-                      <MusicIcon className="w-5 h-5 text-purple-400" />
-                      <span className="text-sm text-purple-300">{currentCard.musicCategory}</span>
-                    </div>
+                  </div>
+                )}
+
+                {/* Datos adicionales */}
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="bg-white/10 backdrop-blur-sm rounded-lg p-2 flex items-center justify-between">
+                    <CalendarIcon className="w-4 h-4 text-purple-400" />
+                    <span className="text-lg font-bold text-white">{currentCard.year}</span>
+                  </div>
+                  <div className="bg-white/10 backdrop-blur-sm rounded-lg p-2 flex items-center justify-between">
+                    <MusicIcon className="w-4 h-4 text-purple-400" />
+                    <span className="text-sm text-purple-300 truncate">{currentCard.musicCategory}</span>
                   </div>
                 </div>
 
@@ -146,25 +180,29 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
                   <div className="space-y-2">
                     <Button
                       onClick={handleRevealSong}
-                      className="w-full h-10 bg-gradient-to-r from-purple-600/80 to-indigo-600/80 hover:from-purple-600 hover:to-indigo-600 border border-purple-400/50"
+                      className="w-full h-11 bg-gradient-to-r from-purple-600/80 to-indigo-600/80 hover:from-purple-600 hover:to-indigo-600 border border-purple-400/50 text-base font-semibold"
                       style={{ boxShadow: '0 0 15px rgba(168,85,247,0.3)' }}
                     >
-                      <ExternalLinkIcon className="mr-2 h-4 w-4" />
+                      <ExternalLinkIcon className="mr-2 h-5 w-5" />
                       Revelar Canción
                     </Button>
-                    {currentCard.spotifyUrl && (
-                      <Button
-                        variant="outline"
-                        className="w-full h-10 border-purple-400/50 text-purple-300 hover:bg-purple-500/20"
-                        onClick={() => window.open(currentCard.spotifyUrl, '_blank')}
-                      >
-                        <ExternalLinkIcon className="mr-2 h-4 w-4" />
-                        Abrir en Spotify
-                      </Button>
-                    )}
                   </div>
                 ) : (
                   <div className="space-y-2">
+                    {/* Botón de Spotify MÁS PROMINENTE */}
+                    {currentCard.spotifyUrl && (
+                      <Button
+                        className="w-full h-12 bg-green-600 hover:bg-green-700 text-white font-bold text-base border-2 border-green-400/50 shadow-lg"
+                        onClick={() => window.open(currentCard.spotifyUrl, '_blank')}
+                        style={{ boxShadow: '0 0 20px rgba(34,197,94,0.4)' }}
+                      >
+                        <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/>
+                        </svg>
+                        Abrir en Spotify
+                      </Button>
+                    )}
+
                     <Button
                       onClick={handleMarkingToggle}
                       disabled={!Object.values(playerCorrectStatus || {}).some(correct => correct) && !isMarkingEnabled}

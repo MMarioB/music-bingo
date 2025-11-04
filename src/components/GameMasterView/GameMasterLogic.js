@@ -304,6 +304,11 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
         return;
       }
 
+      // Obtener la imagen del álbum (preferir tamaño mediano)
+      const albumImage = randomTrack.album.images && randomTrack.album.images.length > 0
+        ? randomTrack.album.images[1]?.url || randomTrack.album.images[0]?.url
+        : null;
+
       const response2 = await gameSocket.startSong({
         roomCode,
         track: {
@@ -312,7 +317,9 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
           artist: randomTrack.artists[0].name,
           year: parseInt(randomTrack.album.release_date.split('-')[0]),
           musicCategory: randomMusicCategory,
-          spotifyUrl: randomTrack.external_urls.spotify
+          spotifyUrl: randomTrack.external_urls.spotify,
+          albumImage: albumImage,
+          albumName: randomTrack.album.name
         }
       });
 

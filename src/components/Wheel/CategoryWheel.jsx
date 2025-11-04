@@ -38,23 +38,33 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
         setFinalSelectedCategory(null);
         setIsSpinning(true);
 
-        // --- CÁLCULO DE ROTACIÓN BASADO EN LA REF (A PRUEBA DE FALLOS) ---
+        // --- CÁLCULO DE ROTACIÓN CORREGIDO PARA SINCRONIZACIÓN PERFECTA ---
         const finalIndexInWheel = allCategories.findIndex(cat => cat.id === winner.id);
         const randomExtraSpins = 5 + Math.floor(Math.random() * 5);
 
-        // Ángulo objetivo para que el centro del segmento ganador quede arriba.
-        const targetAngle = 360 - (finalIndexInWheel * segmentAngle) - (segmentAngle / 2);
+        // Calcular el ángulo medio del segmento ganador
+        // Los segmentos empiezan en index * segmentAngle
+        const segmentMidAngle = finalIndexInWheel * segmentAngle + (segmentAngle / 2);
 
-        // 1. Leemos el valor actual de la ref. Esta es la verdad absoluta de dónde está la ruleta.
+        // Para que el segmento quede arriba (0°), necesitamos rotar -segmentMidAngle
+        // Esto alinea el centro del segmento con la flecha indicadora
+        const targetAngleOffset = -segmentMidAngle;
+
+        // 1. Leemos el valor actual de la ref
         const currentRotation = rotationRef.current;
-        
-        // 2. Calculamos la nueva rotación.
-        // Reseteamos la vuelta actual y sumamos las nuevas vueltas y el ángulo final.
-        const newRotation = (currentRotation - (currentRotation % 360)) + (360 * randomExtraSpins) + targetAngle;
-        
-        // 3. Actualizamos la ref Y el estado para que la animación se dispare.
+
+        // 2. Calculamos la base (vueltas completas previas)
+        const baseRotation = Math.floor(currentRotation / 360) * 360;
+
+        // 3. Nueva rotación = base + vueltas extra + una vuelta completa + offset del segmento
+        // Sumamos 360 adicional para asegurar que siempre gire hacia adelante
+        const newRotation = baseRotation + (360 * randomExtraSpins) + 360 + targetAngleOffset;
+
+        // 4. Actualizamos la ref Y el estado
         rotationRef.current = newRotation;
         setRotationState(newRotation);
+
+        console.log(`🎯 Ruleta: Segmento ${finalIndexInWheel} (${winner.name}), ángulo: ${segmentMidAngle.toFixed(1)}°, rotación final: ${newRotation.toFixed(1)}°`);
     };
 
     // La función de completar es ahora muy simple, como debe ser.
