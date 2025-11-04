@@ -13,6 +13,8 @@ export const useGameRoomLogic = ({ roomCode, playerName, isHost, onStartGame }) 
 
     // <-- CAMBIO: Usamos useRef para asegurar que la conexión se haga solo una vez. -->
     const hasConnected = useRef(false);
+    // BUGFIX: Guardar la dificultad cuando se inicia el juego
+    const lastDifficultyUsed = useRef('principiante');
 
     const handleGameStateUpdate = useCallback((newGameState) => {
         console.log('🔄 GameRoom recibió gameStateUpdate:', newGameState);
@@ -43,11 +45,15 @@ export const useGameRoomLogic = ({ roomCode, playerName, isHost, onStartGame }) 
                     roomInfo = await gameSocket.joinRoom(roomCode, { name: playerName });
                 }
 
+                const initialDifficulty = roomInfo.config?.difficulty || 'principiante';
                 setGameState(prevState => ({
                     ...prevState,
                     players: roomInfo.players || [],
-                    difficulty: roomInfo.config?.difficulty || 'principiante',
+                    difficulty: initialDifficulty,
                 }));
+                // BUGFIX: Inicializar la referencia con la dificultad de la sala
+                lastDifficultyUsed.current = initialDifficulty;
+                console.log('🎲 Dificultad inicial de la sala:', initialDifficulty);
                 setIsConnected(true);
 
             } catch (err) {
@@ -76,20 +82,29 @@ export const useGameRoomLogic = ({ roomCode, playerName, isHost, onStartGame }) 
 
     useEffect(() => {
         if (gameState.gameStep === 'wheel' || gameState.gameStep === 'card') {
-            onStartGame({ difficulty: gameState.difficulty });
+            // BUGFIX: Usar la dificultad guardada en lugar de gameState.difficulty
+            // porque el servidor no siempre la envía en gameStateUpdate
+            console.log('🎯 Iniciando juego con difficulty guardada:', lastDifficultyUsed.current);
+            onStartGame({ difficulty: lastDifficultyUsed.current });
         }
-    }, [gameState.gameStep, gameState.difficulty, onStartGame]);
+    }, [gameState.gameStep, onStartGame]);
 
     const handleSetReady = useCallback(() => {
         gameSocket.setPlayerReady(roomCode);
     }, [roomCode]);
 
     const handleStartGame = useCallback(() => {
+        // BUGFIX: Guardar la dificultad actual antes de enviar startGame
+        console.log('💾 Guardando difficulty antes de startGame:', gameState.difficulty);
+        lastDifficultyUsed.current = gameState.difficulty;
         gameSocket.startGame({ roomCode, difficulty: gameState.difficulty });
     }, [roomCode, gameState.difficulty]);
 
     const handleDifficultyChange = useCallback(async (newDifficulty) => {
         setGameState(prev => ({ ...prev, difficulty: newDifficulty }));
+        // BUGFIX: También actualizar la referencia cuando cambia la dificultad
+        lastDifficultyUsed.current = newDifficulty;
+        console.log('🔄 Difficulty cambiada y guardada:', newDifficulty);
         try {
             await gameSocket.updateRoom({ roomCode, difficulty: newDifficulty });
         } catch (err) {
