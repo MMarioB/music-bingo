@@ -114,12 +114,27 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
     const isCycleComplete = excludedIds.length >= allCategories.length;
     
     return (
-        <div className="flex flex-col items-center justify-center gap-4">
-            <div className="relative w-full max-w-[min(80vw,500px)] aspect-square mx-auto">
-                <div style={{ position: 'absolute', top: '-4px', left: '50%', transform: 'translateX(-50%)', width: 0, height: 0, borderLeft: '15px solid transparent', borderRight: '15px solid transparent', borderTop: '25px solid white', filter: 'drop-shadow(0 -2px 5px rgba(255,255,255,0.7))', zIndex: 10 }}/>
+        <div className="flex flex-col items-center justify-center gap-4 w-full">
+            <div className="relative w-full max-w-[min(70vw,400px)] lg:max-w-full aspect-square mx-auto">
+                {/* Indicador de la ruleta */}
+                <div style={{
+                    position: 'absolute',
+                    top: '-4px',
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    width: 0,
+                    height: 0,
+                    borderLeft: '12px solid transparent',
+                    borderRight: '12px solid transparent',
+                    borderTop: '20px solid white',
+                    filter: 'drop-shadow(0 -2px 5px rgba(255,255,255,0.7))',
+                    zIndex: 10
+                }}/>
+
+                {/* Ruleta animada */}
                 <motion.div
                     className="w-full h-full"
-                    animate={{ rotate: rotationState }} // Anima usando el estado
+                    animate={{ rotate: rotationState }}
                     transition={{ duration: 6, ease: "easeOut" }}
                     onAnimationComplete={handleSpinComplete}
                 >
@@ -130,7 +145,10 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
                                 <feComposite in="floodBlur" in2="SourceAlpha" operator="in" result="compositeBlur" />
                                 <feGaussianBlur in="compositeBlur" stdDeviation="3" result="blur" />
                                 <feMerge>
-                                    <feMergeNode in="blur" /><feMergeNode in="blur" /><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" />
+                                    <feMergeNode in="blur" />
+                                    <feMergeNode in="blur" />
+                                    <feMergeNode in="blur" />
+                                    <feMergeNode in="SourceGraphic" />
                                 </feMerge>
                             </filter>
                         </defs>
@@ -139,11 +157,13 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
                     </svg>
                 </motion.div>
             </div>
-            <div className="w-full max-w-[300px]">
+
+            {/* Botón de girar */}
+            <div className="w-full max-w-[350px]">
                 <motion.button
                     onClick={spinWheel}
                     disabled={isSpinning}
-                    className="w-full py-3 px-6 rounded-xl bg-gradient-to-r from-purple-600/90 to-pink-600/90 text-white font-bold border border-white/20 backdrop-blur-sm disabled:opacity-50 disabled:cursor-not-allowed group overflow-hidden"
+                    className="w-full py-3 px-6 rounded-xl bg-gradient-to-r from-purple-600/90 to-pink-600/90 text-white font-bold border border-white/20 backdrop-blur-sm disabled:opacity-50 disabled:cursor-not-allowed group overflow-hidden relative"
                     style={{ boxShadow: '0 0 20px rgba(168,85,247,0.4)' }}
                     whileHover={{ scale: isSpinning ? 1 : 1.05 }}
                     whileTap={{ scale: isSpinning ? 1 : 0.95 }}
@@ -154,11 +174,13 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
                     </span>
                 </motion.button>
             </div>
+
+            {/* Categoría seleccionada */}
             {finalSelectedCategory && (
                 <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className={`${finalSelectedCategory.color} px-4 py-2 rounded-lg text-center border border-white/20 max-w-[300px] w-full`}
+                    className={`${finalSelectedCategory.color} px-4 py-2 rounded-lg text-center border border-white/20 max-w-[350px] w-full`}
                 >
                     <h3 className="font-semibold text-gray-800 flex items-center justify-center gap-2">
                         <finalSelectedCategory.icon className="w-5 h-5" />
