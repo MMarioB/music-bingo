@@ -27,6 +27,7 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
         playerCorrectStatus: {},
         gameOver: false,
         winners: [],
+        difficulty: difficulty || 'principiante', // Incluir difficulty en gameState
     });
     const [board, setBoard] = useState([]);
     const [error, setError] = useState(null);
@@ -93,22 +94,22 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
 
     useEffect(() => {
         if (!boardGenerated.current) {
-            console.log('🎲 Generando tablero INICIAL con difficulty:', difficulty);
-            setBoard(generateValidBoard(difficulty));
+            console.log('🎲 Generando tablero INICIAL con difficulty:', gameState.difficulty);
+            setBoard(generateValidBoard(gameState.difficulty));
             boardGenerated.current = true;
         }
     }, []); // Solo se ejecuta una vez al montar
 
     // BUGFIX: Regenerar tablero cuando cambie la dificultad ANTES de empezar el juego
     useEffect(() => {
-        console.log('🔍 useEffect regeneración tablero - difficulty:', difficulty, 'gameStep:', gameState.gameStep, 'boardGenerated:', boardGenerated.current);
+        console.log('🔍 useEffect regeneración tablero - difficulty:', gameState.difficulty, 'gameStep:', gameState.gameStep, 'boardGenerated:', boardGenerated.current);
         if (boardGenerated.current && gameState.gameStep !== 'playing') {
-            console.log('🔄 Dificultad cambiada, regenerando tablero con:', difficulty);
-            setBoard(generateValidBoard(difficulty));
+            console.log('🔄 Dificultad cambiada, regenerando tablero con:', gameState.difficulty);
+            setBoard(generateValidBoard(gameState.difficulty));
         } else if (gameState.gameStep === 'playing') {
             console.log('⚠️ NO regenerando tablero porque gameStep = playing');
         }
-    }, [difficulty, gameState.gameStep]);
+    }, [gameState.difficulty, gameState.gameStep]);
 
     useEffect(() => {
         const handleGameStateUpdate = (serverState) => {
