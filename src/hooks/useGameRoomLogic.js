@@ -18,6 +18,16 @@ export const useGameRoomLogic = ({ roomCode, playerName, isHost, onStartGame }) 
 
     const handleGameStateUpdate = useCallback((newGameState) => {
         console.log('🔄 GameRoom recibió gameStateUpdate:', newGameState);
+        console.log('📊 Difficulty en update:', newGameState.difficulty, '| lastDifficultyUsed actual:', lastDifficultyUsed.current);
+
+        // BUGFIX: Si el servidor envía difficulty, actualizar la referencia también
+        if (newGameState.difficulty !== undefined) {
+            lastDifficultyUsed.current = newGameState.difficulty;
+            console.log('✅ Difficulty recibida del servidor y guardada:', newGameState.difficulty);
+        } else {
+            console.log('⚠️ GameStateUpdate NO incluye difficulty, manteniendo:', lastDifficultyUsed.current);
+        }
+
         setGameState(prevState => ({
             ...prevState,
             players: newGameState.connectedPlayers || prevState.players,
