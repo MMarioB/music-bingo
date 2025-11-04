@@ -37,6 +37,8 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
     const [serverWaking, setServerWaking] = useState(false);
     const boardGenerated = useRef(false);
     const previousMarkingEnabled = useRef(false);
+    // BUGFIX: Guardar la última difficulty usada para generar el tablero
+    const lastBoardDifficulty = useRef(null);
 
     // Hooks de sonidos y confetti
     const sounds = useGameSounds();
@@ -92,24 +94,31 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
         return validateLine(diag1) || validateLine(diag2);
     }, [validateLine]);
 
+    // BUGFIX: Generar tablero SOLO una vez al inicio o cuando realmente cambia difficulty
     useEffect(() => {
         if (!boardGenerated.current) {
             console.log('🎲 Generando tablero INICIAL con difficulty:', difficulty);
             setBoard(generateValidBoard(difficulty));
             boardGenerated.current = true;
+            lastBoardDifficulty.current = difficulty;
         }
     }, []); // Solo se ejecuta una vez al montar
 
-    // BUGFIX: Regenerar tablero cuando cambie la PROP difficulty (viene de App.jsx)
+    // BUGFIX: SOLO regenerar tablero si difficulty REALMENTE cambió (no por cambios de gameStep)
     useEffect(() => {
-        console.log('🔍 useEffect regeneración tablero - difficulty PROP:', difficulty, 'gameStep:', gameState.gameStep, 'boardGenerated:', boardGenerated.current);
-        if (boardGenerated.current && gameState.gameStep !== 'playing') {
-            console.log('🔄 PROP Dificultad cambiada, regenerando tablero con:', difficulty);
+        // Solo regenerar si:
+        // 1. Ya se generó el tablero inicial
+        // 2. La difficulty PROP cambió (diferente a la última usada)
+        // 3. NO estamos en medio de una partida (waiting o wheel inicial)
+        if (
+            boardGenerated.current &&
+            difficulty !== lastBoardDifficulty.current &&
+            (gameState.gameStep === 'waiting' || gameState.gameStep === 'wheel')
+        ) {
+            console.log('🔄 Difficulty REALMENTE cambió de', lastBoardDifficulty.current, 'a', difficulty, '- regenerando tablero');
             setBoard(generateValidBoard(difficulty));
-            // También actualizar gameState.difficulty para mantener sincronizado
+            lastBoardDifficulty.current = difficulty;
             setGameState(prev => ({ ...prev, difficulty }));
-        } else if (gameState.gameStep === 'playing') {
-            console.log('⚠️ NO regenerando tablero porque gameStep = playing');
         }
     }, [difficulty, gameState.gameStep]);
 
