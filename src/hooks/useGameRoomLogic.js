@@ -16,7 +16,7 @@ export const useGameRoomLogic = ({ roomCode, playerName, isHost, onStartGame }) 
     // BUGFIX: Guardar la dificultad cuando se inicia el juego
     const lastDifficultyUsed = useRef('principiante');
 
-    const handleGameStateUpdate = useCallback((newGameState) => {
+    const handleGameStateUpdate = useCallback(async (newGameState) => {
         console.log('🔄 GameRoom recibió gameStateUpdate:', newGameState);
         console.log('📊 Difficulty en update:', newGameState.difficulty, '| lastDifficultyUsed actual:', lastDifficultyUsed.current);
 
@@ -28,15 +28,47 @@ export const useGameRoomLogic = ({ roomCode, playerName, isHost, onStartGame }) 
             console.log('⚠️ GameStateUpdate NO incluye difficulty, manteniendo:', lastDifficultyUsed.current);
         }
 
-        setGameState(prevState => ({
-            ...prevState,
-            players: newGameState.connectedPlayers || prevState.players,
-            // BUGFIX: Usar !== undefined para aceptar cualquier valor truthy del servidor
-            difficulty: newGameState.difficulty !== undefined ? newGameState.difficulty : prevState.difficulty,
-            allPlayersReady: (newGameState.connectedPlayers || []).every(p => p.ready || p.isHost),
-            gameStep: newGameState.gameStep || prevState.gameStep,
-        }));
-    }, []);
+        setGameState(prevState => {
+            const newStep = newGameState.gameStep || prevState.gameStep;
+            const previousStep = prevState.gameStep;
+
+            // WORKAROUND: Si el juego está iniciando (transición a 'wheel') y NO somos host,
+            // y el servidor no envió difficulty, intentar obtenerla del servidor
+            if (
+                !isHost &&
+                newStep === 'wheel' &&
+                previousStep !== 'wheel' &&
+                newGameState.difficulty === undefined
+            ) {
+                console.log('🔄 WORKAROUND: Juego iniciando sin difficulty, intentando re-fetch...');
+                // Hacer petición asíncrona sin bloquear
+                gameSocket.joinRoom(roomCode, { name: playerName, reconnecting: true })
+                    .then((roomInfo) => {
+                        if (roomInfo && roomInfo.config && roomInfo.config.difficulty) {
+                            const serverDifficulty = roomInfo.config.difficulty;
+                            console.log('✅ Difficulty obtenida del servidor via re-fetch:', serverDifficulty);
+                            lastDifficultyUsed.current = serverDifficulty;
+                            setGameState(prev => ({
+                                ...prev,
+                                difficulty: serverDifficulty
+                            }));
+                        }
+                    })
+                    .catch((err) => {
+                        console.error('❌ Error al re-fetch configuración:', err);
+                    });
+            }
+
+            return {
+                ...prevState,
+                players: newGameState.connectedPlayers || prevState.players,
+                // BUGFIX: Usar !== undefined para aceptar cualquier valor truthy del servidor
+                difficulty: newGameState.difficulty !== undefined ? newGameState.difficulty : prevState.difficulty,
+                allPlayersReady: (newGameState.connectedPlayers || []).every(p => p.ready || p.isHost),
+                gameStep: newStep,
+            };
+        });
+    }, [isHost, roomCode, playerName]);
 
     useEffect(() => {
         // Si ya nos hemos conectado, no hacemos nada más en este efecto.
