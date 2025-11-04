@@ -47,11 +47,9 @@ export const useGameRoomLogic = ({ roomCode, playerName, isHost, onStartGame }) 
                         if (roomInfo && roomInfo.config && roomInfo.config.difficulty) {
                             const serverDifficulty = roomInfo.config.difficulty;
                             console.log('✅ Difficulty obtenida del servidor via re-fetch:', serverDifficulty);
+                            // BUGFIX: SOLO actualizar la referencia, NO el estado
+                            // para evitar regenerar el tablero y perder las marcas
                             lastDifficultyUsed.current = serverDifficulty;
-                            setGameState(prev => ({
-                                ...prev,
-                                difficulty: serverDifficulty
-                            }));
                         }
                     })
                     .catch((err) => {
