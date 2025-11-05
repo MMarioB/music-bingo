@@ -24,27 +24,23 @@ const hasMaxTwoConsecutive = (board, position, categoryId) => {
         }
     }
 
-    // Verificar diagonal principal (\) - mirando hacia arriba-izquierda
-    if (row >= 2 && col >= 2 && row === col) {
-        if (board[position - BOARD_SIZE - 1]?.id === categoryId &&
-            board[position - BOARD_SIZE * 2 - 2]?.id === categoryId) {
+    // Verificar diagonal descendente (\) - mirando hacia arriba-izquierda
+    // CUALQUIER diagonal, no solo la principal
+    if (row >= 2 && col >= 2) {
+        const pos1 = position - BOARD_SIZE - 1; // una arriba-izquierda
+        const pos2 = position - BOARD_SIZE * 2 - 2; // dos arriba-izquierda
+        if (board[pos1]?.id === categoryId && board[pos2]?.id === categoryId) {
             return false;
         }
     }
 
-    // Verificar diagonal secundaria (/) - mirando hacia arriba-derecha
+    // Verificar diagonal ascendente (/) - mirando hacia arriba-derecha
+    // CUALQUIER diagonal, no solo la secundaria
     if (row >= 2 && col <= BOARD_SIZE - 3) {
-        const diagOffset1 = position - BOARD_SIZE + 1;
-        const diagOffset2 = position - BOARD_SIZE * 2 + 2;
-        if (board[diagOffset1]?.id === categoryId && board[diagOffset2]?.id === categoryId) {
-            const row1 = Math.floor(diagOffset1 / BOARD_SIZE);
-            const col1 = diagOffset1 % BOARD_SIZE;
-            const row2 = Math.floor(diagOffset2 / BOARD_SIZE);
-            const col2 = diagOffset2 % BOARD_SIZE;
-            // Verificar que realmente están en diagonal secundaria
-            if (row1 + col1 === BOARD_SIZE - 1 && row2 + col2 === BOARD_SIZE - 1) {
-                return false;
-            }
+        const pos1 = position - BOARD_SIZE + 1; // una arriba-derecha
+        const pos2 = position - BOARD_SIZE * 2 + 2; // dos arriba-derecha
+        if (board[pos1]?.id === categoryId && board[pos2]?.id === categoryId) {
+            return false;
         }
     }
 
