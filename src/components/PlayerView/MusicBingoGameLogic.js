@@ -47,15 +47,18 @@ const hasMaxTwoConsecutive = (board, position, categoryId) => {
     return true;
 };
 
-// Verifica que un tablero tenga al menos 1 línea (fila, columna o diagonal) con las 5 categorías diferentes
-const hasWinnableLine = (board) => {
+// Verifica que un tablero tenga EXACTAMENTE 1 línea (fila, columna o diagonal) con las 5 categorías diferentes
+const hasExactlyOneWinnableLine = (board) => {
+    let winningLinesCount = 0;
+    const winningLines = [];
+
     // Verificar filas
     for (let i = 0; i < BOARD_SIZE; i++) {
         const row = board.slice(i * BOARD_SIZE, (i + 1) * BOARD_SIZE);
         const uniqueCategories = new Set(row.map(cell => cell.name));
         if (uniqueCategories.size === 5) {
-            console.log(`✅ Línea ganadora encontrada en fila ${i}`);
-            return true;
+            winningLinesCount++;
+            winningLines.push(`fila ${i}`);
         }
     }
 
@@ -64,8 +67,8 @@ const hasWinnableLine = (board) => {
         const column = Array(BOARD_SIZE).fill(0).map((_, row) => board[row * BOARD_SIZE + col]);
         const uniqueCategories = new Set(column.map(cell => cell.name));
         if (uniqueCategories.size === 5) {
-            console.log(`✅ Línea ganadora encontrada en columna ${col}`);
-            return true;
+            winningLinesCount++;
+            winningLines.push(`columna ${col}`);
         }
     }
 
@@ -73,19 +76,28 @@ const hasWinnableLine = (board) => {
     const diag1 = Array(BOARD_SIZE).fill(0).map((_, i) => board[i * BOARD_SIZE + i]);
     const uniqueDiag1 = new Set(diag1.map(cell => cell.name));
     if (uniqueDiag1.size === 5) {
-        console.log('✅ Línea ganadora encontrada en diagonal principal');
-        return true;
+        winningLinesCount++;
+        winningLines.push('diagonal principal');
     }
 
     // Verificar diagonal secundaria (/)
     const diag2 = Array(BOARD_SIZE).fill(0).map((_, i) => board[i * BOARD_SIZE + (BOARD_SIZE - 1 - i)]);
     const uniqueDiag2 = new Set(diag2.map(cell => cell.name));
     if (uniqueDiag2.size === 5) {
-        console.log('✅ Línea ganadora encontrada en diagonal secundaria');
-        return true;
+        winningLinesCount++;
+        winningLines.push('diagonal secundaria');
     }
 
-    return false;
+    if (winningLinesCount === 1) {
+        console.log(`✅ Tablero válido: EXACTAMENTE 1 línea ganadora (${winningLines[0]})`);
+        return true;
+    } else if (winningLinesCount > 1) {
+        console.log(`⚠️ Tablero rechazado: ${winningLinesCount} líneas ganadoras encontradas (${winningLines.join(', ')})`);
+        return false;
+    } else {
+        console.log('⚠️ Tablero rechazado: sin líneas ganadoras');
+        return false;
+    }
 };
 
 const generateValidBoard = (difficulty) => {
@@ -138,12 +150,10 @@ const generateValidBoard = (difficulty) => {
         }
 
         if (valid && board.length === 25) {
-            // Verificar que exista al menos 1 línea con las 5 categorías diferentes
-            if (hasWinnableLine(board)) {
-                console.log(`🎲 Tablero válido generado en intento ${attempts} (máx 2 consecutivas + línea ganadora)`);
+            // Verificar que exista EXACTAMENTE 1 línea con las 5 categorías diferentes
+            if (hasExactlyOneWinnableLine(board)) {
+                console.log(`🎲 Tablero válido generado en intento ${attempts} (máx 2 consecutivas + exactamente 1 línea ganadora)`);
                 return board;
-            } else {
-                console.log(`⚠️ Tablero sin línea ganadora en intento ${attempts}, reintentando...`);
             }
         }
     }
