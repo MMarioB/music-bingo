@@ -29,6 +29,12 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
   const [serverWaking, setServerWaking] = useState(false);
   const [songHistory, setSongHistory] = useState([]);
 
+  // Estados del timer
+  const [timerDuration, setTimerDuration] = useState(30);
+  const [timerRunning, setTimerRunning] = useState(false);
+  const [timerPaused, setTimerPaused] = useState(false);
+  const [timeRemaining, setTimeRemaining] = useState(30);
+
   // Listen for server waking events
   useEffect(() => {
     const handleServerWaking = (event) => {
@@ -224,6 +230,55 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
     };
   }, [loggedIn, isTokenValid, roomCode, initialDifficulty, token]);
 
+  // useEffect para el countdown del timer
+  useEffect(() => {
+    if (!timerRunning || timerPaused || timeRemaining <= 0) return;
+
+    const interval = setInterval(() => {
+      setTimeRemaining(prev => {
+        if (prev <= 1) {
+          setTimerRunning(false);
+          console.log('⏰ Timer completado');
+          // Opcional: emitir evento al servidor
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [timerRunning, timerPaused, timeRemaining]);
+
+  // Funciones de control del timer
+  const startTimer = useCallback((duration = timerDuration) => {
+    console.log(`⏱️ Iniciando timer de ${duration} segundos`);
+    setTimeRemaining(duration);
+    setTimerRunning(true);
+    setTimerPaused(false);
+  }, [timerDuration]);
+
+  const pauseTimer = useCallback(() => {
+    console.log('⏸️ Timer pausado');
+    setTimerPaused(true);
+  }, []);
+
+  const resumeTimer = useCallback(() => {
+    console.log('▶️ Timer reanudado');
+    setTimerPaused(false);
+  }, []);
+
+  const stopTimer = useCallback(() => {
+    console.log('⏹️ Timer detenido');
+    setTimerRunning(false);
+    setTimerPaused(false);
+    setTimeRemaining(timerDuration);
+  }, [timerDuration]);
+
+  const addTime = useCallback((seconds = 15) => {
+    console.log(`➕ Agregando ${seconds} segundos al timer`);
+    setTimeRemaining(prev => prev + seconds);
+  }, []);
+
   const handlePlayerCorrectToggle = useCallback(async (playerId) => {
     try {
       console.log('🎯 Marcando jugador como correcto:', playerId);
@@ -326,6 +381,9 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
       if (response2 && response2.success === false) {
         console.error('Error al iniciar canción:', response2.error);
         setConnectionError(response2.error);
+      } else {
+        // Iniciar timer automáticamente después de generar la tarjeta
+        startTimer();
       }
 
     } catch (error) {
@@ -339,16 +397,18 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
     } finally {
       setIsLoading(false);
     }
-  }, [gameState.currentCategory, spotify, roomCode, logout]);
+  }, [gameState.currentCategory, spotify, roomCode, logout, startTimer]);
 
   const handleRevealSong = useCallback(async () => {
     try {
+      // Detener el timer cuando se revela la canción
+      stopTimer();
       await gameSocket.revealSong({ roomCode });
     } catch (error) {
       console.error('Error al revelar canción:', error);
       setConnectionError('Error al revelar la canción');
     }
-  }, [roomCode]);
+  }, [roomCode, stopTimer]);
 
   const handleMarkingToggle = useCallback(async () => {
     const action = gameState.isMarkingEnabled ? 'disableMarking' : 'enableMarking';
@@ -380,6 +440,8 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
   const startNewRound = useCallback(async () => {
     try {
       console.log('🔄 Iniciando nueva ronda...');
+      // Detener y resetear el timer
+      stopTimer();
       const response = await gameSocket.restartGame({ roomCode });
 
       if (response && response.error) {
@@ -391,7 +453,7 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
       console.error('❌ Error al iniciar nueva ronda:', error);
       setConnectionError(`Error al iniciar nueva ronda: ${error.message}`);
     }
-  }, [roomCode]);
+  }, [roomCode, stopTimer]);
 
   return {
     ...gameState,
@@ -414,6 +476,16 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
     handleRevealSong,
     handleMarkingToggle,
     startNewRound,
-    finishGame
+    finishGame,
+    // Timer
+    timerDuration,
+    timerRunning,
+    timerPaused,
+    timeRemaining,
+    startTimer,
+    pauseTimer,
+    resumeTimer,
+    stopTimer,
+    addTime
   };
 };
