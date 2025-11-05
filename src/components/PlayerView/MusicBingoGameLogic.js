@@ -4,72 +4,116 @@ import { useGameSounds } from '../../hooks/useGameSounds';
 import { useConfetti } from '../../hooks/useConfetti';
 import { BOARD_SIZE, MIN_DIFFERENT_CATEGORIES, CATEGORIES_A, CATEGORIES_B } from '../Wheel/constants';
 
-// Patrones de distribución predefinidos (índices 0-4 representan las 5 categorías)
-// Cada patrón mantiene 5 casillas por categoría pero con distribución estructurada
-const BOARD_PATTERNS = [
-  // Patrón original del juego
-  [
-    0, 1, 0, 2, 3,
-    2, 3, 3, 0, 1,
-    4, 1, 4, 1, 4,
-    3, 0, 2, 1, 2,
-    4, 3, 4, 0, 2
-  ],
-  // Patrón diagonal
-  [
-    0, 1, 2, 3, 4,
-    1, 0, 3, 2, 4,
-    2, 3, 4, 0, 1,
-    3, 2, 1, 4, 0,
-    4, 3, 2, 1, 0
-  ],
-  // Patrón en X
-  [
-    0, 1, 2, 1, 0,
-    1, 3, 4, 3, 1,
-    2, 4, 0, 4, 2,
-    1, 3, 4, 3, 1,
-    0, 1, 2, 1, 0
-  ],
-  // Patrón de marco
-  [
-    0, 0, 0, 0, 0,
-    1, 2, 3, 4, 1,
-    2, 3, 4, 2, 3,
-    1, 4, 2, 3, 1,
-    4, 4, 4, 4, 4
-  ],
-  // Patrón ondulado
-  [
-    0, 1, 0, 1, 0,
-    2, 3, 2, 3, 2,
-    4, 4, 4, 4, 4,
-    2, 3, 2, 3, 2,
-    0, 1, 0, 1, 0
-  ]
-];
+// Verifica que no haya más de 2 casillas consecutivas de la misma categoría
+const hasMaxTwoConsecutive = (board, position, categoryId) => {
+    const row = Math.floor(position / BOARD_SIZE);
+    const col = position % BOARD_SIZE;
+
+    // Verificar horizontal (fila) - mirando hacia atrás
+    if (col >= 2) {
+        if (board[position - 1]?.id === categoryId && board[position - 2]?.id === categoryId) {
+            return false; // Ya hay 2 consecutivas a la izquierda
+        }
+    }
+
+    // Verificar vertical (columna) - mirando hacia arriba
+    if (row >= 2) {
+        if (board[position - BOARD_SIZE]?.id === categoryId &&
+            board[position - BOARD_SIZE * 2]?.id === categoryId) {
+            return false; // Ya hay 2 consecutivas arriba
+        }
+    }
+
+    // Verificar diagonal principal (\) - mirando hacia arriba-izquierda
+    if (row >= 2 && col >= 2 && row === col) {
+        if (board[position - BOARD_SIZE - 1]?.id === categoryId &&
+            board[position - BOARD_SIZE * 2 - 2]?.id === categoryId) {
+            return false;
+        }
+    }
+
+    // Verificar diagonal secundaria (/) - mirando hacia arriba-derecha
+    if (row >= 2 && col <= BOARD_SIZE - 3) {
+        const diagOffset1 = position - BOARD_SIZE + 1;
+        const diagOffset2 = position - BOARD_SIZE * 2 + 2;
+        if (board[diagOffset1]?.id === categoryId && board[diagOffset2]?.id === categoryId) {
+            const row1 = Math.floor(diagOffset1 / BOARD_SIZE);
+            const col1 = diagOffset1 % BOARD_SIZE;
+            const row2 = Math.floor(diagOffset2 / BOARD_SIZE);
+            const col2 = diagOffset2 % BOARD_SIZE;
+            // Verificar que realmente están en diagonal secundaria
+            if (row1 + col1 === BOARD_SIZE - 1 && row2 + col2 === BOARD_SIZE - 1) {
+                return false;
+            }
+        }
+    }
+
+    return true;
+};
 
 const generateValidBoard = (difficulty) => {
     const categories = difficulty === 'experto' ? CATEGORIES_B : CATEGORIES_A;
 
-    // Seleccionar un patrón aleatorio
-    const pattern = BOARD_PATTERNS[Math.floor(Math.random() * BOARD_PATTERNS.length)];
+    // Crear pool de categorías (5 de cada una = 25 total)
+    const pool = [];
+    categories.forEach(category => {
+        for (let i = 0; i < 5; i++) {
+            pool.push({ ...category, marked: false });
+        }
+    });
 
-    // Mezclar el orden de las categorías para variar qué categoría va en cada posición
-    const shuffledCategories = [...categories];
-    for (let i = shuffledCategories.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [shuffledCategories[i], shuffledCategories[j]] = [shuffledCategories[j], shuffledCategories[i]];
+    let attempts = 0;
+    const maxAttempts = 100;
+
+    while (attempts < maxAttempts) {
+        attempts++;
+
+        // Mezclar el pool
+        const shuffledPool = [...pool];
+        for (let i = shuffledPool.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [shuffledPool[i], shuffledPool[j]] = [shuffledPool[j], shuffledPool[i]];
+        }
+
+        // Intentar colocar en el tablero validando la regla
+        const board = [];
+        let valid = true;
+
+        for (let pos = 0; pos < 25; pos++) {
+            // Buscar una categoría que pueda colocarse en esta posición
+            let placed = false;
+
+            for (let i = 0; i < shuffledPool.length; i++) {
+                const category = shuffledPool[i];
+
+                if (hasMaxTwoConsecutive(board, pos, category.id)) {
+                    board.push(category);
+                    shuffledPool.splice(i, 1);
+                    placed = true;
+                    break;
+                }
+            }
+
+            if (!placed) {
+                valid = false;
+                break; // No se pudo colocar ninguna categoría, reintentar
+            }
+        }
+
+        if (valid && board.length === 25) {
+            console.log(`🎲 Tablero válido generado en intento ${attempts} (máx 2 consecutivas)`);
+            return board;
+        }
     }
 
-    // Aplicar el patrón con las categorías mezcladas
-    const board = pattern.map(categoryIndex => ({
-        ...shuffledCategories[categoryIndex],
-        marked: false
-    }));
-
-    console.log('🎲 Tablero generado con patrón estructurado');
-    return board;
+    // Fallback: Si no se pudo generar tablero válido, usar shuffle simple
+    console.warn('⚠️ No se pudo generar tablero con restricciones, usando fallback');
+    const fallbackPool = [...pool];
+    for (let i = fallbackPool.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [fallbackPool[i], fallbackPool[j]] = [fallbackPool[j], fallbackPool[i]];
+    }
+    return fallbackPool;
 };
 
 export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
