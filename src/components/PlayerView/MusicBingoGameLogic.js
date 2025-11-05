@@ -5,21 +5,21 @@ import { useConfetti } from '../../hooks/useConfetti';
 import { BOARD_SIZE, MIN_DIFFERENT_CATEGORIES, CATEGORIES_A, CATEGORIES_B } from '../Wheel/constants';
 
 // Verifica que no haya más de 2 casillas consecutivas de la misma categoría
-const hasMaxTwoConsecutive = (board, position, categoryId) => {
+const hasMaxTwoConsecutive = (board, position, categoryName) => {
     const row = Math.floor(position / BOARD_SIZE);
     const col = position % BOARD_SIZE;
 
     // Verificar horizontal (fila) - mirando hacia atrás
     if (col >= 2) {
-        if (board[position - 1]?.id === categoryId && board[position - 2]?.id === categoryId) {
+        if (board[position - 1]?.name === categoryName && board[position - 2]?.name === categoryName) {
             return false; // Ya hay 2 consecutivas a la izquierda
         }
     }
 
     // Verificar vertical (columna) - mirando hacia arriba
     if (row >= 2) {
-        if (board[position - BOARD_SIZE]?.id === categoryId &&
-            board[position - BOARD_SIZE * 2]?.id === categoryId) {
+        if (board[position - BOARD_SIZE]?.name === categoryName &&
+            board[position - BOARD_SIZE * 2]?.name === categoryName) {
             return false; // Ya hay 2 consecutivas arriba
         }
     }
@@ -29,7 +29,7 @@ const hasMaxTwoConsecutive = (board, position, categoryId) => {
     if (row >= 2 && col >= 2) {
         const pos1 = position - BOARD_SIZE - 1; // una arriba-izquierda
         const pos2 = position - BOARD_SIZE * 2 - 2; // dos arriba-izquierda
-        if (board[pos1]?.id === categoryId && board[pos2]?.id === categoryId) {
+        if (board[pos1]?.name === categoryName && board[pos2]?.name === categoryName) {
             return false;
         }
     }
@@ -39,7 +39,7 @@ const hasMaxTwoConsecutive = (board, position, categoryId) => {
     if (row >= 2 && col <= BOARD_SIZE - 3) {
         const pos1 = position - BOARD_SIZE + 1; // una arriba-derecha
         const pos2 = position - BOARD_SIZE * 2 + 2; // dos arriba-derecha
-        if (board[pos1]?.id === categoryId && board[pos2]?.id === categoryId) {
+        if (board[pos1]?.name === categoryName && board[pos2]?.name === categoryName) {
             return false;
         }
     }
@@ -135,7 +135,7 @@ const generateValidBoard = (difficulty) => {
             for (let i = 0; i < shuffledPool.length; i++) {
                 const category = shuffledPool[i];
 
-                if (hasMaxTwoConsecutive(board, pos, category.id)) {
+                if (hasMaxTwoConsecutive(board, pos, category.name)) {
                     board.push(category);
                     shuffledPool.splice(i, 1);
                     placed = true;
