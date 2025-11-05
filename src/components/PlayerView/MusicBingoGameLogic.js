@@ -4,47 +4,78 @@ import { useGameSounds } from '../../hooks/useGameSounds';
 import { useConfetti } from '../../hooks/useConfetti';
 import { BOARD_SIZE, MIN_DIFFERENT_CATEGORIES, CATEGORIES_A, CATEGORIES_B } from '../Wheel/constants';
 
-// Verifica que no haya más de 2 casillas consecutivas de la misma categoría
-const hasMaxTwoConsecutive = (board, position, categoryName) => {
+// Verifica que no haya más de UN PAR de casillas consecutivas de cada categoría en TODO el tablero
+const hasMaxOnePairPerCategory = (board, position, categoryName, categoryPairsCount) => {
     const row = Math.floor(position / BOARD_SIZE);
     const col = position % BOARD_SIZE;
 
-    // Verificar horizontal (fila) - mirando hacia atrás
-    if (col >= 2) {
-        if (board[position - 1]?.name === categoryName && board[position - 2]?.name === categoryName) {
-            return false; // Ya hay 2 consecutivas a la izquierda
-        }
+    // Contar cuántos pares se formarían al colocar esta categoría
+    // Solo miramos hacia atrás/arriba para ser consistente con updateCategoryPairsCount
+    let pairsWouldForm = 0;
+
+    // Verificar horizontal (izquierda)
+    if (col > 0 && board[position - 1]?.name === categoryName) {
+        pairsWouldForm++;
     }
 
-    // Verificar vertical (columna) - mirando hacia arriba
-    if (row >= 2) {
-        if (board[position - BOARD_SIZE]?.name === categoryName &&
-            board[position - BOARD_SIZE * 2]?.name === categoryName) {
-            return false; // Ya hay 2 consecutivas arriba
-        }
+    // Verificar vertical (arriba)
+    if (row > 0 && board[position - BOARD_SIZE]?.name === categoryName) {
+        pairsWouldForm++;
     }
 
-    // Verificar diagonal descendente (\) - mirando hacia arriba-izquierda
-    // CUALQUIER diagonal, no solo la principal
-    if (row >= 2 && col >= 2) {
-        const pos1 = position - BOARD_SIZE - 1; // una arriba-izquierda
-        const pos2 = position - BOARD_SIZE * 2 - 2; // dos arriba-izquierda
-        if (board[pos1]?.name === categoryName && board[pos2]?.name === categoryName) {
-            return false;
-        }
+    // Verificar diagonal descendente (arriba-izquierda)
+    if (row > 0 && col > 0 && board[position - BOARD_SIZE - 1]?.name === categoryName) {
+        pairsWouldForm++;
     }
 
-    // Verificar diagonal ascendente (/) - mirando hacia arriba-derecha
-    // CUALQUIER diagonal, no solo la secundaria
-    if (row >= 2 && col <= BOARD_SIZE - 3) {
-        const pos1 = position - BOARD_SIZE + 1; // una arriba-derecha
-        const pos2 = position - BOARD_SIZE * 2 + 2; // dos arriba-derecha
-        if (board[pos1]?.name === categoryName && board[pos2]?.name === categoryName) {
-            return false;
-        }
+    // Verificar diagonal ascendente (arriba-derecha)
+    if (row > 0 && col < BOARD_SIZE - 1 && board[position - BOARD_SIZE + 1]?.name === categoryName) {
+        pairsWouldForm++;
+    }
+
+    // Verificar si excedería el límite de 1 par total
+    const currentPairs = categoryPairsCount[categoryName] || 0;
+    if (currentPairs + pairsWouldForm > 1) {
+        return false;
     }
 
     return true;
+};
+
+// Actualiza el contador de pares después de colocar una categoría
+// Cuenta cada vecino adyacente como un par separado
+const updateCategoryPairsCount = (board, position, categoryName, categoryPairsCount) => {
+    const row = Math.floor(position / BOARD_SIZE);
+    const col = position % BOARD_SIZE;
+
+    let pairsFormed = 0;
+
+    // Cada vecino de la misma categoría forma un par
+    // Solo miramos hacia atrás/arriba para no contar pares duplicados
+
+    // Verificar horizontal (izquierda)
+    if (col > 0 && board[position - 1]?.name === categoryName) {
+        pairsFormed++;
+    }
+
+    // Verificar vertical (arriba)
+    if (row > 0 && board[position - BOARD_SIZE]?.name === categoryName) {
+        pairsFormed++;
+    }
+
+    // Verificar diagonal descendente (arriba-izquierda)
+    if (row > 0 && col > 0 && board[position - BOARD_SIZE - 1]?.name === categoryName) {
+        pairsFormed++;
+    }
+
+    // Verificar diagonal ascendente (arriba-derecha)
+    if (row > 0 && col < BOARD_SIZE - 1 && board[position - BOARD_SIZE + 1]?.name === categoryName) {
+        pairsFormed++;
+    }
+
+    if (pairsFormed > 0) {
+        categoryPairsCount[categoryName] = (categoryPairsCount[categoryName] || 0) + pairsFormed;
+    }
 };
 
 // Verifica que un tablero tenga EXACTAMENTE 1 línea (fila, columna o diagonal) con las 5 categorías diferentes
@@ -126,6 +157,7 @@ const generateValidBoard = (difficulty) => {
 
         // Intentar colocar en el tablero validando la regla
         const board = [];
+        const categoryPairsCount = {}; // Rastrea cuántos pares tiene cada categoría
         let valid = true;
 
         for (let pos = 0; pos < 25; pos++) {
@@ -135,8 +167,9 @@ const generateValidBoard = (difficulty) => {
             for (let i = 0; i < shuffledPool.length; i++) {
                 const category = shuffledPool[i];
 
-                if (hasMaxTwoConsecutive(board, pos, category.name)) {
+                if (hasMaxOnePairPerCategory(board, pos, category.name, categoryPairsCount)) {
                     board.push(category);
+                    updateCategoryPairsCount(board, pos, category.name, categoryPairsCount);
                     shuffledPool.splice(i, 1);
                     placed = true;
                     break;
@@ -152,7 +185,8 @@ const generateValidBoard = (difficulty) => {
         if (valid && board.length === 25) {
             // Verificar que exista EXACTAMENTE 1 línea con las 5 categorías diferentes
             if (hasExactlyOneWinnableLine(board)) {
-                console.log(`🎲 Tablero válido generado en intento ${attempts} (máx 2 consecutivas + exactamente 1 línea ganadora)`);
+                console.log(`🎲 Tablero válido generado en intento ${attempts} (máx 1 par por categoría + exactamente 1 línea ganadora)`);
+                console.log('Pares por categoría:', categoryPairsCount);
                 return board;
             }
         }
