@@ -382,6 +382,10 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
         console.error('Error al iniciar canción:', response2.error);
         setConnectionError(response2.error);
       } else {
+        // Abrir Spotify automáticamente para que el GM pueda dar play
+        window.open(randomTrack.external_urls.spotify, '_blank');
+        console.log('🎵 Abriendo Spotify en nueva pestaña');
+
         // Iniciar timer automáticamente después de generar la tarjeta
         startTimer();
       }
