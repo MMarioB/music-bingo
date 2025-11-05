@@ -4,17 +4,72 @@ import { useGameSounds } from '../../hooks/useGameSounds';
 import { useConfetti } from '../../hooks/useConfetti';
 import { BOARD_SIZE, MIN_DIFFERENT_CATEGORIES, CATEGORIES_A, CATEGORIES_B } from '../Wheel/constants';
 
+// Patrones de distribución predefinidos (índices 0-4 representan las 5 categorías)
+// Cada patrón mantiene 5 casillas por categoría pero con distribución estructurada
+const BOARD_PATTERNS = [
+  // Patrón original del juego
+  [
+    0, 1, 0, 2, 3,
+    2, 3, 3, 0, 1,
+    4, 1, 4, 1, 4,
+    3, 0, 2, 1, 2,
+    4, 3, 4, 0, 2
+  ],
+  // Patrón diagonal
+  [
+    0, 1, 2, 3, 4,
+    1, 0, 3, 2, 4,
+    2, 3, 4, 0, 1,
+    3, 2, 1, 4, 0,
+    4, 3, 2, 1, 0
+  ],
+  // Patrón en X
+  [
+    0, 1, 2, 1, 0,
+    1, 3, 4, 3, 1,
+    2, 4, 0, 4, 2,
+    1, 3, 4, 3, 1,
+    0, 1, 2, 1, 0
+  ],
+  // Patrón de marco
+  [
+    0, 0, 0, 0, 0,
+    1, 2, 3, 4, 1,
+    2, 3, 4, 2, 3,
+    1, 4, 2, 3, 1,
+    4, 4, 4, 4, 4
+  ],
+  // Patrón ondulado
+  [
+    0, 1, 0, 1, 0,
+    2, 3, 2, 3, 2,
+    4, 4, 4, 4, 4,
+    2, 3, 2, 3, 2,
+    0, 1, 0, 1, 0
+  ]
+];
+
 const generateValidBoard = (difficulty) => {
     const categories = difficulty === 'experto' ? CATEGORIES_B : CATEGORIES_A;
-    const cells = [];
-    categories.forEach(category => {
-        for (let i = 0; i < 5; i++) cells.push({ ...category, marked: false });
-    });
-    for (let i = cells.length - 1; i > 0; i--) {
+
+    // Seleccionar un patrón aleatorio
+    const pattern = BOARD_PATTERNS[Math.floor(Math.random() * BOARD_PATTERNS.length)];
+
+    // Mezclar el orden de las categorías para variar qué categoría va en cada posición
+    const shuffledCategories = [...categories];
+    for (let i = shuffledCategories.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
-        [cells[i], cells[j]] = [cells[j], cells[i]];
+        [shuffledCategories[i], shuffledCategories[j]] = [shuffledCategories[j], shuffledCategories[i]];
     }
-    return cells;
+
+    // Aplicar el patrón con las categorías mezcladas
+    const board = pattern.map(categoryIndex => ({
+        ...shuffledCategories[categoryIndex],
+        marked: false
+    }));
+
+    console.log('🎲 Tablero generado con patrón estructurado');
+    return board;
 };
 
 export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
