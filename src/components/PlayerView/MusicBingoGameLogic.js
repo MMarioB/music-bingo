@@ -4,17 +4,116 @@ import { useGameSounds } from '../../hooks/useGameSounds';
 import { useConfetti } from '../../hooks/useConfetti';
 import { BOARD_SIZE, MIN_DIFFERENT_CATEGORIES, CATEGORIES_A, CATEGORIES_B } from '../Wheel/constants';
 
+// Verifica que no haya más de 2 casillas consecutivas de la misma categoría
+const hasMaxTwoConsecutive = (board, position, categoryId) => {
+    const row = Math.floor(position / BOARD_SIZE);
+    const col = position % BOARD_SIZE;
+
+    // Verificar horizontal (fila) - mirando hacia atrás
+    if (col >= 2) {
+        if (board[position - 1]?.id === categoryId && board[position - 2]?.id === categoryId) {
+            return false; // Ya hay 2 consecutivas a la izquierda
+        }
+    }
+
+    // Verificar vertical (columna) - mirando hacia arriba
+    if (row >= 2) {
+        if (board[position - BOARD_SIZE]?.id === categoryId &&
+            board[position - BOARD_SIZE * 2]?.id === categoryId) {
+            return false; // Ya hay 2 consecutivas arriba
+        }
+    }
+
+    // Verificar diagonal principal (\) - mirando hacia arriba-izquierda
+    if (row >= 2 && col >= 2 && row === col) {
+        if (board[position - BOARD_SIZE - 1]?.id === categoryId &&
+            board[position - BOARD_SIZE * 2 - 2]?.id === categoryId) {
+            return false;
+        }
+    }
+
+    // Verificar diagonal secundaria (/) - mirando hacia arriba-derecha
+    if (row >= 2 && col <= BOARD_SIZE - 3) {
+        const diagOffset1 = position - BOARD_SIZE + 1;
+        const diagOffset2 = position - BOARD_SIZE * 2 + 2;
+        if (board[diagOffset1]?.id === categoryId && board[diagOffset2]?.id === categoryId) {
+            const row1 = Math.floor(diagOffset1 / BOARD_SIZE);
+            const col1 = diagOffset1 % BOARD_SIZE;
+            const row2 = Math.floor(diagOffset2 / BOARD_SIZE);
+            const col2 = diagOffset2 % BOARD_SIZE;
+            // Verificar que realmente están en diagonal secundaria
+            if (row1 + col1 === BOARD_SIZE - 1 && row2 + col2 === BOARD_SIZE - 1) {
+                return false;
+            }
+        }
+    }
+
+    return true;
+};
+
 const generateValidBoard = (difficulty) => {
     const categories = difficulty === 'experto' ? CATEGORIES_B : CATEGORIES_A;
-    const cells = [];
+
+    // Crear pool de categorías (5 de cada una = 25 total)
+    const pool = [];
     categories.forEach(category => {
-        for (let i = 0; i < 5; i++) cells.push({ ...category, marked: false });
+        for (let i = 0; i < 5; i++) {
+            pool.push({ ...category, marked: false });
+        }
     });
-    for (let i = cells.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [cells[i], cells[j]] = [cells[j], cells[i]];
+
+    let attempts = 0;
+    const maxAttempts = 100;
+
+    while (attempts < maxAttempts) {
+        attempts++;
+
+        // Mezclar el pool
+        const shuffledPool = [...pool];
+        for (let i = shuffledPool.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [shuffledPool[i], shuffledPool[j]] = [shuffledPool[j], shuffledPool[i]];
+        }
+
+        // Intentar colocar en el tablero validando la regla
+        const board = [];
+        let valid = true;
+
+        for (let pos = 0; pos < 25; pos++) {
+            // Buscar una categoría que pueda colocarse en esta posición
+            let placed = false;
+
+            for (let i = 0; i < shuffledPool.length; i++) {
+                const category = shuffledPool[i];
+
+                if (hasMaxTwoConsecutive(board, pos, category.id)) {
+                    board.push(category);
+                    shuffledPool.splice(i, 1);
+                    placed = true;
+                    break;
+                }
+            }
+
+            if (!placed) {
+                valid = false;
+                break; // No se pudo colocar ninguna categoría, reintentar
+            }
+        }
+
+        if (valid && board.length === 25) {
+            console.log(`🎲 Tablero válido generado en intento ${attempts} (máx 2 consecutivas)`);
+            return board;
+        }
     }
-    return cells;
+
+    // Fallback: Si no se pudo generar tablero válido, usar shuffle simple
+    console.warn('⚠️ No se pudo generar tablero con restricciones, usando fallback');
+    const fallbackPool = [...pool];
+    for (let i = fallbackPool.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [fallbackPool[i], fallbackPool[j]] = [fallbackPool[j], fallbackPool[i]];
+    }
+    return fallbackPool;
 };
 
 export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
