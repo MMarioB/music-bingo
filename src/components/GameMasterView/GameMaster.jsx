@@ -9,6 +9,7 @@ import PredictionsPanel from './PredictionsPanel';
 import RoomQRCode from '../RoomQRCode';
 import SongHistory from '../SongHistory';
 import GameLayout from '../GameLayout';
+import SongTimer from './SongTimer';
 import PropTypes from 'prop-types';
 import { useGameMasterLogic } from './GameMasterLogic';
 
@@ -36,7 +37,15 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
     winners,
     gameOver,
     finishGame,
-    setConnectionError
+    setConnectionError,
+    // Timer
+    timerDuration,
+    timerRunning,
+    timerPaused,
+    timeRemaining,
+    pauseTimer,
+    resumeTimer,
+    addTime
   } = useGameMasterLogic({ roomCode, initialDifficulty });
 
   useEffect(() => {
@@ -105,6 +114,22 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
                 <span className="text-base font-medium text-gray-800">{selectedCategory.name}</span>
               </div>
             </div>
+          )}
+
+          {/* Timer - aparece cuando hay tarjeta y no está revelada */}
+          {currentCard && !currentCard.revealed && timerRunning && (
+            <SongTimer
+              duration={timerDuration}
+              isRunning={timerRunning}
+              isPaused={timerPaused}
+              timeRemaining={timeRemaining}
+              predictionsCount={Object.keys(playerPredictions).length}
+              totalPlayers={connectedPlayers.filter(p => !p.isHost).length}
+              onPause={pauseTimer}
+              onResume={resumeTimer}
+              onAddTime={() => addTime(15)}
+              onRevealNow={handleRevealSong}
+            />
           )}
 
           {/* Tarjeta de canción o botón generar */}
