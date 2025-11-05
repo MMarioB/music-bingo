@@ -125,6 +125,7 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
               timeRemaining={timeRemaining}
               predictionsCount={Object.keys(playerPredictions).length}
               totalPlayers={connectedPlayers.filter(p => !p.isHost).length}
+              spotifyUrl={currentCard.spotifyUrl}
               onPause={pauseTimer}
               onResume={resumeTimer}
               onAddTime={() => addTime(15)}
