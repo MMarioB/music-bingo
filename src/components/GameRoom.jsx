@@ -108,16 +108,19 @@ const GameRoom = ({ roomCode, playerName, isHost, onStartGame }) => {
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   {MUSIC_CATEGORIES.map((theme) => (
-                    <div key={theme} className="flex items-center space-x-2">
+                    <div
+                      key={theme}
+                      className="flex items-center space-x-2 cursor-pointer"
+                      onClick={() => handleThemeToggle(theme)}
+                    >
                       <Checkbox
                         id={`theme-${theme}`}
                         checked={selectedThemes[theme]}
                         onCheckedChange={() => handleThemeToggle(theme)}
-                        className="border-purple-400 data-[state=checked]:bg-purple-500"
                       />
-                      <Label
+                      <label
                         htmlFor={`theme-${theme}`}
-                        className="text-xs text-white/80 capitalize cursor-pointer"
+                        className="text-sm text-white/90 cursor-pointer select-none"
                       >
                         {theme === 'tradicional' && 'Tradicional'}
                         {theme === 'rockEspanol' && 'Rock Español'}
@@ -125,7 +128,7 @@ const GameRoom = ({ roomCode, playerName, isHost, onStartGame }) => {
                         {theme === 'popRockIndie' && 'Pop/Rock/Indie'}
                         {theme === 'musicaUrbana' && 'Música Urbana'}
                         {theme === 'internacional' && 'Internacional'}
-                      </Label>
+                      </label>
                     </div>
                   ))}
                 </div>
