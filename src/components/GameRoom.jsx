@@ -4,11 +4,13 @@ import { Card } from '../components/ui/card';
 import { Alert, AlertDescription } from '../components/ui/alert';
 import { RadioGroup, RadioGroupItem } from '../components/ui/radio-group';
 import { Label } from '../components/ui/label';
-import { AlertCircle, Users, CheckCircle, Crown, Loader2 } from 'lucide-react';
+import { Checkbox } from '../components/ui/checkbox';
+import { AlertCircle, Users, CheckCircle, Crown, Loader2, Music } from 'lucide-react';
 import { motion } from 'framer-motion';
 import PropTypes from 'prop-types';
 import { useGameRoomLogic } from '../hooks/useGameRoomLogic'; // <-- Importa el nuevo hook
 import RoomQRCode from './RoomQRCode';
+import { MUSIC_CATEGORIES } from './GameMasterView/constants';
 
 const GameRoom = ({ roomCode, playerName, isHost, onStartGame }) => {
   const {
@@ -25,6 +27,11 @@ const GameRoom = ({ roomCode, playerName, isHost, onStartGame }) => {
   // Estado local solo para la UI, no para la lógica del juego
   const [isSettingReady, setIsSettingReady] = useState(false);
 
+  // Estado para los temas musicales seleccionados (todos activados por defecto)
+  const [selectedThemes, setSelectedThemes] = useState(
+    MUSIC_CATEGORIES.reduce((acc, theme) => ({ ...acc, [theme]: true }), {})
+  );
+
   // Usamos useMemo para calcular el estado del jugador actual y evitar re-cálculos innecesarios
   const currentPlayer = useMemo(() => players.find(p => p.name === playerName || (p.isHost && isHost)), [players, playerName, isHost]);
 
@@ -33,6 +40,13 @@ const GameRoom = ({ roomCode, playerName, isHost, onStartGame }) => {
     await handleSetReady();
     // No necesitamos setIsSettingReady(false) aquí, porque la UI cambiará
     // cuando el jugador se marque como listo y el botón desaparezca.
+  };
+
+  const handleThemeToggle = (theme) => {
+    setSelectedThemes(prev => ({
+      ...prev,
+      [theme]: !prev[theme]
+    }));
   };
 
   const isGameReadyToStart = allPlayersReady && players.length >= 2;
@@ -86,7 +100,43 @@ const GameRoom = ({ roomCode, playerName, isHost, onStartGame }) => {
                 <div className="flex items-center space-x-2"><RadioGroupItem value="principiante" id="principiante" className="border-green-400 text-green-400" /><Label htmlFor="principiante" className="text-green-400">Principiante</Label></div>
                 <div className="flex items-center space-x-2"><RadioGroupItem value="experto" id="experto" className="border-purple-400 text-purple-400" /><Label htmlFor="experto" className="text-purple-400">Experto</Label></div>
               </RadioGroup>
-              <Button onClick={handleStartGame} className={`w-full h-12 transition-all duration-300 ${isGameReadyToStart ? 'bg-gradient-to-r from-green-500/60 to-emerald-500/60 hover:from-green-500/80 hover:to-emerald-500/80 border border-green-400' : 'bg-gray-500/30 border border-gray-400 cursor-not-allowed'}`} style={isGameReadyToStart ? { boxShadow: '0 0 15px rgba(0,255,0,0.2)' } : {}} disabled={!isGameReadyToStart}>
+
+              <div className="border-t border-white/10 pt-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <Music className="w-4 h-4 text-purple-400" />
+                  <h3 className="text-sm font-semibold text-white">Temas Musicales</h3>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  {MUSIC_CATEGORIES.map((theme) => (
+                    <div key={theme} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`theme-${theme}`}
+                        checked={selectedThemes[theme]}
+                        onCheckedChange={() => handleThemeToggle(theme)}
+                        className="border-purple-400 data-[state=checked]:bg-purple-500"
+                      />
+                      <Label
+                        htmlFor={`theme-${theme}`}
+                        className="text-xs text-white/80 capitalize cursor-pointer"
+                      >
+                        {theme === 'tradicional' && 'Tradicional'}
+                        {theme === 'rockEspanol' && 'Rock Español'}
+                        {theme === 'popNacional' && 'Pop Nacional'}
+                        {theme === 'popRockIndie' && 'Pop/Rock/Indie'}
+                        {theme === 'musicaUrbana' && 'Música Urbana'}
+                        {theme === 'internacional' && 'Internacional'}
+                      </Label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <Button
+                onClick={() => handleStartGame(selectedThemes)}
+                className={`w-full h-12 transition-all duration-300 ${isGameReadyToStart ? 'bg-gradient-to-r from-green-500/60 to-emerald-500/60 hover:from-green-500/80 hover:to-emerald-500/80 border border-green-400' : 'bg-gray-500/30 border border-gray-400 cursor-not-allowed'}`}
+                style={isGameReadyToStart ? { boxShadow: '0 0 15px rgba(0,255,0,0.2)' } : {}}
+                disabled={!isGameReadyToStart}
+              >
                 Comenzar Partida
               </Button>
               {!isGameReadyToStart && (<div className="text-sm text-center space-y-1"><p className="text-yellow-300">{players.length < 2 ? 'Se necesitan al menos 2 jugadores' : 'Esperando que todos estén listos'}</p></div>)}

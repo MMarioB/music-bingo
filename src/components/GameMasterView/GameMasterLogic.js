@@ -29,6 +29,9 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
   const [serverWaking, setServerWaking] = useState(false);
   const [songHistory, setSongHistory] = useState([]);
 
+  // Estado para el tema musical seleccionado manualmente ('auto' = aleatorio)
+  const [selectedMusicTheme, setSelectedMusicTheme] = useState('auto');
+
   // Estados del timer
   const [timerDuration, setTimerDuration] = useState(30);
   const [timerRunning, setTimerRunning] = useState(false);
@@ -334,8 +337,27 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
     setConnectionError(null);
 
     try {
-      const randomMusicCategory = Object.keys(ARTISTS)[Math.floor(Math.random() * Object.keys(ARTISTS).length)];
-      const artistsInCategory = ARTISTS[randomMusicCategory];
+      // Determinar qué tema musical usar
+      let musicCategoryToUse;
+
+      if (selectedMusicTheme === 'auto') {
+        // Modo automático: elegir al azar entre los temas disponibles
+        // TODO: cuando el servidor envíe los temas configurados, usarlos aquí
+        // Por ahora, usamos todos los temas disponibles
+        const availableCategories = Object.keys(ARTISTS);
+        musicCategoryToUse = availableCategories[Math.floor(Math.random() * availableCategories.length)];
+        console.log('🎲 Tema aleatorio seleccionado:', musicCategoryToUse);
+      } else {
+        // Modo manual: usar el tema seleccionado
+        musicCategoryToUse = selectedMusicTheme;
+        console.log('🎯 Tema manual seleccionado:', musicCategoryToUse);
+      }
+
+      const artistsInCategory = ARTISTS[musicCategoryToUse];
+      if (!artistsInCategory || artistsInCategory.length === 0) {
+        throw new Error(`No hay artistas disponibles en la categoría: ${musicCategoryToUse}`);
+      }
+
       const randomArtist = artistsInCategory[Math.floor(Math.random() * artistsInCategory.length)];
       const response = await spotify.searchTracks(`artist:"${randomArtist}"`, { limit: 50, market: 'ES' });
 
@@ -371,7 +393,7 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
           title: randomTrack.name,
           artist: randomTrack.artists[0].name,
           year: parseInt(randomTrack.album.release_date.split('-')[0]),
-          musicCategory: randomMusicCategory,
+          musicCategory: musicCategoryToUse,
           spotifyUrl: randomTrack.external_urls.spotify,
           albumImage: albumImage,
           albumName: randomTrack.album.name
@@ -401,7 +423,7 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
     } finally {
       setIsLoading(false);
     }
-  }, [gameState.currentCategory, spotify, roomCode, logout, startTimer]);
+  }, [gameState.currentCategory, spotify, roomCode, logout, startTimer, selectedMusicTheme]);
 
   const handleRevealSong = useCallback(async () => {
     try {
@@ -490,6 +512,9 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
     pauseTimer,
     resumeTimer,
     stopTimer,
-    addTime
+    addTime,
+    // Music theme selection
+    selectedMusicTheme,
+    setSelectedMusicTheme
   };
 };

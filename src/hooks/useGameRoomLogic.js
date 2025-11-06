@@ -133,11 +133,22 @@ export const useGameRoomLogic = ({ roomCode, playerName, isHost, onStartGame }) 
         gameSocket.setPlayerReady(roomCode);
     }, [roomCode]);
 
-    const handleStartGame = useCallback(() => {
+    const handleStartGame = useCallback((musicThemes = null) => {
         // BUGFIX: Guardar la dificultad actual antes de enviar startGame
         console.log('💾 Guardando difficulty antes de startGame:', gameState.difficulty);
         lastDifficultyUsed.current = gameState.difficulty;
-        gameSocket.startGame({ roomCode, difficulty: gameState.difficulty });
+
+        // Preparar los temas musicales seleccionados
+        const selectedThemes = musicThemes
+            ? Object.keys(musicThemes).filter(theme => musicThemes[theme])
+            : null;
+
+        console.log('🎵 Temas musicales seleccionados:', selectedThemes);
+        gameSocket.startGame({
+            roomCode,
+            difficulty: gameState.difficulty,
+            musicThemes: selectedThemes
+        });
     }, [roomCode, gameState.difficulty]);
 
     const handleDifficultyChange = useCallback(async (newDifficulty) => {
