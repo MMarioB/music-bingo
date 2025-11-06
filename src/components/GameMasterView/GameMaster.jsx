@@ -2,6 +2,8 @@ import { useEffect } from 'react';
 import { Button } from '../ui/button';
 import { Card } from '../ui/card';
 import { Alert, AlertDescription } from '../ui/alert';
+import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
+import { Label } from '../ui/label';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ExternalLinkIcon, MusicIcon, CalendarIcon, RefreshCwIcon, AlertCircle, Check, Trophy, Users } from 'lucide-react';
 import CategoryWheel from '../Wheel/CategoryWheel';
@@ -12,6 +14,7 @@ import GameLayout from '../GameLayout';
 import SongTimer from './SongTimer';
 import PropTypes from 'prop-types';
 import { useGameMasterLogic } from './GameMasterLogic';
+import { MUSIC_CATEGORIES } from './constants';
 
 const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
   const {
@@ -45,7 +48,10 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
     timeRemaining,
     pauseTimer,
     resumeTimer,
-    addTime
+    addTime,
+    // Music theme selection
+    selectedMusicTheme,
+    setSelectedMusicTheme
   } = useGameMasterLogic({ roomCode, initialDifficulty });
 
   useEffect(() => {
@@ -114,6 +120,41 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
                 <span className="text-base font-medium text-gray-800">{selectedCategory.name}</span>
               </div>
             </div>
+          )}
+
+          {/* Selector de tema musical - solo visible cuando no hay tarjeta actual */}
+          {!currentCard && selectedCategory && (
+            <Card className="bg-black/30 border border-white/20 p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <MusicIcon className="w-4 h-4 text-purple-400" />
+                <h3 className="text-sm font-semibold text-white">Tema Musical</h3>
+              </div>
+              <RadioGroup
+                value={selectedMusicTheme}
+                onValueChange={setSelectedMusicTheme}
+                className="space-y-2"
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="auto" id="theme-auto" className="border-purple-400 text-purple-400" />
+                  <Label htmlFor="theme-auto" className="text-white/80 text-sm cursor-pointer">
+                    🎲 Aleatorio
+                  </Label>
+                </div>
+                {MUSIC_CATEGORIES.map((theme) => (
+                  <div key={theme} className="flex items-center space-x-2">
+                    <RadioGroupItem value={theme} id={`theme-${theme}`} className="border-purple-400 text-purple-400" />
+                    <Label htmlFor={`theme-${theme}`} className="text-white/80 text-sm cursor-pointer">
+                      {theme === 'tradicional' && '🎼 Tradicional'}
+                      {theme === 'rockEspanol' && '🎸 Rock Español'}
+                      {theme === 'popNacional' && '🎤 Pop Nacional'}
+                      {theme === 'popRockIndie' && '🎧 Pop/Rock/Indie'}
+                      {theme === 'musicaUrbana' && '🔥 Música Urbana'}
+                      {theme === 'internacional' && '🌍 Internacional'}
+                    </Label>
+                  </div>
+                ))}
+              </RadioGroup>
+            </Card>
           )}
 
           {/* Timer - aparece cuando hay tarjeta y no está revelada */}
