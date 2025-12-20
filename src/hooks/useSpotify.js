@@ -25,8 +25,9 @@ export const useSpotify = () => {
     spotifyApi.setAccessToken(null);
   }, []);
 
-  const login = useCallback(() => {
-    window.location.href = spotifyConfig.loginUrl;
+  const login = useCallback(async () => {
+    const loginUrl = await spotifyConfig.getLoginUrl();
+    window.location.href = loginUrl;
   }, []);
 
   const checkTokenValidity = useCallback(async () => {
@@ -49,22 +50,42 @@ export const useSpotify = () => {
   }, [token, logout]);
 
   useEffect(() => {
-    const initializeAuth = () => {
-      const hash = spotifyConfig.getTokenFromUrl();
-      window.location.hash = "";
-      const _token = hash.access_token;
-      const _expiresIn = hash.expires_in;
+    const initializeAuth = async () => {
+      // Verificar si hay un código de autorización en la URL
+      const code = spotifyConfig.getCodeFromUrl();
 
-      if (_token) {
-        const expirationTime = Date.now() + ((_expiresIn || 3600) * 1000);
-        localStorage.setItem('spotify_token', _token);
-        localStorage.setItem('spotify_token_expiration', expirationTime.toString());
+      if (code) {
+        try {
+          // Intercambiar el código por un token
+          const tokenData = await spotifyConfig.exchangeCodeForToken(code);
+          const _token = tokenData.access_token;
+          const _expiresIn = tokenData.expires_in;
 
-        setToken(_token);
-        spotifyApi.setAccessToken(_token);
-        setLoggedIn(true);
-        setIsTokenValid(true);
+          if (_token) {
+            const expirationTime = Date.now() + ((_expiresIn || 3600) * 1000);
+            localStorage.setItem('spotify_token', _token);
+            localStorage.setItem('spotify_token_expiration', expirationTime.toString());
+
+            // Si hay refresh token, guardarlo también
+            if (tokenData.refresh_token) {
+              localStorage.setItem('spotify_refresh_token', tokenData.refresh_token);
+            }
+
+            setToken(_token);
+            spotifyApi.setAccessToken(_token);
+            setLoggedIn(true);
+            setIsTokenValid(true);
+
+            // Limpiar la URL del código
+            window.history.replaceState({}, document.title, window.location.pathname);
+          }
+        } catch (error) {
+          console.error('Error durante la autenticación:', error);
+          // Si falla, verificar si hay un token guardado
+          checkTokenValidity();
+        }
       } else {
+        // Si no hay código, verificar si hay un token guardado
         checkTokenValidity();
       }
     };
