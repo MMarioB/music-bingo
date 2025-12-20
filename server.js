@@ -566,11 +566,12 @@ io.on('connection', (socket) => {
 setInterval(() => {
   const now = new Date();
 
-  // Limpiar salas activas viejas (existente)
+  // Limpiar salas activas viejas (8 horas = 28800000ms)
+  // Aumentado de 1h a 8h para permitir partidas largas con tokens auto-renovables
   for (const [roomCode, room] of gameRooms.entries()) {
-    if (now - room.createdAt > 3600000) {
+    if (now - room.createdAt > 28800000) {
       gameRooms.delete(roomCode);
-      console.log(`Sala activa ${roomCode} eliminada por inactividad.`);
+      console.log(`Sala activa ${roomCode} eliminada por inactividad (>8h).`);
     }
   }
 
