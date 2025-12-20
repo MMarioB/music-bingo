@@ -119,12 +119,64 @@ export const exchangeCodeForToken = async (code) => {
     }
 };
 
+// Renovar el access token usando el refresh token
+export const refreshAccessToken = async () => {
+    const refreshToken = localStorage.getItem('spotify_refresh_token');
+
+    if (!refreshToken) {
+        throw new Error('No hay refresh token disponible');
+    }
+
+    const params = new URLSearchParams({
+        client_id: SPOTIFY_CLIENT_ID,
+        grant_type: 'refresh_token',
+        refresh_token: refreshToken
+    });
+
+    try {
+        const response = await fetch('https://accounts.spotify.com/api/token', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            body: params.toString()
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(`Error renovando token: ${errorData.error_description || errorData.error}`);
+        }
+
+        const data = await response.json();
+
+        // Actualizar el access token y su expiración
+        const expirationTime = Date.now() + ((data.expires_in || 3600) * 1000);
+        localStorage.setItem('spotify_token', data.access_token);
+        localStorage.setItem('spotify_token_expiration', expirationTime.toString());
+
+        // Si viene un nuevo refresh token, actualizarlo (aunque normalmente Spotify no lo cambia)
+        if (data.refresh_token) {
+            localStorage.setItem('spotify_refresh_token', data.refresh_token);
+        }
+
+        return {
+            access_token: data.access_token,
+            token_type: data.token_type || 'Bearer',
+            expires_in: data.expires_in || 3600,
+            refresh_token: data.refresh_token || refreshToken
+        };
+    } catch (error) {
+        console.error('Error renovando token:', error);
+        throw error;
+    }
+};
+
 export const getStoredToken = () => {
     const token = localStorage.getItem('spotify_token');
     const expiration = localStorage.getItem('spotify_token_expiration');
-    
+
     if (!token || !expiration) return null;
-    
+
     return {
         access_token: token,
         expires_in: Math.floor((parseInt(expiration) - Date.now()) / 1000)
@@ -136,5 +188,6 @@ export default {
     getLoginUrl,
     getCodeFromUrl,
     exchangeCodeForToken,
+    refreshAccessToken,
     getStoredToken
 };

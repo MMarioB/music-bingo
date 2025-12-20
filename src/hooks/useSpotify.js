@@ -22,12 +22,37 @@ export const useSpotify = () => {
     setIsTokenValid(false);
     localStorage.removeItem('spotify_token');
     localStorage.removeItem('spotify_token_expiration');
+    localStorage.removeItem('spotify_refresh_token');
     spotifyApi.setAccessToken(null);
   }, []);
 
   const login = useCallback(async () => {
     const loginUrl = await spotifyConfig.getLoginUrl();
     window.location.href = loginUrl;
+  }, []);
+
+  const tryRefreshToken = useCallback(async () => {
+    const refreshToken = localStorage.getItem('spotify_refresh_token');
+
+    if (!refreshToken) {
+      return false;
+    }
+
+    try {
+      const tokenData = await spotifyConfig.refreshAccessToken();
+      const newToken = tokenData.access_token;
+
+      setToken(newToken);
+      spotifyApi.setAccessToken(newToken);
+      setLoggedIn(true);
+      setIsTokenValid(true);
+
+      console.log('Token renovado exitosamente');
+      return true;
+    } catch (error) {
+      console.error('Error renovando token:', error);
+      return false;
+    }
   }, []);
 
   const checkTokenValidity = useCallback(async () => {
@@ -43,11 +68,16 @@ export const useSpotify = () => {
       return true;
     }
 
+    // Si el token expiró, intentar renovarlo
     if (storedToken) {
+      const refreshed = await tryRefreshToken();
+      if (refreshed) {
+        return true;
+      }
       logout();
     }
     return false;
-  }, [token, logout]);
+  }, [token, logout, tryRefreshToken]);
 
   useEffect(() => {
     const initializeAuth = async () => {
@@ -114,6 +144,33 @@ export const useSpotify = () => {
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, [lastPlayedTrack, checkTokenValidity]);
+
+  // Auto-renovar el token antes de que expire
+  useEffect(() => {
+    if (!loggedIn || !isTokenValid) return;
+
+    const checkAndRefreshToken = async () => {
+      const expirationTime = localStorage.getItem('spotify_token_expiration');
+      const refreshToken = localStorage.getItem('spotify_refresh_token');
+
+      if (!expirationTime || !refreshToken) return;
+
+      const timeUntilExpiration = parseInt(expirationTime) - Date.now();
+      const fiveMinutes = 5 * 60 * 1000; // 5 minutos en milisegundos
+
+      // Si el token expira en menos de 5 minutos, renovarlo
+      if (timeUntilExpiration < fiveMinutes && timeUntilExpiration > 0) {
+        console.log('Token próximo a expirar, renovando automáticamente...');
+        await tryRefreshToken();
+      }
+    };
+
+    // Revisar cada minuto
+    checkAndRefreshToken();
+    const interval = setInterval(checkAndRefreshToken, 60000);
+
+    return () => clearInterval(interval);
+  }, [loggedIn, isTokenValid, tryRefreshToken]);
 
   const apiCall = async (fn) => {
     const isValid = await checkTokenValidity();
