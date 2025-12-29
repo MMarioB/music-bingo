@@ -365,10 +365,48 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
 
       try {
         // 1. Buscar el artista en Spotify para obtener su ID
-        const artistSearchResponse = await spotify.searchArtists(randomArtist, { limit: 1 });
+        const artistSearchResponse = await spotify.searchArtists(randomArtist, { limit: 10 });
 
         if (artistSearchResponse.artists.items.length > 0) {
-          const artistId = artistSearchResponse.artists.items[0].id;
+          // 🎯 Verificar coincidencia exacta del nombre del artista
+          // Para evitar artistas random cuando el nombre es genérico (ej: "Second")
+          const exactMatch = artistSearchResponse.artists.items.find(artist => {
+            const artistNameLower = artist.name.toLowerCase().trim();
+            const searchNameLower = randomArtist.toLowerCase().trim();
+
+            // Coincidencia exacta o muy cercana
+            return artistNameLower === searchNameLower ||
+                   artistNameLower.replace(/\s+/g, '') === searchNameLower.replace(/\s+/g, '');
+          });
+
+          let artistId;
+          let matchedArtistName;
+
+          if (exactMatch) {
+            artistId = exactMatch.id;
+            matchedArtistName = exactMatch.name;
+            console.log(`✅ Artista encontrado (exacto): ${matchedArtistName} (popularidad: ${exactMatch.popularity})`);
+          } else {
+            console.warn(`⚠️ No se encontró coincidencia exacta para "${randomArtist}", buscando coincidencia parcial...`);
+            // Buscar coincidencia parcial (el nombre de búsqueda está contenido en el resultado)
+            const partialMatch = artistSearchResponse.artists.items.find(artist => {
+              const artistNameLower = artist.name.toLowerCase();
+              const searchNameLower = randomArtist.toLowerCase();
+              return artistNameLower.includes(searchNameLower) && artist.popularity > 30;
+            });
+
+            if (!partialMatch) {
+              throw new Error('No se encontró un artista válido');
+            }
+
+            artistId = partialMatch.id;
+            matchedArtistName = partialMatch.name;
+            console.log(`✅ Artista encontrado (parcial): ${matchedArtistName} (popularidad: ${partialMatch.popularity})`);
+          }
+
+          if (!artistId) {
+            throw new Error('No se encontró un artista válido');
+          }
 
           // 2. Obtener las canciones más populares del artista (Top Tracks)
           const topTracksResponse = await spotify.getArtistTopTracks(artistId, 'ES');
