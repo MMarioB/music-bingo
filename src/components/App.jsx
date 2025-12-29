@@ -3,11 +3,13 @@ import MusicBingoGame from "../components/PlayerView/MusicBingoGame";
 import GameMaster from "../components/GameMasterView/GameMaster";
 import GameRoom from "../components/GameRoom";
 import SpotifyAuth from "../components/Auth/SpotifyAuth";
+import RoleSelection from "../components/RoleSelection";
+import AnimatedBackground from "../components/AnimatedBackground";
 import { Card } from "../components/ui/card";
 import { Input } from "../components/ui/input";
 import { Button } from "../components/ui/button";
 import { Alert, AlertDescription } from "../components/ui/alert";
-import { AlertCircle, ArrowLeft, Music, Users } from "lucide-react";
+import { AlertCircle, ArrowLeft } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 function App() {
@@ -140,7 +142,7 @@ function App() {
       exit={{ opacity: 0, y: -20 }}
       className="w-full max-w-md mx-auto"
     >
-      <Card className="p-8 bg-black/40 shadow-2xl backdrop-blur-sm border border-white/10">
+      <Card className="p-8 glass-card-strong shadow-2xl pulse-glow rounded-2xl">
         <h2 className="text-2xl font-bold text-center text-white mb-6">
           {gameState.selectedRole === 'master' ? 'Crear sala' : 'Unirse a sala'}
         </h2>
@@ -185,7 +187,7 @@ function App() {
       exit={{ opacity: 0, y: -20 }}
       className="w-full max-w-md mx-auto"
     >
-      <Card className="p-8 bg-black/40 shadow-2xl backdrop-blur-sm border border-white/10">
+      <Card className="p-8 glass-card-strong shadow-2xl pulse-glow rounded-2xl">
         <h2 className="text-2xl font-bold text-center text-white mb-6">
           Unirse a sala
         </h2>
@@ -238,113 +240,17 @@ function App() {
     );
   };
 
-  const showTitle = ['role-selection', 'name-input', 'room-selection'].includes(gameState.phase);
-
   return (
-    <div className="min-h-screen bg-[#1a0133] p-4 relative overflow-hidden font-audiowide">
-      {/* Fondo con cuadrícula tipo disco */}
-      <div
-        className="absolute inset-0 opacity-20"
-        style={{
-          backgroundImage: `
-            linear-gradient(to right, #ff00ee 1px, transparent 1px),
-            linear-gradient(to bottom, #ff00ee 1px, transparent 1px)
-          `,
-          backgroundSize: '40px 40px',
-          transform: 'perspective(500px) rotateX(60deg)',
-          transformOrigin: 'bottom'
-        }}
-      />
-
-      {/* Efecto de bola de disco */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 0.6 }}
-        className="absolute top-10 right-10 w-20 h-20 rounded-full"
-        style={{
-          background: 'radial-gradient(circle, rgba(255,255,255,0.8) 10%, rgba(255,255,255,0.3) 60%)',
-          boxShadow: '0 0 20px rgba(255,255,255,0.5)'
-        }}
-      />
+    <div className="min-h-screen p-4 relative overflow-hidden">
+      {/* Fondo animado */}
+      <AnimatedBackground />
 
       {/* Contenido principal */}
       <div className="w-full min-h-screen flex flex-col items-center justify-center relative z-10">
-        {/* Logo y título con efecto neón */}
-        {showTitle && (
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-center mb-12 relative"
-          >
-            <h1 className="text-4xl md:text-5xl md:m-3 font-bold mb-4 tracking-wider"
-              style={{
-                color: '#fff',
-                textShadow: `
-                    0 0 7px #fff,
-                    0 0 10px #fff,
-                    0 0 21px #fff,
-                    0 0 42px #ff00ee,
-                    0 0 82px #ff00ee,
-                    0 0 92px #ff00ee
-                  `
-              }}>
-              DISCOHITS
-            </h1>
-            <h2 className="text-2xl md:text-4xl font-bold relative"
-              style={{
-                background: 'linear-gradient(to right, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #4b0082, #8b00ff)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                textShadow: '0 0 20px rgba(255,255,255,0.5)'
-              }}>
-              Music BINGO
-            </h2>
-          </motion.div>
-        )}
-
         {/* Área principal de juego */}
         <AnimatePresence mode="wait">
           {gameState.phase === 'role-selection' && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="w-full max-w-md"
-            >
-              <Card className="p-8 bg-black/40 shadow-2xl backdrop-blur-sm border border-white/10">
-                <div className="grid gap-6">
-                  <Button
-                    onClick={() => handleRoleSelect('master')}
-                    className="h-auto py-8 bg-black/30 border-2 border-[#00ff00] hover:bg-[#00ff00]/20 transform transition-all hover:scale-105 group text-white/90"
-                    style={{
-                      boxShadow: '0 0 10px #00ff00, inset 0 0 20px rgba(0, 255, 0, 0.2)',
-                    }}
-                  >
-                    <div className="flex items-center justify-center gap-3">
-                      <Music className="w-8 h-8 group-hover:animate-spin" />
-                      <span className="text-xl font-bold tracking-wide">Game Master</span>
-                    </div>
-                  </Button>
-
-                  <Button
-                    onClick={() => handleRoleSelect('player')}
-                    className="h-auto py-8 bg-black/30 border-2 border-[#ff00ee] hover:bg-[#ff00ee]/20 transform transition-all hover:scale-105 group text-white/90"
-                    style={{
-                      boxShadow: '0 0 10px #ff00ee, inset 0 0 20px rgba(255, 0, 238, 0.2)',
-                    }}
-                  >
-                    <div className="flex items-center justify-center gap-3">
-                      <Users className="w-8 h-8 group-hover:animate-bounce" />
-                      <span className="text-xl font-bold tracking-wide">Jugador</span>
-                    </div>
-                  </Button>
-                </div>
-
-                <p className="text-white/60 text-center mt-6 text-sm">
-                  El bingo de las abuelas
-                </p>
-              </Card>
-            </motion.div>
+            <RoleSelection onSelectRole={handleRoleSelect} />
           )}
 
           {gameState.phase === 'spotify-auth' && (

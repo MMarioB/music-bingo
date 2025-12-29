@@ -3,6 +3,7 @@ import PropTypes from 'prop-types';
 import { Card } from '../ui/card';
 import { motion } from 'framer-motion';
 import { Check } from 'lucide-react';
+import confetti from 'canvas-confetti';
 
 const BingoBoard = ({ board, currentCategory, currentSong, canMark, onCellClick }) => {
 
@@ -44,6 +45,17 @@ const BingoBoard = ({ board, currentCategory, currentSong, canMark, onCellClick 
     if (canMark && cell.name === targetCategory) {
       console.log('✅ Marcando celda', index);
       onCellClick(index);
+
+      // Mini confetti al marcar
+      confetti({
+        particleCount: 30,
+        spread: 50,
+        origin: { y: 0.7 },
+        colors: ['#a855f7', '#ec4899', '#3b82f6'],
+        ticks: 100,
+        gravity: 1.5,
+        scalar: 0.8
+      });
     } else {
       console.log('⚠️ Click ignorado:', {
         reason: !canMark ? 'No puede marcar (canMark=false)' : `Categoría incorrecta: celda='${cell.name}' vs target='${targetCategory}'`,
@@ -56,7 +68,7 @@ const BingoBoard = ({ board, currentCategory, currentSong, canMark, onCellClick 
 
   return (
     <div className="flex-1 flex flex-col justify-center">
-      <Card className="bg-black/30 border border-white/20 p-2 md:p-4">
+      <Card className="glass-card p-2 md:p-4 rounded-2xl shadow-2xl">
         <div className="grid grid-cols-5 gap-1 md:gap-3">
           {board && board.map((cell, index) => {
             // En modo experto: si la canción está revelada, usar su categoría
