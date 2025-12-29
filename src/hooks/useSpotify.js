@@ -214,6 +214,8 @@ export const useSpotify = () => {
   return {
     spotify: {
       searchTracks: (query, options) => apiCall(() => spotifyApi.searchTracks(query, options)),
+      searchArtists: (query, options) => apiCall(() => spotifyApi.searchArtists(query, options)),
+      getArtistTopTracks: (artistId, market) => apiCall(() => spotifyApi.getArtistTopTracks(artistId, market)),
       playTrack
     },
     token,
