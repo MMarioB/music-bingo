@@ -359,13 +359,97 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
       }
 
       const randomArtist = artistsInCategory[Math.floor(Math.random() * artistsInCategory.length)];
-      const response = await spotify.searchTracks(`artist:"${randomArtist}"`, { limit: 50, market: 'ES' });
 
-      if (!response.tracks.items.length) {
-        throw new Error('No se encontraron canciones para este artista.');
+      // 🎯 NUEVA LÓGICA DE SELECCIÓN CON FILTROS DE CALIDAD
+      let randomTrack = null;
+
+      try {
+        // 1. Buscar el artista en Spotify para obtener su ID
+        const artistSearchResponse = await spotify.searchArtists(randomArtist, { limit: 1 });
+
+        if (artistSearchResponse.artists.items.length > 0) {
+          const artistId = artistSearchResponse.artists.items[0].id;
+
+          // 2. Obtener las canciones más populares del artista (Top Tracks)
+          const topTracksResponse = await spotify.getArtistTopTracks(artistId, 'ES');
+          let tracks = topTracksResponse.tracks || [];
+
+          console.log(`🎵 ${tracks.length} canciones encontradas para ${randomArtist}`);
+
+          if (tracks.length > 0) {
+            // 3. Aplicar filtros de calidad
+            const MIN_POPULARITY = 40;  // Popularidad mínima (0-100)
+            const MIN_DURATION = 60000;  // 60 segundos en ms
+            const MAX_DURATION = 480000; // 8 minutos en ms
+
+            // Palabras que indican versiones no deseadas
+            const unwantedKeywords = ['live', 'remix', 'version', 'remaster', 'remastered', 'demo', 'acoustic', 'instrumental'];
+
+            // Aplicar todos los filtros
+            let filteredTracks = tracks.filter(track => {
+              // Filtro de popularidad
+              if (track.popularity < MIN_POPULARITY) return false;
+
+              // Filtro de duración
+              if (track.duration_ms < MIN_DURATION || track.duration_ms > MAX_DURATION) return false;
+
+              // Filtro de versiones no deseadas (priorizar versiones de álbum)
+              const trackNameLower = track.name.toLowerCase();
+              const hasUnwantedKeyword = unwantedKeywords.some(keyword => trackNameLower.includes(keyword));
+              if (hasUnwantedKeyword) return false;
+
+              return true;
+            });
+
+            console.log(`✅ ${filteredTracks.length} canciones después de aplicar filtros de calidad`);
+
+            // Si no quedan canciones después de filtros estrictos, relajar filtros
+            if (filteredTracks.length === 0) {
+              console.log('⚠️ Relajando filtros...');
+              filteredTracks = tracks.filter(track => {
+                // Solo mantener filtros básicos
+                return track.popularity >= MIN_POPULARITY &&
+                       track.duration_ms >= MIN_DURATION &&
+                       track.duration_ms <= MAX_DURATION;
+              });
+            }
+
+            // Si aún no hay canciones, usar todas las top tracks
+            if (filteredTracks.length === 0) {
+              console.log('⚠️ Usando todas las top tracks sin filtros');
+              filteredTracks = tracks;
+            }
+
+            // Seleccionar una canción aleatoria de las filtradas
+            randomTrack = filteredTracks[Math.floor(Math.random() * filteredTracks.length)];
+            console.log(`🎵 Canción seleccionada: ${randomTrack.name} (popularidad: ${randomTrack.popularity})`);
+          }
+        }
+      } catch (error) {
+        console.warn('⚠️ Error usando Top Tracks API, usando búsqueda tradicional:', error);
       }
 
-      const randomTrack = response.tracks.items[Math.floor(Math.random() * response.tracks.items.length)];
+      // Fallback: si no se pudo obtener con Top Tracks, usar búsqueda tradicional mejorada
+      if (!randomTrack) {
+        const response = await spotify.searchTracks(`artist:"${randomArtist}"`, { limit: 50, market: 'ES' });
+
+        if (!response.tracks.items.length) {
+          throw new Error('No se encontraron canciones para este artista.');
+        }
+
+        // Aplicar filtros básicos a la búsqueda tradicional
+        let filteredTracks = response.tracks.items.filter(track =>
+          track.popularity >= 40 &&
+          track.duration_ms >= 60000 &&
+          track.duration_ms <= 480000
+        );
+
+        if (filteredTracks.length === 0) {
+          filteredTracks = response.tracks.items;
+        }
+
+        randomTrack = filteredTracks[Math.floor(Math.random() * filteredTracks.length)];
+      }
 
       if (!randomTrack) {
         throw new Error('No se encontraron canciones.');
