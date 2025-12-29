@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import PropTypes from 'prop-types';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
+import confetti from 'canvas-confetti';
 // Asegúrate de que este import sea correcto para tu estructura de proyecto
 import { CATEGORIES_A, CATEGORIES_B } from './constants';
 
@@ -67,12 +68,54 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
         console.log(`🎯 Ruleta: Segmento ${finalIndexInWheel} (${winner.name}), ángulo: ${segmentMidAngle.toFixed(1)}°, rotación final: ${newRotation.toFixed(1)}°`);
     };
 
-    // La función de completar es ahora muy simple, como debe ser.
+    // 🎊 Función de confetti con los colores de la categoría ganadora
+    const triggerConfetti = (category) => {
+        const colors = [category.neonColor, category.wheelColor, '#FFFFFF'];
+
+        // Explosión principal
+        confetti({
+            particleCount: 100,
+            spread: 70,
+            origin: { y: 0.6 },
+            colors: colors,
+            ticks: 200,
+            gravity: 1.2,
+            scalar: 1.2
+        });
+
+        // Explosión lateral izquierda
+        setTimeout(() => {
+            confetti({
+                particleCount: 50,
+                angle: 60,
+                spread: 55,
+                origin: { x: 0, y: 0.6 },
+                colors: colors
+            });
+        }, 150);
+
+        // Explosión lateral derecha
+        setTimeout(() => {
+            confetti({
+                particleCount: 50,
+                angle: 120,
+                spread: 55,
+                origin: { x: 1, y: 0.6 },
+                colors: colors
+            });
+        }, 150);
+    };
+
+    // La función de completar con efectos mejorados
     const handleSpinComplete = () => {
         const winner = winnerRef.current;
         if (!winner) return;
         setIsSpinning(false);
         setFinalSelectedCategory(winner);
+
+        // Confetti cuando se detiene
+        triggerConfetti(winner);
+
         setTimeout(() => onCategorySelected(winner), 1500);
     };
 
@@ -109,10 +152,43 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
 
             return (
                 <g key={category.id} className="transition-opacity duration-500" style={{ opacity: isTemporarilyExcluded ? 0.3 : 1 }}>
-                    <path d={pathData} fill="transparent" stroke={category.neonColor} strokeWidth="0.005" className={`transition-opacity duration-300 ${isSelectedResult ? 'opacity-100' : 'opacity-60'}`} />
+                    <path
+                        d={pathData}
+                        fill="transparent"
+                        stroke={category.neonColor}
+                        strokeWidth={isSelectedResult ? "0.008" : "0.005"}
+                        className={`transition-all duration-300 ${isSelectedResult ? 'opacity-100' : 'opacity-60'}`}
+                        style={{
+                            filter: isSelectedResult ? 'drop-shadow(0 0 8px ' + category.neonColor + ')' : 'none'
+                        }}
+                    />
                     <g transform={`translate(${textX}, ${textY})`}>
-                        <rect x={-squareSize / 2} y={-squareSize / 2} width={squareSize} height={squareSize} fill={category.wheelColor} stroke={category.neonColor} strokeWidth="0.005" rx="0.02" ry="0.02" className={`transition-all duration-300 ${isSelectedResult ? 'opacity-100' : 'opacity-70'}`} style={{ filter: isSelectedResult ? 'url(#neonGlow)' : 'none' }} />
-                        <g transform={`translate(${-squareSize / 4}, ${-squareSize / 4}) scale(0.01)`} style={{ transformBox: 'fill-box', transformOrigin: 'center' }}>
+                        <rect
+                            x={-squareSize / 2}
+                            y={-squareSize / 2}
+                            width={squareSize}
+                            height={squareSize}
+                            fill={category.wheelColor}
+                            stroke={category.neonColor}
+                            strokeWidth={isSelectedResult ? "0.008" : "0.005"}
+                            rx="0.02"
+                            ry="0.02"
+                            className={`transition-all duration-300 ${isSelectedResult ? 'opacity-100' : 'opacity-70'}`}
+                            style={{
+                                filter: isSelectedResult ? `url(#neonGlow) drop-shadow(0 0 10px ${category.neonColor})` : 'none',
+                                transform: isSelectedResult ? 'scale(1.1)' : 'scale(1)',
+                                transformOrigin: 'center',
+                                transition: 'all 0.3s ease-out'
+                            }}
+                        />
+                        <g
+                            transform={`translate(${-squareSize / 4}, ${-squareSize / 4}) scale(${isSelectedResult ? 0.011 : 0.01})`}
+                            style={{
+                                transformBox: 'fill-box',
+                                transformOrigin: 'center',
+                                transition: 'all 0.3s ease-out'
+                            }}
+                        >
                             <Icon size={48} {...category.iconProps} style={{ ...category.iconProps.style, strokeWidth: '2' }} />
                         </g>
                     </g>
@@ -125,6 +201,35 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
     
     return (
         <div className="flex flex-col items-center justify-center gap-4 w-full">
+            {/* 📊 Indicador de progreso del ciclo */}
+            <motion.div
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex items-center gap-3 bg-gradient-to-r from-purple-500/20 to-pink-500/20 backdrop-blur-sm border border-white/20 rounded-xl px-4 py-2"
+            >
+                <div className="flex items-center gap-2">
+                    <span className="text-sm font-semibold text-white">Progreso:</span>
+                    <span className="text-lg font-bold text-white">
+                        {excludedIds.length}/{allCategories.length}
+                    </span>
+                </div>
+                <div className="flex gap-1">
+                    {allCategories.map((cat, idx) => (
+                        <div
+                            key={cat.id}
+                            className={`w-3 h-3 rounded-full transition-all duration-300 ${
+                                excludedIds.includes(cat.id)
+                                    ? 'bg-gradient-to-r from-purple-500 to-pink-500 shadow-lg'
+                                    : 'bg-white/30'
+                            }`}
+                            style={{
+                                boxShadow: excludedIds.includes(cat.id) ? `0 0 8px ${cat.neonColor}` : 'none'
+                            }}
+                        />
+                    ))}
+                </div>
+            </motion.div>
+
             <div className="relative w-full max-w-[min(70vw,400px)] lg:max-w-full aspect-square mx-auto">
                 {/* Indicador de la ruleta */}
                 <div style={{
@@ -141,11 +246,15 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
                     zIndex: 10
                 }}/>
 
-                {/* Ruleta animada */}
+                {/* Ruleta animada con efecto casino realista */}
                 <motion.div
                     className="w-full h-full"
                     animate={{ rotate: rotationState }}
-                    transition={{ duration: 6, ease: "easeOut" }}
+                    transition={{
+                        duration: 5,
+                        ease: [0.32, 0.72, 0.0, 1.0], // Bezier curve personalizada para efecto casino
+                        type: "tween"
+                    }}
                     onAnimationComplete={handleSpinComplete}
                 >
                     <svg viewBox="-1.1 -1.1 2.2 2.2" className="w-full h-full">
@@ -168,36 +277,94 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
                 </motion.div>
             </div>
 
-            {/* Botón de girar */}
+            {/* Botón de girar mejorado con efecto pulso */}
             <div className="w-full max-w-[350px]">
                 <motion.button
                     onClick={spinWheel}
                     disabled={isSpinning}
-                    className="w-full py-3 px-6 rounded-xl bg-gradient-to-r from-purple-600/90 to-pink-600/90 text-white font-bold border border-white/20 backdrop-blur-sm disabled:opacity-50 disabled:cursor-not-allowed group overflow-hidden relative"
-                    style={{ boxShadow: '0 0 20px rgba(168,85,247,0.4)' }}
+                    className="w-full py-4 px-6 rounded-xl bg-gradient-to-r from-purple-600/90 to-pink-600/90 text-white font-bold text-lg border border-white/20 backdrop-blur-sm disabled:opacity-50 disabled:cursor-not-allowed group overflow-hidden relative"
+                    style={{
+                        boxShadow: isSpinning
+                            ? '0 0 20px rgba(168,85,247,0.4)'
+                            : '0 0 30px rgba(168,85,247,0.6), 0 0 60px rgba(236,72,153,0.4)'
+                    }}
+                    animate={!isSpinning ? {
+                        scale: [1, 1.02, 1],
+                        boxShadow: [
+                            '0 0 30px rgba(168,85,247,0.6), 0 0 60px rgba(236,72,153,0.4)',
+                            '0 0 40px rgba(168,85,247,0.8), 0 0 80px rgba(236,72,153,0.6)',
+                            '0 0 30px rgba(168,85,247,0.6), 0 0 60px rgba(236,72,153,0.4)'
+                        ]
+                    } : {}}
+                    transition={{
+                        duration: 2,
+                        repeat: Infinity,
+                        ease: "easeInOut"
+                    }}
                     whileHover={{ scale: isSpinning ? 1 : 1.05 }}
                     whileTap={{ scale: isSpinning ? 1 : 0.95 }}
                 >
                     <div className="absolute inset-0 bg-gradient-to-r from-purple-400 to-pink-400 opacity-0 group-hover:opacity-20 transition-opacity" />
-                    <span className="relative z-10">
-                        {isSpinning ? "Girando..." : (isCycleComplete ? "Reiniciar Ciclo" : "Girar Ruleta")}
+                    <span className="relative z-10 flex items-center justify-center gap-2">
+                        {isSpinning ? (
+                            <>
+                                <motion.span
+                                    animate={{ rotate: 360 }}
+                                    transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                                >
+                                    🎰
+                                </motion.span>
+                                Girando...
+                            </>
+                        ) : (
+                            <>
+                                🎲 {isCycleComplete ? "Reiniciar Ciclo" : "Girar Ruleta"}
+                            </>
+                        )}
                     </span>
                 </motion.button>
             </div>
 
-            {/* Categoría seleccionada */}
-            {finalSelectedCategory && (
-                <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className={`${finalSelectedCategory.color} px-4 py-2 rounded-lg text-center border border-white/20 max-w-[350px] w-full`}
-                >
-                    <h3 className="font-semibold text-gray-800 flex items-center justify-center gap-2">
-                        <finalSelectedCategory.icon className="w-5 h-5" />
-                        {finalSelectedCategory.name}
-                    </h3>
-                </motion.div>
-            )}
+            {/* Categoría seleccionada con animación mejorada */}
+            <AnimatePresence>
+                {finalSelectedCategory && (
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.8, y: 20 }}
+                        animate={{
+                            opacity: 1,
+                            scale: [0.8, 1.1, 1],
+                            y: 0
+                        }}
+                        exit={{ opacity: 0, scale: 0.8 }}
+                        transition={{
+                            duration: 0.5,
+                            scale: {
+                                times: [0, 0.6, 1],
+                                duration: 0.6
+                            }
+                        }}
+                        className={`${finalSelectedCategory.color} px-6 py-4 rounded-xl text-center border-2 border-white/30 max-w-[350px] w-full shadow-2xl`}
+                        style={{
+                            boxShadow: `0 0 30px ${finalSelectedCategory.neonColor}, 0 10px 40px rgba(0,0,0,0.3)`
+                        }}
+                    >
+                        <motion.h3
+                            className="font-bold text-xl text-gray-800 flex items-center justify-center gap-2"
+                            animate={{
+                                scale: [1, 1.05, 1]
+                            }}
+                            transition={{
+                                duration: 1.5,
+                                repeat: Infinity,
+                                ease: "easeInOut"
+                            }}
+                        >
+                            <finalSelectedCategory.icon className="w-6 h-6" />
+                            {finalSelectedCategory.name}
+                        </motion.h3>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 };
