@@ -1,8 +1,9 @@
 import React from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { Play, Pause, Plus, Check } from 'lucide-react';
 import { Button } from '../ui/button';
 import PropTypes from 'prop-types';
+
+const revealBtnShadow = { boxShadow: '0 0 20px rgba(168,85,247,0.5)' };
 
 const SongTimer = ({
   duration = 30,
@@ -16,12 +17,9 @@ const SongTimer = ({
   onResume,
   onAddTime,
   onRevealNow,
-  onComplete
 }) => {
-  // Calcular progreso (0-1)
   const progress = timeRemaining / duration;
 
-  // Determinar color según tiempo restante
   const getColor = () => {
     if (timeRemaining > 10) return { bg: 'bg-green-500', text: 'text-green-400', ring: 'ring-green-500' };
     if (timeRemaining > 5) return { bg: 'bg-yellow-500', text: 'text-yellow-400', ring: 'ring-yellow-500' };
@@ -30,22 +28,14 @@ const SongTimer = ({
 
   const colors = getColor();
   const percentage = Math.round(progress * 100);
-
-  // Efecto de pulso en los últimos 10 segundos
   const shouldPulse = timeRemaining <= 10 && isRunning && !isPaused;
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: -20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
-      className="bg-black/40 border border-white/20 rounded-lg p-3"
-    >
+    <div className="bg-black/40 border border-white/20 rounded-lg p-3 animate-slideDown">
       <div className="flex items-center gap-3">
-        {/* Countdown circular más pequeño */}
+        {/* Countdown circular */}
         <div className="flex-shrink-0">
           <div className="relative w-16 h-16">
-            {/* Círculo de fondo */}
             <svg className="w-16 h-16 transform -rotate-90">
               <circle
                 cx="32"
@@ -56,7 +46,6 @@ const SongTimer = ({
                 fill="none"
                 className="text-white/10"
               />
-              {/* Círculo de progreso */}
               <circle
                 cx="32"
                 cy="32"
@@ -71,22 +60,16 @@ const SongTimer = ({
               />
             </svg>
 
-            {/* Número en el centro */}
-            <motion.div
-              className="absolute inset-0 flex items-center justify-center"
-              animate={shouldPulse ? { scale: [1, 1.1, 1] } : {}}
-              transition={{ duration: 1, repeat: Infinity }}
-            >
+            <div className={`absolute inset-0 flex items-center justify-center ${shouldPulse ? 'timer-pulse' : ''}`}>
               <span className={`text-xl font-bold ${colors.text}`}>
                 {timeRemaining}
               </span>
-            </motion.div>
+            </div>
           </div>
         </div>
 
         {/* Info y controles */}
         <div className="flex-1 space-y-2">
-          {/* Header con estado y predicciones en una línea más compacta */}
           <div className="flex items-center justify-between gap-2">
             <div className="flex-1 min-w-0">
               <h3 className="text-white font-semibold text-sm truncate">
@@ -100,7 +83,6 @@ const SongTimer = ({
               </h3>
             </div>
 
-            {/* Predicciones compactas */}
             <div className="flex items-center gap-1 text-sm flex-shrink-0">
               <Check className="w-3 h-3 text-green-400" />
               <span className="text-white font-bold">{predictionsCount}</span>
@@ -110,18 +92,15 @@ const SongTimer = ({
 
           {/* Barra de progreso */}
           <div className="w-full bg-white/10 rounded-full h-1.5 overflow-hidden">
-            <motion.div
-              className={`h-full ${colors.bg} transition-all duration-1000`}
+            <div
+              className={`h-full ${colors.bg} transition-all duration-1000 ${shouldPulse ? 'timer-bar-pulse' : ''}`}
               style={{ width: `${percentage}%` }}
-              animate={shouldPulse ? { opacity: [1, 0.7, 1] } : {}}
-              transition={{ duration: 0.5, repeat: Infinity }}
             />
           </div>
 
           {/* Controles */}
           {timeRemaining > 0 ? (
             <div className="flex gap-1.5">
-              {/* Botón Spotify compacto */}
               {spotifyUrl && (
                 <Button
                   onClick={() => window.open(spotifyUrl, '_blank')}
@@ -134,7 +113,6 @@ const SongTimer = ({
                 </Button>
               )}
 
-              {/* Pausar/Reanudar */}
               {isPaused ? (
                 <Button
                   onClick={onResume}
@@ -158,7 +136,6 @@ const SongTimer = ({
                 </Button>
               )}
 
-              {/* +15s */}
               <Button
                 onClick={onAddTime}
                 size="sm"
@@ -169,7 +146,6 @@ const SongTimer = ({
                 +15s
               </Button>
 
-              {/* Revelar ahora */}
               <Button
                 onClick={onRevealNow}
                 size="sm"
@@ -179,23 +155,42 @@ const SongTimer = ({
               </Button>
             </div>
           ) : (
-            // Botón prominente cuando termina el timer
-            <motion.div
-              animate={{ scale: [1, 1.05, 1] }}
-              transition={{ duration: 1, repeat: Infinity }}
-            >
+            <div className="timer-reveal-pulse">
               <Button
                 onClick={onRevealNow}
                 className="w-full h-10 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-bold"
-                style={{ boxShadow: '0 0 20px rgba(168,85,247,0.5)' }}
+                style={revealBtnShadow}
               >
                 🎵 Revelar Canción
               </Button>
-            </motion.div>
+            </div>
           )}
         </div>
       </div>
-    </motion.div>
+
+      <style>{`
+        @keyframes slideDown {
+          from { opacity: 0; transform: translateY(-20px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-slideDown { animation: slideDown 0.3s ease-out forwards; }
+        @keyframes timerPulse {
+          0%, 100% { transform: scale(1); }
+          50% { transform: scale(1.1); }
+        }
+        .timer-pulse { animation: timerPulse 1s infinite; }
+        @keyframes timerBarPulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.7; }
+        }
+        .timer-bar-pulse { animation: timerBarPulse 0.5s infinite; }
+        @keyframes timerRevealPulse {
+          0%, 100% { transform: scale(1); }
+          50% { transform: scale(1.05); }
+        }
+        .timer-reveal-pulse { animation: timerRevealPulse 1s infinite; }
+      `}</style>
+    </div>
   );
 };
 
@@ -211,7 +206,6 @@ SongTimer.propTypes = {
   onResume: PropTypes.func.isRequired,
   onAddTime: PropTypes.func.isRequired,
   onRevealNow: PropTypes.func.isRequired,
-  onComplete: PropTypes.func
 };
 
 export default React.memo(SongTimer);

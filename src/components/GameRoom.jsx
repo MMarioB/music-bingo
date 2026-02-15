@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { Button } from '../components/ui/button';
 import { Card } from '../components/ui/card';
 import { Alert, AlertDescription } from '../components/ui/alert';
@@ -6,11 +6,20 @@ import { RadioGroup, RadioGroupItem } from '../components/ui/radio-group';
 import { Label } from '../components/ui/label';
 import { Checkbox } from '../components/ui/checkbox';
 import { AlertCircle, Users, CheckCircle, Crown, Loader2, Music } from 'lucide-react';
-import { motion } from 'framer-motion';
 import PropTypes from 'prop-types';
-import { useGameRoomLogic } from '../hooks/useGameRoomLogic'; // <-- Importa el nuevo hook
+import { useGameRoomLogic } from '../hooks/useGameRoomLogic';
 import RoomQRCode from './RoomQRCode';
 import { MUSIC_CATEGORIES } from './GameMasterView/constants';
+
+// Estilos estáticos extraídos fuera del componente
+const gridBgStyle = {
+  backgroundImage: `linear-gradient(to right, #ff00ee 1px, transparent 1px), linear-gradient(to bottom, #ff00ee 1px, transparent 1px)`,
+  backgroundSize: '40px 40px',
+  transform: 'perspective(500px) rotateX(60deg)',
+  transformOrigin: 'bottom'
+};
+const readyBtnStyle = { boxShadow: '0 0 15px rgba(0,255,0,0.2)' };
+const startBtnStyle = { boxShadow: '0 0 15px rgba(0,255,0,0.2)' };
 
 const GameRoom = ({ roomCode, playerName, isHost, onStartGame }) => {
   const {
@@ -23,35 +32,32 @@ const GameRoom = ({ roomCode, playerName, isHost, onStartGame }) => {
     handleStartGame,
     handleDifficultyChange,
   } = useGameRoomLogic({ roomCode, playerName, isHost, onStartGame });
-  
-  // Estado local solo para la UI, no para la lógica del juego
-  const [isSettingReady, setIsSettingReady] = useState(false);
 
-  // Estado para los temas musicales seleccionados (todos activados por defecto)
+  const [isSettingReady, setIsSettingReady] = useState(false);
   const [selectedThemes, setSelectedThemes] = useState(
     MUSIC_CATEGORIES.reduce((acc, theme) => ({ ...acc, [theme]: true }), {})
   );
 
-  // Usamos useMemo para calcular el estado del jugador actual y evitar re-cálculos innecesarios
   const currentPlayer = useMemo(() => players.find(p => p.name === playerName || (p.isHost && isHost)), [players, playerName, isHost]);
 
-  const onSetReadyClick = async () => {
+  const onSetReadyClick = useCallback(async () => {
     setIsSettingReady(true);
     await handleSetReady();
-    // No necesitamos setIsSettingReady(false) aquí, porque la UI cambiará
-    // cuando el jugador se marque como listo y el botón desaparezca.
-  };
+  }, [handleSetReady]);
 
-  const handleThemeToggle = (theme) => {
+  const handleThemeToggle = useCallback((theme) => {
     setSelectedThemes(prev => ({
       ...prev,
       [theme]: !prev[theme]
     }));
-  };
+  }, []);
+
+  const handleStartClick = useCallback(() => {
+    handleStartGame(selectedThemes);
+  }, [handleStartGame, selectedThemes]);
 
   const isGameReadyToStart = allPlayersReady && players.length >= 2;
 
-  // Si no estamos conectados y no hay error, mostramos el estado de carga
   if (!isConnected && !error) {
     return (
       <div className="min-h-screen bg-[#1a0133] flex items-center justify-center text-white">
@@ -63,10 +69,9 @@ const GameRoom = ({ roomCode, playerName, isHost, onStartGame }) => {
 
   return (
     <div className="min-h-screen bg-[#1a0133] flex flex-col items-center justify-center relative overflow-hidden p-4">
-      {/* Fondo con cuadrícula */}
-      <div className="absolute inset-0 opacity-10" style={{ backgroundImage: `linear-gradient(to right, #ff00ee 1px, transparent 1px), linear-gradient(to bottom, #ff00ee 1px, transparent 1px)`, backgroundSize: '40px 40px', transform: 'perspective(500px) rotateX(60deg)', transformOrigin: 'bottom' }} />
-      
-      <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.5 }} className="w-full max-w-md mx-auto">
+      <div className="absolute inset-0 opacity-10" style={gridBgStyle} />
+
+      <div className="w-full max-w-md mx-auto animate-scaleIn">
         <div className="bg-black/40 backdrop-blur-lg rounded-xl p-4 mb-4 border border-white/10">
           <div className="flex justify-between items-center gap-4">
             <div>
@@ -82,14 +87,14 @@ const GameRoom = ({ roomCode, playerName, isHost, onStartGame }) => {
             </div>
           </div>
         </div>
-        
+
         {error && (
           <Alert variant="destructive" className="mb-4 bg-red-500/10 border border-red-500/50"><AlertCircle className="h-4 w-4" /><AlertDescription className="text-white">{error}</AlertDescription></Alert>
         )}
-        
+
         <div className="space-y-4">
-          {!isHost && currentPlayer && !currentPlayer.ready &&  (
-            <Button onClick={onSetReadyClick} disabled={isSettingReady} className="w-full h-12 bg-gradient-to-r from-green-500/60 to-emerald-500/60 hover:from-green-500/80 hover:to-emerald-500/80 border border-green-400" style={{ boxShadow: '0 0 15px rgba(0,255,0,0.2)' }}>
+          {!isHost && currentPlayer && !currentPlayer.ready && (
+            <Button onClick={onSetReadyClick} disabled={isSettingReady} className="w-full h-12 bg-gradient-to-r from-green-500/60 to-emerald-500/60 hover:from-green-500/80 hover:to-emerald-500/80 border border-green-400" style={readyBtnStyle}>
               {isSettingReady ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Preparando...</> : '¡Estoy listo!'}
             </Button>
           )}
@@ -135,9 +140,9 @@ const GameRoom = ({ roomCode, playerName, isHost, onStartGame }) => {
               </div>
 
               <Button
-                onClick={() => handleStartGame(selectedThemes)}
+                onClick={handleStartClick}
                 className={`w-full h-12 transition-all duration-300 ${isGameReadyToStart ? 'bg-gradient-to-r from-green-500/60 to-emerald-500/60 hover:from-green-500/80 hover:to-emerald-500/80 border border-green-400' : 'bg-gray-500/30 border border-gray-400 cursor-not-allowed'}`}
-                style={isGameReadyToStart ? { boxShadow: '0 0 15px rgba(0,255,0,0.2)' } : {}}
+                style={isGameReadyToStart ? startBtnStyle : undefined}
                 disabled={!isGameReadyToStart}
               >
                 Comenzar Partida
@@ -154,19 +159,33 @@ const GameRoom = ({ roomCode, playerName, isHost, onStartGame }) => {
             <div className="flex items-center justify-between p-3 border-b border-white/10"><h3 className="font-medium text-white">Jugadores</h3><div className="flex items-center gap-2 text-white/60 text-sm">{players.length}/12</div></div>
             <div className="divide-y divide-white/10">
               {players.map((player) => (
-                <motion.div key={player.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex items-center justify-between p-3">
+                <div key={player.id} className="flex items-center justify-between p-3 animate-slideUp">
                   <div className="flex items-center gap-2">
                     {player.isHost ? <Crown className="w-4 h-4 text-yellow-400" /> : <div className={`w-2 h-2 rounded-full ${player.ready ? 'bg-green-400' : 'bg-gray-400'}`} />}
                     <span className="font-medium text-white">{player.name}{player.id === currentPlayer?.id && <span className="text-purple-400 ml-1">(Tú)</span>}</span>
                   </div>
                   {(player.ready || player.isHost) && <CheckCircle className="h-4 w-4 text-green-400" />}
-                </motion.div>
+                </div>
               ))}
               {players.length === 0 && <div className="p-4 text-center text-white/60">{!isConnected ? 'Conectando...' : 'Esperando jugadores...'}</div>}
             </div>
           </div>
         </div>
-      </motion.div>
+      </div>
+
+      {/* CSS animations */}
+      <style>{`
+        @keyframes scaleIn {
+          from { opacity: 0; transform: scale(0.9); }
+          to { opacity: 1; transform: scale(1); }
+        }
+        .animate-scaleIn { animation: scaleIn 0.5s ease-out forwards; }
+        @keyframes slideUp {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-slideUp { animation: slideUp 0.3s ease-out forwards; }
+      `}</style>
     </div>
   );
 };
@@ -178,4 +197,4 @@ GameRoom.propTypes = {
   onStartGame: PropTypes.func.isRequired
 };
 
-export default GameRoom;
+export default React.memo(GameRoom);

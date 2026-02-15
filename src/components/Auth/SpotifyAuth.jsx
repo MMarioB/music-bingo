@@ -1,9 +1,10 @@
-import { useEffect } from "react";
+import React, { useEffect } from "react";
 import PropTypes from 'prop-types';
 import { useSpotify } from "../../hooks/useSpotify";
 import { Card } from "../ui/card";
 import { Button } from "../ui/button";
-import { motion } from "framer-motion";
+
+const spotifyBtnStyle = { boxShadow: '0 0 15px rgba(29,185,84,0.3)' };
 
 const SpotifyAuth = ({ onSuccess }) => {
   const { login, loggedIn, isTokenValid } = useSpotify();
@@ -15,12 +16,7 @@ const SpotifyAuth = ({ onSuccess }) => {
   }, [loggedIn, isTokenValid, onSuccess]);
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
-      className="w-full max-w-md mx-auto"
-    >
+    <div className="w-full max-w-md mx-auto animate-slideUp">
       <Card className="p-8 bg-black/40 shadow-2xl backdrop-blur-sm border border-white/10">
         <div className="text-center space-y-2 mb-6">
           <h2 className="text-2xl font-bold text-white">Game Master</h2>
@@ -30,9 +26,7 @@ const SpotifyAuth = ({ onSuccess }) => {
         <Button
           onClick={login}
           className="w-full h-12 bg-[#1DB954] hover:bg-[#1ed760] transition-all duration-300 flex items-center justify-center gap-2 group"
-          style={{
-            boxShadow: '0 0 15px rgba(29,185,84,0.3)'
-          }}
+          style={spotifyBtnStyle}
         >
           <svg
             className="w-6 h-6 group-hover:scale-110 transition-transform duration-300"
@@ -46,7 +40,15 @@ const SpotifyAuth = ({ onSuccess }) => {
           </span>
         </Button>
       </Card>
-    </motion.div>
+
+      <style>{`
+        @keyframes slideUp {
+          from { opacity: 0; transform: translateY(20px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-slideUp { animation: slideUp 0.4s ease-out forwards; }
+      `}</style>
+    </div>
   );
 };
 
@@ -54,4 +56,4 @@ SpotifyAuth.propTypes = {
   onSuccess: PropTypes.func.isRequired
 };
 
-export default SpotifyAuth;
+export default React.memo(SpotifyAuth);

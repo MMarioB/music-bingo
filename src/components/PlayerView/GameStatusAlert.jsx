@@ -1,6 +1,5 @@
 import React from 'react';
 import { Alert, AlertDescription } from '../ui/alert';
-import { motion, AnimatePresence } from 'framer-motion';
 import { AlertCircle, InfoIcon, Check, XCircleIcon, PartyPopper, Clock, Target, CheckCircle } from 'lucide-react';
 
 const alertConfig = {
@@ -18,10 +17,7 @@ const alertConfig = {
 const getAlertInfo = ({ gameState, playerName }) => {
   const { gameStep, isMarkingEnabled, playerCorrectStatus, currentCategory, currentSong, winners, connectionError, hasMarkedInCurrentRound, markingJustDisabled, serverWaking, error } = gameState;
 
-  // Prioridad 1: Servidor despertando (mensaje especial cyan)
   if (serverWaking && error) return { type: 'serverWaking', message: error };
-
-  // Prioridad 2: Errores de conexión
   if (connectionError) return { type: 'error', message: `❌ ${connectionError}` };
   if (error) return { type: 'error', message: `❌ ${error}` };
 
@@ -29,10 +25,8 @@ const getAlertInfo = ({ gameState, playerName }) => {
   const isWinner = winners.some(w => w.id === player?.id);
   const isEligible = player && playerCorrectStatus[player.id];
 
-  // Prioridad 2: ¡BINGO!
   if (isWinner) return { type: 'bingo', message: '🎉 ¡BINGO! ¡Has ganado esta partida! Espera a que el Game Master finalice el juego.' };
 
-  // Fase de revisión (después de revelar la canción)
   if (gameStep === 'reviewing') {
     if (isEligible) {
       if (isMarkingEnabled) {
@@ -44,27 +38,22 @@ const getAlertInfo = ({ gameState, playerName }) => {
         }
         return { type: 'success', message: '✅ ¡Has acertado! Espera a que el Game Master seleccione una categoría para marcar.' };
       } else {
-        // Detectar si se acaba de deshabilitar el marcado
         if (markingJustDisabled) {
           return { type: 'info', message: '✅ Marcado deshabilitado. Preparando siguiente ronda...' };
         }
         return { type: 'waiting', message: '⏳ ¡Has acertado! Espera a que el Game Master habilite el marcado.' };
       }
     } else {
-      // Verificar si el Game Master ya empezó a revisar (marcó a alguien o habilitó el marcado)
       const gameMasterHasStartedReview = isMarkingEnabled || Object.values(playerCorrectStatus || {}).some(status => status === true);
 
       if (currentSong?.revealed && gameMasterHasStartedReview) {
-        // Solo mostrar error si el GM ya empezó a marcar a la gente
         return { type: 'error', message: '❌ No has acertado esta vez. ¡Sigue intentando en la próxima ronda!' };
       } else if (currentSong?.revealed) {
-        // Canción revelada pero GM aún no ha revisado → todos esperan
         return { type: 'pending', message: '🎵 Canción revelada. Espera a que el Game Master revise las predicciones...' };
       }
     }
   }
 
-  // Fase de juego (canción sonando)
   if (gameStep === 'playing' && currentSong) {
     return { type: 'info', message: '🎵 ¡Escucha la canción! Escribe tus predicciones abajo. Puedes cambiarlas hasta que se revele.' };
   }
@@ -73,12 +62,10 @@ const getAlertInfo = ({ gameState, playerName }) => {
     return { type: 'info', message: '⏳ Espera a que el Game Master reproduzca una canción...' };
   }
 
-  // Fase de selección de categoría
   if (gameStep === 'wheel') {
     return { type: 'info', message: '🎡 El Game Master está girando la ruleta para seleccionar una categoría...' };
   }
 
-  // Esperando inicio
   if (gameStep === 'waiting') {
     return { type: 'info', message: '👥 Esperando a que todos los jugadores estén listos...' };
   }
@@ -94,14 +81,19 @@ const GameStatusAlert = (props) => {
   const config = alertConfig[type];
 
   return (
-    <AnimatePresence>
-      <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
-        <Alert className={config.className}>
-          <config.Icon className="h-5 w-5 mr-2" />
-          <AlertDescription>{message}</AlertDescription>
-        </Alert>
-      </motion.div>
-    </AnimatePresence>
+    <div className="animate-slideDown">
+      <Alert className={config.className}>
+        <config.Icon className="h-5 w-5 mr-2" />
+        <AlertDescription>{message}</AlertDescription>
+      </Alert>
+      <style>{`
+        @keyframes slideDown {
+          from { opacity: 0; transform: translateY(-20px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-slideDown { animation: slideDown 0.3s ease-out forwards; }
+      `}</style>
+    </div>
   );
 };
 
