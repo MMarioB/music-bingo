@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Play, Pause, Plus, Check } from 'lucide-react';
 import { Button } from '../ui/button';
@@ -214,4 +214,4 @@ SongTimer.propTypes = {
   onComplete: PropTypes.func
 };
 
-export default SongTimer;
+export default React.memo(SongTimer);

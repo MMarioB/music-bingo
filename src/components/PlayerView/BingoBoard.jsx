@@ -1,73 +1,51 @@
-import React from 'react';
+import React, { useMemo, useCallback } from 'react';
 import PropTypes from 'prop-types';
 import { Card } from '../ui/card';
 import { motion } from 'framer-motion';
 import { Check } from 'lucide-react';
 
+// Estilos y objetos de animación estáticos extraídos fuera del render
+const checkStyle = { filter: 'drop-shadow(0 0 8px rgb(74 222 128 / 0.5))' };
+const pulseBoxShadows = [
+  '0 0 0px rgba(168, 85, 247, 0)',
+  '0 0 20px rgba(168, 85, 247, 0.5)',
+  '0 0 0px rgba(168, 85, 247, 0)'
+];
+const hoverMarkable = { scale: 1.1, rotate: [0, -2, 2, 0] };
+const tapMarkable = { scale: 0.95 };
+const emptyObj = {};
+const baseAnimate = { scale: 1, opacity: 1 };
+const baseTransition = { scale: { duration: 0.3 }, opacity: { duration: 0.3 } };
+const pulseTransition = { repeat: Infinity, duration: 2 };
+const checkEnterTransition = { type: 'spring', stiffness: 300, damping: 20 };
+const checkScaleTransition = { duration: 0.5 };
+const checkInitial = { scale: 0, rotate: -180 };
+const checkAnimate = { scale: 1, rotate: 0 };
+const checkScaleAnimate = { scale: [1, 1.3, 1] };
+
 const BingoBoard = ({ board, currentCategory, currentSong, canMark, onCellClick }) => {
 
-  // Log para debug cuando canMark es true
-  if (canMark && board && board.length > 0) {
-    const targetCategory = currentSong?.revealed && currentSong?.category
+  // Calcular targetCategory UNA sola vez fuera del loop
+  const targetCategory = useMemo(() => {
+    return currentSong?.revealed && currentSong?.category
       ? currentSong.category
       : currentCategory?.name;
+  }, [currentSong?.revealed, currentSong?.category, currentCategory?.name]);
 
-    console.log('🔍 DEBUG BingoBoard cuando canMark=true:', {
-      canMark,
-      currentCategory,
-      currentSong,
-      targetCategory,
-      casillasEnTablero: board.map(c => c.name),
-      casillasMarcables: board.filter(c => c.name === targetCategory).map(c => c.name)
-    });
-  }
-
-  const handleCellClick = (index, cell) => {
-    // En modo experto: si la canción está revelada, usar su categoría
-    // En modo principiante: usar currentCategory
-    const targetCategory = currentSong?.revealed && currentSong?.category
-      ? currentSong.category
-      : currentCategory?.name;
-
-    console.log('🎯 BingoBoard - Click en celda:', {
-      index,
-      cellName: cell.name,
-      cellColor: cell.color,
-      currentCategory: currentCategory?.name,
-      currentSong: currentSong,
-      targetCategory,
-      canMark,
-      isRightCategory: cell.name === targetCategory,
-      cellMarked: cell.marked
-    });
-
-    if (canMark && cell.name === targetCategory) {
-      console.log('✅ Marcando celda', index);
+  const handleCellClick = useCallback((index, cellName) => {
+    if (canMark && cellName === targetCategory) {
       onCellClick(index);
-    } else {
-      console.log('⚠️ Click ignorado:', {
-        reason: !canMark ? 'No puede marcar (canMark=false)' : `Categoría incorrecta: celda='${cell.name}' vs target='${targetCategory}'`,
-        canMark,
-        cellName: cell.name,
-        targetCategory
-      });
     }
-  };
+  }, [canMark, targetCategory, onCellClick]);
 
   return (
     <div className="flex-1 flex flex-col justify-center">
       <Card className="bg-black/30 border border-white/20 p-2 md:p-4">
         <div className="grid grid-cols-5 gap-1 md:gap-3">
           {board && board.map((cell, index) => {
-            // En modo experto: si la canción está revelada, usar su categoría
-            // En modo principiante: usar currentCategory
-            const targetCategory = currentSong?.revealed && currentSong?.category
-              ? currentSong.category
-              : currentCategory?.name;
-
-            // La lógica de si una celda es "marcable"
             const isMarkable = canMark && cell.name === targetCategory;
             const isCurrentCategory = cell.name === targetCategory;
+            const shouldPulse = isCurrentCategory && !cell.marked && canMark;
 
             return (
               <motion.button
@@ -83,58 +61,39 @@ const BingoBoard = ({ board, currentCategory, currentSong, canMark, onCellClick 
                   }
                   ${cell.marked ? 'scale-95 shadow-inner' : 'shadow hover:shadow-md'}
                 `}
-                onClick={() => handleCellClick(index, cell)}
+                onClick={() => handleCellClick(index, cell.name)}
                 disabled={!isMarkable}
                 aria-label={`Casilla ${cell.name} ${cell.marked ? '(marcada)' : ''}`}
                 title={`${cell.name}${isCurrentCategory ? ' - Categoría actual' : ''}${cell.marked ? ' ✓' : ''}`}
-                // Animaciones mejoradas
-                initial={{ scale: 0.8, opacity: 0 }}
-                animate={{
-                  scale: 1,
-                  opacity: 1,
-                  ...(isCurrentCategory && !cell.marked && canMark && {
-                    scale: [1, 1.05, 1],
-                    boxShadow: [
-                      '0 0 0px rgba(168, 85, 247, 0)',
-                      '0 0 20px rgba(168, 85, 247, 0.5)',
-                      '0 0 0px rgba(168, 85, 247, 0)'
-                    ],
-                  })
-                }}
-                transition={{
-                  scale: { duration: 0.3, delay: index * 0.02 },
-                  opacity: { duration: 0.3, delay: index * 0.02 },
-                  ...(isCurrentCategory && !cell.marked && canMark && {
-                    repeat: Infinity,
-                    duration: 2,
-                  })
-                }}
-                whileHover={isMarkable ? { scale: 1.1, rotate: [0, -2, 2, 0] } : {}}
-                whileTap={isMarkable ? { scale: 0.95 } : {}}
+                animate={shouldPulse
+                  ? { scale: [1, 1.05, 1], opacity: 1, boxShadow: pulseBoxShadows }
+                  : baseAnimate
+                }
+                transition={shouldPulse ? pulseTransition : baseTransition}
+                whileHover={isMarkable ? hoverMarkable : emptyObj}
+                whileTap={isMarkable ? tapMarkable : emptyObj}
               >
-                {/* Indicador visual de categoría actual */}
-                {isCurrentCategory && !cell.marked && canMark && (
+                {shouldPulse && (
                   <div className="absolute inset-0 flex items-center justify-center bg-purple-500/10 backdrop-blur-sm rounded-lg border-2 border-purple-400 border-dashed">
                     <span className="text-white text-xs font-bold">¡Marca aquí!</span>
                   </div>
                 )}
 
-                {/* Checkmark cuando está marcada */}
                 {cell.marked && (
                   <motion.div
                     className="absolute inset-0 flex items-center justify-center bg-black/20 backdrop-blur-sm rounded-lg"
-                    initial={{ scale: 0, rotate: -180 }}
-                    animate={{ scale: 1, rotate: 0 }}
-                    transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+                    initial={checkInitial}
+                    animate={checkAnimate}
+                    transition={checkEnterTransition}
                   >
                     <motion.div
                       initial={{ scale: 0 }}
-                      animate={{ scale: [1, 1.3, 1] }}
-                      transition={{ duration: 0.5 }}
+                      animate={checkScaleAnimate}
+                      transition={checkScaleTransition}
                     >
                       <Check
                         className="text-green-400 w-6 md:w-10 h-6 md:h-10"
-                        style={{ filter: 'drop-shadow(0 0 8px rgb(74 222 128 / 0.5))' }}
+                        style={checkStyle}
                       />
                     </motion.div>
                   </motion.div>

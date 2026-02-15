@@ -1,140 +1,63 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { gameSocket } from '../../services/socketService';
 import { useGameSounds } from '../../hooks/useGameSounds';
 import { useConfetti } from '../../hooks/useConfetti';
 import { BOARD_SIZE, MIN_DIFFERENT_CATEGORIES, CATEGORIES_A, CATEGORIES_B } from '../Wheel/constants';
 
-// Verifica que no haya más de UN PAR de casillas consecutivas de cada categoría en TODO el tablero
+// Verifica que no haya más de UN PAR de casillas consecutivas de cada categoría
 const hasMaxOnePairPerCategory = (board, position, categoryName, categoryPairsCount) => {
     const row = Math.floor(position / BOARD_SIZE);
     const col = position % BOARD_SIZE;
-
-    // Contar cuántos pares se formarían al colocar esta categoría
-    // Solo miramos hacia atrás/arriba para ser consistente con updateCategoryPairsCount
     let pairsWouldForm = 0;
 
-    // Verificar horizontal (izquierda)
-    if (col > 0 && board[position - 1]?.name === categoryName) {
-        pairsWouldForm++;
-    }
+    if (col > 0 && board[position - 1]?.name === categoryName) pairsWouldForm++;
+    if (row > 0 && board[position - BOARD_SIZE]?.name === categoryName) pairsWouldForm++;
+    if (row > 0 && col > 0 && board[position - BOARD_SIZE - 1]?.name === categoryName) pairsWouldForm++;
+    if (row > 0 && col < BOARD_SIZE - 1 && board[position - BOARD_SIZE + 1]?.name === categoryName) pairsWouldForm++;
 
-    // Verificar vertical (arriba)
-    if (row > 0 && board[position - BOARD_SIZE]?.name === categoryName) {
-        pairsWouldForm++;
-    }
-
-    // Verificar diagonal descendente (arriba-izquierda)
-    if (row > 0 && col > 0 && board[position - BOARD_SIZE - 1]?.name === categoryName) {
-        pairsWouldForm++;
-    }
-
-    // Verificar diagonal ascendente (arriba-derecha)
-    if (row > 0 && col < BOARD_SIZE - 1 && board[position - BOARD_SIZE + 1]?.name === categoryName) {
-        pairsWouldForm++;
-    }
-
-    // Verificar si excedería el límite de 1 par total
-    const currentPairs = categoryPairsCount[categoryName] || 0;
-    if (currentPairs + pairsWouldForm > 1) {
-        return false;
-    }
-
-    return true;
+    return (categoryPairsCount[categoryName] || 0) + pairsWouldForm <= 1;
 };
 
-// Actualiza el contador de pares después de colocar una categoría
-// Cuenta cada vecino adyacente como un par separado
 const updateCategoryPairsCount = (board, position, categoryName, categoryPairsCount) => {
     const row = Math.floor(position / BOARD_SIZE);
     const col = position % BOARD_SIZE;
-
     let pairsFormed = 0;
 
-    // Cada vecino de la misma categoría forma un par
-    // Solo miramos hacia atrás/arriba para no contar pares duplicados
-
-    // Verificar horizontal (izquierda)
-    if (col > 0 && board[position - 1]?.name === categoryName) {
-        pairsFormed++;
-    }
-
-    // Verificar vertical (arriba)
-    if (row > 0 && board[position - BOARD_SIZE]?.name === categoryName) {
-        pairsFormed++;
-    }
-
-    // Verificar diagonal descendente (arriba-izquierda)
-    if (row > 0 && col > 0 && board[position - BOARD_SIZE - 1]?.name === categoryName) {
-        pairsFormed++;
-    }
-
-    // Verificar diagonal ascendente (arriba-derecha)
-    if (row > 0 && col < BOARD_SIZE - 1 && board[position - BOARD_SIZE + 1]?.name === categoryName) {
-        pairsFormed++;
-    }
+    if (col > 0 && board[position - 1]?.name === categoryName) pairsFormed++;
+    if (row > 0 && board[position - BOARD_SIZE]?.name === categoryName) pairsFormed++;
+    if (row > 0 && col > 0 && board[position - BOARD_SIZE - 1]?.name === categoryName) pairsFormed++;
+    if (row > 0 && col < BOARD_SIZE - 1 && board[position - BOARD_SIZE + 1]?.name === categoryName) pairsFormed++;
 
     if (pairsFormed > 0) {
         categoryPairsCount[categoryName] = (categoryPairsCount[categoryName] || 0) + pairsFormed;
     }
 };
 
-// Verifica que un tablero tenga EXACTAMENTE 1 línea (fila, columna o diagonal) con las 5 categorías diferentes
 const hasExactlyOneWinnableLine = (board) => {
     let winningLinesCount = 0;
-    const winningLines = [];
 
-    // Verificar filas
     for (let i = 0; i < BOARD_SIZE; i++) {
         const row = board.slice(i * BOARD_SIZE, (i + 1) * BOARD_SIZE);
-        const uniqueCategories = new Set(row.map(cell => cell.name));
-        if (uniqueCategories.size === 5) {
-            winningLinesCount++;
-            winningLines.push(`fila ${i}`);
-        }
+        if (new Set(row.map(cell => cell.name)).size === 5) winningLinesCount++;
     }
 
-    // Verificar columnas
     for (let col = 0; col < BOARD_SIZE; col++) {
         const column = Array(BOARD_SIZE).fill(0).map((_, row) => board[row * BOARD_SIZE + col]);
-        const uniqueCategories = new Set(column.map(cell => cell.name));
-        if (uniqueCategories.size === 5) {
-            winningLinesCount++;
-            winningLines.push(`columna ${col}`);
-        }
+        if (new Set(column.map(cell => cell.name)).size === 5) winningLinesCount++;
     }
 
-    // Verificar diagonal principal (\)
     const diag1 = Array(BOARD_SIZE).fill(0).map((_, i) => board[i * BOARD_SIZE + i]);
-    const uniqueDiag1 = new Set(diag1.map(cell => cell.name));
-    if (uniqueDiag1.size === 5) {
-        winningLinesCount++;
-        winningLines.push('diagonal principal');
-    }
+    if (new Set(diag1.map(cell => cell.name)).size === 5) winningLinesCount++;
 
-    // Verificar diagonal secundaria (/)
     const diag2 = Array(BOARD_SIZE).fill(0).map((_, i) => board[i * BOARD_SIZE + (BOARD_SIZE - 1 - i)]);
-    const uniqueDiag2 = new Set(diag2.map(cell => cell.name));
-    if (uniqueDiag2.size === 5) {
-        winningLinesCount++;
-        winningLines.push('diagonal secundaria');
-    }
+    if (new Set(diag2.map(cell => cell.name)).size === 5) winningLinesCount++;
 
-    if (winningLinesCount === 1) {
-        console.log(`✅ Tablero válido: EXACTAMENTE 1 línea ganadora (${winningLines[0]})`);
-        return true;
-    } else if (winningLinesCount > 1) {
-        console.log(`⚠️ Tablero rechazado: ${winningLinesCount} líneas ganadoras encontradas (${winningLines.join(', ')})`);
-        return false;
-    } else {
-        console.log('⚠️ Tablero rechazado: sin líneas ganadoras');
-        return false;
-    }
+    return winningLinesCount === 1;
 };
 
 const generateValidBoard = (difficulty) => {
     const categories = difficulty === 'experto' ? CATEGORIES_B : CATEGORIES_A;
 
-    // Crear pool de categorías (5 de cada una = 25 total)
     const pool = [];
     categories.forEach(category => {
         for (let i = 0; i < 5; i++) {
@@ -148,25 +71,20 @@ const generateValidBoard = (difficulty) => {
     while (attempts < maxAttempts) {
         attempts++;
 
-        // Mezclar el pool
         const shuffledPool = [...pool];
         for (let i = shuffledPool.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
             [shuffledPool[i], shuffledPool[j]] = [shuffledPool[j], shuffledPool[i]];
         }
 
-        // Intentar colocar en el tablero validando la regla
         const board = [];
-        const categoryPairsCount = {}; // Rastrea cuántos pares tiene cada categoría
+        const categoryPairsCount = {};
         let valid = true;
 
         for (let pos = 0; pos < 25; pos++) {
-            // Buscar una categoría que pueda colocarse en esta posición
             let placed = false;
-
             for (let i = 0; i < shuffledPool.length; i++) {
                 const category = shuffledPool[i];
-
                 if (hasMaxOnePairPerCategory(board, pos, category.name, categoryPairsCount)) {
                     board.push(category);
                     updateCategoryPairsCount(board, pos, category.name, categoryPairsCount);
@@ -175,25 +93,15 @@ const generateValidBoard = (difficulty) => {
                     break;
                 }
             }
-
-            if (!placed) {
-                valid = false;
-                break; // No se pudo colocar ninguna categoría, reintentar
-            }
+            if (!placed) { valid = false; break; }
         }
 
-        if (valid && board.length === 25) {
-            // Verificar que exista EXACTAMENTE 1 línea con las 5 categorías diferentes
-            if (hasExactlyOneWinnableLine(board)) {
-                console.log(`🎲 Tablero válido generado en intento ${attempts} (máx 1 par por categoría + exactamente 1 línea ganadora)`);
-                console.log('Pares por categoría:', categoryPairsCount);
-                return board;
-            }
+        if (valid && board.length === 25 && hasExactlyOneWinnableLine(board)) {
+            return board;
         }
     }
 
-    // Fallback: Si no se pudo generar tablero válido, usar shuffle simple
-    console.warn('⚠️ No se pudo generar tablero con restricciones, usando fallback');
+    // Fallback
     const fallbackPool = [...pool];
     for (let i = fallbackPool.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
@@ -212,7 +120,7 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
         playerCorrectStatus: {},
         gameOver: false,
         winners: [],
-        difficulty: difficulty || 'principiante', // Incluir difficulty en gameState
+        difficulty: difficulty || 'principiante',
     });
     const [board, setBoard] = useState([]);
     const [error, setError] = useState(null);
@@ -222,30 +130,31 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
     const [serverWaking, setServerWaking] = useState(false);
     const boardGenerated = useRef(false);
     const previousMarkingEnabled = useRef(false);
-    // BUGFIX: Guardar la última difficulty usada para generar el tablero
     const lastBoardDifficulty = useRef(null);
 
-    // Hooks de sonidos y confetti
+    // Refs para acceso estable en event handlers (evitar stale closures)
+    const gameStateRef = useRef(gameState);
+    gameStateRef.current = gameState;
+    const playerNameRef = useRef(playerName);
+    playerNameRef.current = playerName;
+    const hasMarkedRef = useRef(hasMarkedInCurrentRound);
+    hasMarkedRef.current = hasMarkedInCurrentRound;
+
     const sounds = useGameSounds();
     const confetti = useConfetti();
 
     // Listen for server waking events
     useEffect(() => {
         const handleServerWaking = (event) => {
-            console.log('🔔 Player recibió serverWaking event');
             setServerWaking(true);
             setError(event.detail?.message || '⏳ El servidor está despertando...');
         };
-
         const handleServerAwake = () => {
-            console.log('🔔 Player recibió serverAwake event');
             setServerWaking(false);
             setError(null);
         };
-
         window.addEventListener('serverWaking', handleServerWaking);
         window.addEventListener('serverAwake', handleServerAwake);
-
         return () => {
             window.removeEventListener('serverWaking', handleServerWaking);
             window.removeEventListener('serverAwake', handleServerAwake);
@@ -262,10 +171,8 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
             }
         });
         if (markedCount !== BOARD_SIZE) return false;
-        const hasMoreThanTwoOfSameCategory = Object.values(categoryCounts).some(count => count > 2);
-        if (hasMoreThanTwoOfSameCategory) return false;
-        const differentCategories = Object.keys(categoryCounts).length;
-        return differentCategories >= MIN_DIFFERENT_CATEGORIES;
+        if (Object.values(categoryCounts).some(count => count > 2)) return false;
+        return Object.keys(categoryCounts).length >= MIN_DIFFERENT_CATEGORIES;
     }, []);
 
     const checkWinner = useCallback((newBoard) => {
@@ -279,68 +186,45 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
         return validateLine(diag1) || validateLine(diag2);
     }, [validateLine]);
 
-    // BUGFIX: Generar tablero SOLO una vez al inicio o cuando realmente cambia difficulty
+    // Generar tablero SOLO una vez al inicio
     useEffect(() => {
         if (!boardGenerated.current) {
-            console.log('🎲 Generando tablero INICIAL con difficulty:', difficulty);
             setBoard(generateValidBoard(difficulty));
             boardGenerated.current = true;
             lastBoardDifficulty.current = difficulty;
         }
-    }, []); // Solo se ejecuta una vez al montar
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-    // BUGFIX: SOLO regenerar tablero si difficulty REALMENTE cambió (no por cambios de gameStep)
+    // SOLO regenerar tablero si difficulty REALMENTE cambió
     useEffect(() => {
-        // Solo regenerar si:
-        // 1. Ya se generó el tablero inicial
-        // 2. La difficulty PROP cambió (diferente a la última usada)
-        // 3. NO estamos en medio de una partida (waiting o wheel inicial)
         if (
             boardGenerated.current &&
             difficulty !== lastBoardDifficulty.current &&
             (gameState.gameStep === 'waiting' || gameState.gameStep === 'wheel')
         ) {
-            console.log('🔄 Difficulty REALMENTE cambió de', lastBoardDifficulty.current, 'a', difficulty, '- regenerando tablero');
             setBoard(generateValidBoard(difficulty));
             lastBoardDifficulty.current = difficulty;
             setGameState(prev => ({ ...prev, difficulty }));
         }
     }, [difficulty, gameState.gameStep]);
 
+    // Socket event handlers - usa refs para evitar stale closures
+    // Dependencias mínimas: solo hooks estables (sounds/confetti)
     useEffect(() => {
         const handleGameStateUpdate = (serverState) => {
-            console.log('📡 PLAYER VIEW recibió gameStateUpdate:', serverState);
-
             setGameState(prevState => {
-                console.log('📊 Estado ANTERIOR:', {
-                    playerCorrectStatus: prevState.playerCorrectStatus,
-                    isMarkingEnabled: prevState.isMarkingEnabled,
-                    currentSong: prevState.currentSong?.uri
-                });
-
-                // BUGFIX: Merge inteligente de playerCorrectStatus
-                // No sobrescribir con objeto vacío si el servidor no envía datos
                 const updates = { ...prevState, ...serverState };
 
-                // Si el servidor envía playerCorrectStatus, hacer merge en lugar de reemplazar
-                // Esto preserva el estado local mientras acepta actualizaciones del servidor
                 if (serverState.playerCorrectStatus !== undefined) {
                     updates.playerCorrectStatus = {
                         ...prevState.playerCorrectStatus,
                         ...serverState.playerCorrectStatus
                     };
-                    console.log('🔄 playerCorrectStatus después del MERGE:', updates.playerCorrectStatus);
                 }
 
-                // Si la nueva ronda empieza, limpiamos las predicciones locales
                 if (!serverState.currentCategory && prevState.currentCategory) {
                     setMyPredictions([]);
                 }
-
-                console.log('📊 Estado NUEVO:', {
-                    playerCorrectStatus: updates.playerCorrectStatus,
-                    isMarkingEnabled: updates.isMarkingEnabled
-                });
 
                 return updates;
             });
@@ -351,60 +235,42 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
             setError(err.message || 'Error del servidor');
         };
 
-        // Manejadores para eventos específicos del servidor
         const handleMarkingEnabled = () => {
-            console.log('🟢 MARKING ENABLED recibido');
+            const state = gameStateRef.current;
+            const name = playerNameRef.current;
+            const currentPlayer = state.connectedPlayers.find(p => p.name === name);
 
-            // Tocar sonido de notificación si este jugador puede marcar
-            const currentPlayer = gameState.connectedPlayers.find(p => p.name === playerName);
-            console.log('🔍 Jugador actual al habilitar marcado:', currentPlayer);
-            console.log('🔍 playerCorrectStatus al habilitar marcado:', gameState.playerCorrectStatus);
-
-            if (currentPlayer && gameState.playerCorrectStatus[currentPlayer.id]) {
-                console.log('✅ Este jugador puede marcar, reproduciendo notificación');
+            if (currentPlayer && state.playerCorrectStatus[currentPlayer.id]) {
                 sounds.playNotification();
-            } else {
-                console.log('❌ Este jugador NO puede marcar');
             }
-
-            setGameState(prev => {
-                console.log('📊 Habilitando marcado, estado actual:', prev.playerCorrectStatus);
-                return { ...prev, isMarkingEnabled: true };
-            });
+            setGameState(prev => ({ ...prev, isMarkingEnabled: true }));
         };
 
         const handleMarkingDisabled = () => {
-            console.log('Marking disabled');
             setGameState(prev => ({ ...prev, isMarkingEnabled: false }));
             setMarkingJustDisabled(true);
-            // Resetear el flag después de 3 segundos
             setTimeout(() => setMarkingJustDisabled(false), 3000);
         };
 
         const handlePlayerMarked = (data) => {
-            console.log('🎯 Player marked correct:', data);
+            const state = gameStateRef.current;
+            const name = playerNameRef.current;
+            const currentPlayer = state.connectedPlayers.find(p => p.name === name);
 
-            // Tocar sonido de éxito y confetti si este jugador fue marcado como correcto
-            const currentPlayer = gameState.connectedPlayers.find(p => p.name === playerName);
             if (currentPlayer && data.playerId === currentPlayer.id && data.correct) {
                 sounds.playSuccess();
                 confetti.fireSuccessConfetti();
             }
 
-            setGameState(prev => {
-                const newStatus = {
+            setGameState(prev => ({
+                ...prev,
+                playerCorrectStatus: {
                     ...prev.playerCorrectStatus,
                     [data.playerId]: data.correct
-                };
-                console.log('📊 playerCorrectStatus DESPUÉS de marcar:', newStatus);
-                return {
-                    ...prev,
-                    playerCorrectStatus: newStatus
-                };
-            });
+                }
+            }));
         };
 
-        // Registrar todos los event listeners
         gameSocket.on('gameStateUpdate', handleGameStateUpdate);
         gameSocket.on('error', handleError);
         gameSocket.on('markingEnabled', handleMarkingEnabled);
@@ -412,20 +278,17 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
         gameSocket.on('playerMarkedCorrect', handlePlayerMarked);
 
         return () => {
-            // Limpiar todos los event listeners
             gameSocket.off('gameStateUpdate', handleGameStateUpdate);
             gameSocket.off('error', handleError);
             gameSocket.off('markingEnabled', handleMarkingEnabled);
             gameSocket.off('markingDisabled', handleMarkingDisabled);
             gameSocket.off('playerMarkedCorrect', handlePlayerMarked);
         };
-    }, [difficulty, gameState.currentCategory]);
+    }, [sounds, confetti]);
 
-    // Resetear el flag de marcado cuando se habilita una nueva ronda de marcado
+    // Resetear flag de marcado cuando se habilita nueva ronda
     useEffect(() => {
-        // Detectar cuando isMarkingEnabled cambia de false a true (nueva ronda de marcado)
         if (gameState.isMarkingEnabled && !previousMarkingEnabled.current) {
-            console.log('🔄 Nueva ronda de marcado iniciada, reseteando flag');
             setHasMarkedInCurrentRound(false);
         }
         previousMarkingEnabled.current = gameState.isMarkingEnabled;
@@ -436,7 +299,6 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
         const currentPlayer = gameState.connectedPlayers.find(p => p.name === playerName);
         if (!currentPlayer) return;
 
-        // Si la canción está revelada y hay alguien marcado como correcto pero este jugador no
         const someoneMarkedCorrect = Object.values(gameState.playerCorrectStatus || {}).some(status => status === true);
         const thisPlayerCorrect = gameState.playerCorrectStatus[currentPlayer.id];
 
@@ -450,101 +312,64 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
     useEffect(() => {
         if (gameState.currentSong && gameState.currentSong !== previousSongRef.current) {
             if (previousSongRef.current !== null) {
-                // No es la primera canción, es una nueva ronda
                 sounds.playNewRound();
                 confetti.fireNewRoundConfetti();
             }
         }
         previousSongRef.current = gameState.currentSong;
-    }, [gameState.currentSong, sounds]);
+    }, [gameState.currentSong, sounds, confetti]);
 
     const handleCellClick = useCallback(async (index) => {
-        if (!gameState.isMarkingEnabled) {
-            console.log('Marking not enabled');
-            return;
-        }
+        const state = gameStateRef.current;
+        if (!state.isMarkingEnabled) return;
 
-        const player = gameState.connectedPlayers.find(p => p.name === playerName);
-        if (!player) {
-            console.log('Player not found');
-            return;
-        }
-
-        if (!gameState.playerCorrectStatus[player.id]) {
-            console.log('Player not marked as correct');
-            return;
-        }
+        const player = state.connectedPlayers.find(p => p.name === playerNameRef.current);
+        if (!player || !state.playerCorrectStatus[player.id]) return;
 
         setBoard(prevBoard => {
             const newBoard = [...prevBoard];
             const cell = newBoard[index];
 
-            // Permitir marcar/desmarcar celdas de la categoría actual
-            if (gameState.currentCategory && cell.name === gameState.currentCategory.name) {
-
-                // Si la celda ya está marcada, permitir desmarcársela SOLO si ya había marcado en esta ronda
+            if (state.currentCategory && cell.name === state.currentCategory.name) {
                 if (cell.marked) {
-                    if (hasMarkedInCurrentRound) {
-                        // Desmarcar la celda
+                    if (hasMarkedRef.current) {
                         newBoard[index] = { ...cell, marked: false };
                         setHasMarkedInCurrentRound(false);
-                        sounds.playMark(); // Sonido al desmarcar
-                        console.log('↩️ Celda desmarcada, flag de ronda reseteado');
+                        sounds.playMark();
                         return newBoard;
-                    } else {
-                        // Esta celda fue marcada en una ronda anterior, no se puede desmarcar
-                        console.log('⚠️ Esta celda fue marcada en una ronda anterior, no se puede desmarcar');
-                        return prevBoard;
                     }
-                }
-
-                // Si ya marcó una celda en esta ronda, no puede marcar otra
-                if (hasMarkedInCurrentRound) {
-                    console.log('⚠️ Ya has marcado una celda en esta ronda. Desmarca la anterior primero.');
                     return prevBoard;
                 }
 
-                // Marcar la celda
-                newBoard[index] = { ...cell, marked: true };
+                if (hasMarkedRef.current) return prevBoard;
 
-                // Marcar que ya usamos nuestra marca para esta ronda
+                newBoard[index] = { ...cell, marked: true };
                 setHasMarkedInCurrentRound(true);
-                sounds.playMark(); // Sonido al marcar
-                console.log('✅ Celda marcada, flag de ronda activado');
+                sounds.playMark();
 
                 if (checkWinner(newBoard)) {
-                    console.log('Winner detected, sending to server');
-                    sounds.playBingo(); // ¡BINGO!
-                    confetti.fireBingoConfetti(); // 🎉 Confetti épico!
-                    gameSocket.declareWinner({ roomCode, playerName })
-                        .then(response => {
-                            if (response && response.success === false) {
-                                console.error('Error declaring winner:', response.error);
-                                setError('Error al declarar ganador');
-                            }
-                        })
-                        .catch(error => {
-                            console.error('Error declaring winner:', error);
-                            setError('Error al declarar ganador');
-                        });
+                    sounds.playBingo();
+                    confetti.fireBingoConfetti();
+                    gameSocket.declareWinner({ roomCode, playerName: playerNameRef.current })
+                        .catch(() => setError('Error al declarar ganador'));
                 }
                 return newBoard;
             }
             return prevBoard;
         });
-    }, [gameState, checkWinner, roomCode, playerName, hasMarkedInCurrentRound]);
+    }, [checkWinner, roomCode, sounds, confetti]);
 
     const handlePrediction = useCallback(async (prediction) => {
         setMyPredictions(prev => [...prev, prediction]);
         try {
             await gameSocket.submitPrediction({ roomCode, prediction });
-        } catch (error) {
-            console.error('Error submitting prediction:', error);
+        } catch (err) {
+            console.error('Error submitting prediction:', err);
             setError('Error al enviar predicción');
         }
     }, [roomCode]);
 
-    return {
+    return useMemo(() => ({
         board,
         ...gameState,
         myPredictions,
@@ -555,5 +380,5 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
         handlePrediction,
         hasMarkedInCurrentRound,
         markingJustDisabled,
-    };
+    }), [board, gameState, myPredictions, error, serverWaking, handleCellClick, handlePrediction, hasMarkedInCurrentRound, markingJustDisabled]);
 };

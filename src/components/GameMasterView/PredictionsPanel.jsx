@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { ChevronUp, ChevronDown, Music2, Check, X } from 'lucide-react';
 import PropTypes from 'prop-types';
 
@@ -156,4 +156,4 @@ PredictionsPanel.defaultProps = {
     onClose: () => { }
 };
 
-export default PredictionsPanel;
+export default React.memo(PredictionsPanel);

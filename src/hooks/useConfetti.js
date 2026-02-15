@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import confetti from 'canvas-confetti';
 
 /**
@@ -114,11 +114,12 @@ export const useConfetti = () => {
     });
   }, []);
 
-  return {
+  // Memoizar el objeto de retorno para estabilizar la referencia
+  return useMemo(() => ({
     fireConfetti,
     fireBingoConfetti,
     fireSuccessConfetti,
     fireNewRoundConfetti,
     fireHeartsConfetti,
-  };
+  }), [fireConfetti, fireBingoConfetti, fireSuccessConfetti, fireNewRoundConfetti, fireHeartsConfetti]);
 };
