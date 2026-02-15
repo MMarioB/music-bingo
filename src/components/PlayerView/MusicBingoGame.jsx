@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { Trophy } from 'lucide-react';
 import PropTypes from 'prop-types';
 import { useMusicBingoLogic } from './MusicBingoGameLogic';
@@ -12,25 +12,9 @@ const MusicBingoGame = ({ playerName, roomCode, difficulty }) => {
 
   const canPlayerMark = useMemo(() => {
     const currentPlayer = logic.connectedPlayers.find(p => p.name === playerName);
-
-    console.log('🔍 DEBUG canPlayerMark:', {
-      isMarkingEnabled: logic.isMarkingEnabled,
-      currentPlayer: currentPlayer,
-      playerCorrectStatus: logic.playerCorrectStatus,
-      isPlayerMarkedCorrect: currentPlayer ? logic.playerCorrectStatus[currentPlayer.id] : undefined
-    });
-
-    if (!logic.isMarkingEnabled) {
-      console.log('❌ NO puede marcar: isMarkingEnabled = false');
-      return false;
-    }
-    if (!currentPlayer) {
-      console.log('❌ NO puede marcar: jugador no encontrado');
-      return false;
-    }
-    const canMark = !!logic.playerCorrectStatus[currentPlayer.id];
-    console.log(canMark ? '✅ SÍ puede marcar' : '❌ NO puede marcar: no está en playerCorrectStatus');
-    return canMark;
+    if (!logic.isMarkingEnabled) return false;
+    if (!currentPlayer) return false;
+    return !!logic.playerCorrectStatus[currentPlayer.id];
   }, [logic.isMarkingEnabled, logic.connectedPlayers, logic.playerCorrectStatus, playerName]);
 
   useEffect(() => {
@@ -99,4 +83,4 @@ MusicBingoGame.propTypes = {
   difficulty: PropTypes.oneOf(['principiante', 'experto']).isRequired
 };
 
-export default MusicBingoGame;
+export default React.memo(MusicBingoGame);

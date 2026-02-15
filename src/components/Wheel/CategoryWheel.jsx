@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import PropTypes from 'prop-types';
 import confetti from 'canvas-confetti';
 import { CATEGORIES_A, CATEGORIES_B } from './constants';
@@ -332,4 +332,4 @@ CategoryWheel.propTypes = {
     onCategorySelected: PropTypes.func
 };
 
-export default CategoryWheel;
+export default React.memo(CategoryWheel);

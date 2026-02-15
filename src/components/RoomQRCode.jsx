@@ -1,17 +1,17 @@
+import React, { useMemo, useCallback, useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { Card } from './ui/card';
 import { Button } from './ui/button';
 import { Share2, Copy, Check, MessageCircle, Send } from 'lucide-react';
-import { useState } from 'react';
 import PropTypes from 'prop-types';
 
 const RoomQRCode = ({ roomCode }) => {
   const [copied, setCopied] = useState(false);
 
-  // Construir la URL completa con query param para auto-join
-  const joinUrl = `${window.location.origin}?room=${roomCode}`;
+  // Memoizar la URL para evitar recálculos
+  const joinUrl = useMemo(() => `${window.location.origin}?room=${roomCode}`, [roomCode]);
 
-  const handleCopyLink = async () => {
+  const handleCopyLink = useCallback(async () => {
     try {
       await navigator.clipboard.writeText(joinUrl);
       setCopied(true);
@@ -19,9 +19,9 @@ const RoomQRCode = ({ roomCode }) => {
     } catch (error) {
       console.error('Error al copiar:', error);
     }
-  };
+  }, [joinUrl]);
 
-  const handleShare = async () => {
+  const handleShare = useCallback(async () => {
     if (navigator.share) {
       try {
         await navigator.share({
@@ -35,44 +35,43 @@ const RoomQRCode = ({ roomCode }) => {
     } else {
       handleCopyLink();
     }
-  };
+  }, [roomCode, joinUrl, handleCopyLink]);
 
-  const handleWhatsApp = () => {
+  const handleWhatsApp = useCallback(() => {
     const message = `🎵 ¡Únete a mi partida de *Music Bingo*! 🎵\n\n🎮 Código: *${roomCode}*\n🔗 Link directo: ${joinUrl}\n\n¡Vamos a ver quién tiene mejor oído musical! 🎶`;
-    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
-    window.open(whatsappUrl, '_blank');
-  };
+    window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
+  }, [roomCode, joinUrl]);
 
-  const handleTelegram = () => {
+  const handleTelegram = useCallback(() => {
     const message = `🎵 ¡Únete a mi partida de Music Bingo! 🎵\n\n🎮 Código: ${roomCode}\n¡Vamos a ver quién tiene mejor oído musical! 🎶`;
-    const telegramUrl = `https://t.me/share/url?url=${encodeURIComponent(joinUrl)}&text=${encodeURIComponent(message)}`;
-    window.open(telegramUrl, '_blank');
-  };
+    window.open(`https://t.me/share/url?url=${encodeURIComponent(joinUrl)}&text=${encodeURIComponent(message)}`, '_blank');
+  }, [roomCode, joinUrl]);
+
+  // Memoizar el QR code SVG (solo cambia cuando cambia roomCode)
+  const qrCode = useMemo(() => (
+    <QRCodeSVG
+      value={joinUrl}
+      size={120}
+      level="H"
+      includeMargin={false}
+    />
+  ), [joinUrl]);
 
   return (
     <Card className="bg-black/40 border-white/20 p-4">
       <div className="flex flex-col items-center space-y-3">
         <h3 className="text-white font-semibold text-sm">Comparte para Unirse</h3>
 
-        {/* QR Code */}
         <div className="bg-white p-3 rounded-lg">
-          <QRCodeSVG
-            value={joinUrl}
-            size={120}
-            level="H"
-            includeMargin={false}
-          />
+          {qrCode}
         </div>
 
-        {/* Room Code */}
         <div className="text-center">
           <p className="text-white/60 text-xs mb-1">Código de Sala</p>
           <p className="text-2xl font-bold text-purple-400 tracking-wider">{roomCode}</p>
         </div>
 
-        {/* Botones de compartir */}
         <div className="space-y-2 w-full">
-          {/* Fila 1: WhatsApp y Telegram */}
           <div className="grid grid-cols-2 gap-2">
             <Button
               onClick={handleWhatsApp}
@@ -93,7 +92,6 @@ const RoomQRCode = ({ roomCode }) => {
             </Button>
           </div>
 
-          {/* Fila 2: Copiar y Compartir */}
           <div className="flex gap-2">
             <Button
               onClick={handleCopyLink}
@@ -136,4 +134,4 @@ RoomQRCode.propTypes = {
   roomCode: PropTypes.string.isRequired,
 };
 
-export default RoomQRCode;
+export default React.memo(RoomQRCode);

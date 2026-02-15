@@ -1,10 +1,9 @@
-import { useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { Button } from '../ui/button';
 import { Card } from '../ui/card';
 import { Alert, AlertDescription } from '../ui/alert';
 import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 import { Label } from '../ui/label';
-import { motion, AnimatePresence } from 'framer-motion';
 import { ExternalLinkIcon, MusicIcon, CalendarIcon, RefreshCwIcon, AlertCircle, Check, Trophy, Users } from 'lucide-react';
 import CategoryWheel from '../Wheel/CategoryWheel';
 import PredictionsPanel from './PredictionsPanel';
@@ -15,6 +14,12 @@ import SongTimer from './SongTimer';
 import PropTypes from 'prop-types';
 import { useGameMasterLogic } from './GameMasterLogic';
 import { MUSIC_CATEGORIES } from './constants';
+
+// Estilos estáticos
+const categoryBoxShadow = { boxShadow: '0 0 15px rgba(255,255,255,0.1)' };
+const generateBtnShadow = { boxShadow: '0 0 15px rgba(168,85,247,0.3)' };
+const spotifyBtnShadow = { boxShadow: '0 0 20px rgba(34,197,94,0.4)' };
+const revealBtnShadow = { boxShadow: '0 0 20px rgba(168,85,247,0.5)' };
 
 const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
   const {
@@ -41,7 +46,6 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
     gameOver,
     finishGame,
     setConnectionError,
-    // Timer
     timerDuration,
     timerRunning,
     timerPaused,
@@ -49,41 +53,26 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
     pauseTimer,
     resumeTimer,
     addTime,
-    // Music theme selection
     selectedMusicTheme,
     setSelectedMusicTheme
   } = useGameMasterLogic({ roomCode, initialDifficulty });
 
   useEffect(() => {
     let timer;
-    // No auto-limpiar el error si el servidor está despertando
     if (connectionError && !serverWaking) {
       timer = setTimeout(() => setConnectionError(null), 5000);
     }
     return () => clearTimeout(timer);
   }, [connectionError, serverWaking, setConnectionError]);
 
-  // Renderizar la sección principal (ruleta o tarjeta)
   const renderMainSection = () => (
-    <AnimatePresence mode="wait">
+    <div>
       {gameStep === 'wheel' ? (
-        <motion.div
-          key="wheel"
-          initial={{ opacity: 0, scale: 0.8 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.8 }}
-          className="flex items-center justify-center"
-        >
+        <div className="flex items-center justify-center animate-scaleIn">
           <CategoryWheel difficulty={difficulty} onCategorySelected={handleCategorySelected} />
-        </motion.div>
+        </div>
       ) : (
-        <motion.div
-          key="card-section"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -20 }}
-          className="space-y-4"
-        >
+        <div className="space-y-4 animate-slideUp">
           {/* Alerta de ganadores */}
           {winners.length > 0 && !gameOver && (
             <Alert className="bg-purple-500/20 border-purple-500/50">
@@ -113,7 +102,7 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
           {selectedCategory && (
             <div
               className={`${selectedCategory.color} p-3 rounded-lg flex items-center justify-center gap-3 border border-white/20`}
-              style={{ boxShadow: '0 0 15px rgba(255,255,255,0.1)' }}
+              style={categoryBoxShadow}
             >
               <div className="flex items-center gap-2">
                 {selectedCategory.icon && <selectedCategory.icon size={24} className="text-gray-800" />}
@@ -122,7 +111,7 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
             </div>
           )}
 
-          {/* Selector de tema musical - solo visible cuando no hay tarjeta actual */}
+          {/* Selector de tema musical */}
           {!currentCard && selectedCategory && (
             <Card className="bg-black/30 border border-white/20 p-4">
               <div className="flex items-center gap-2 mb-3">
@@ -157,7 +146,7 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
             </Card>
           )}
 
-          {/* Timer - aparece cuando hay tarjeta y no está revelada */}
+          {/* Timer */}
           {currentCard && !currentCard.revealed && timerRunning && (
             <SongTimer
               duration={timerDuration}
@@ -180,13 +169,12 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
               onClick={generateNewCard}
               disabled={isLoading || !selectedCategory}
               className="w-full h-12 bg-gradient-to-r from-purple-600/80 to-indigo-600/80 hover:from-purple-600 hover:to-indigo-600 border border-purple-400/50 text-base font-medium"
-              style={{ boxShadow: '0 0 15px rgba(168,85,247,0.3)' }}
+              style={generateBtnShadow}
             >
               {isLoading ? 'Generando...' : selectedCategory ? 'Generar Tarjeta' : 'Selecciona una categoría primero'}
             </Button>
           ) : (
             <Card className="bg-black/30 border border-white/20 overflow-hidden">
-              {/* Carátula del álbum con efecto de revelado */}
               {currentCard.albumImage && (
                 <div className={`relative transition-all duration-500 ${currentCard.revealed ? '' : 'blur-md grayscale'}`}>
                   <img
@@ -194,16 +182,10 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
                     alt={`${currentCard.title} - ${currentCard.artist}`}
                     className="w-full aspect-square object-cover"
                   />
-                  {/* Overlay con gradiente */}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
 
-                  {/* Info superpuesta en la imagen */}
                   {currentCard.revealed && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="absolute bottom-0 left-0 right-0 p-4"
-                    >
+                    <div className="absolute bottom-0 left-0 right-0 p-4 animate-slideUp">
                       <h2 className="text-xl font-bold text-white drop-shadow-lg mb-1">
                         {currentCard.title}
                       </h2>
@@ -211,13 +193,12 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
                         <MusicIcon className="w-4 h-4 mr-2" />
                         <span className="text-base">{currentCard.artist}</span>
                       </div>
-                    </motion.div>
+                    </div>
                   )}
                 </div>
               )}
 
               <div className="p-4 space-y-3">
-                {/* Info de la canción (si no hay imagen o cuando no está revelada) */}
                 {(!currentCard.albumImage || !currentCard.revealed) && (
                   <div className={`transition-all duration-500 ${currentCard.revealed ? '' : 'blur-md'}`}>
                     <div className="text-center mb-3">
@@ -230,7 +211,6 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
                   </div>
                 )}
 
-                {/* Datos adicionales */}
                 <div className="grid grid-cols-2 gap-2">
                   <div className="bg-white/10 backdrop-blur-sm rounded-lg p-2 flex items-center justify-between">
                     <CalendarIcon className="w-4 h-4 text-purple-400" />
@@ -242,13 +222,12 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
                   </div>
                 </div>
 
-                {/* Controles de canción */}
                 {!currentCard.revealed ? (
                   <div className="space-y-2">
                     <Button
                       onClick={handleRevealSong}
                       className="w-full h-11 bg-gradient-to-r from-purple-600/80 to-indigo-600/80 hover:from-purple-600 hover:to-indigo-600 border border-purple-400/50 text-base font-semibold"
-                      style={{ boxShadow: '0 0 15px rgba(168,85,247,0.3)' }}
+                      style={generateBtnShadow}
                     >
                       <ExternalLinkIcon className="mr-2 h-5 w-5" />
                       Revelar Canción
@@ -256,12 +235,11 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    {/* Botón de Spotify MÁS PROMINENTE */}
                     {currentCard.spotifyUrl && (
                       <Button
                         className="w-full h-12 bg-green-600 hover:bg-green-700 text-white font-bold text-base border-2 border-green-400/50 shadow-lg"
                         onClick={() => window.open(currentCard.spotifyUrl, '_blank')}
-                        style={{ boxShadow: '0 0 20px rgba(34,197,94,0.4)' }}
+                        style={spotifyBtnShadow}
                       >
                         <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="currentColor">
                           <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/>
@@ -300,12 +278,11 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
               </div>
             </Card>
           )}
-        </motion.div>
+        </div>
       )}
-    </AnimatePresence>
+    </div>
   );
 
-  // Renderizar la sección de jugadores (sidebar)
   const renderPlayersSection = () => (
     <div className="bg-black/30 border border-white/20 rounded-lg p-4 h-fit lg:sticky lg:top-4">
       <div className="flex items-center justify-between mb-4">
@@ -344,9 +321,9 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
                     }`}
                   >
                     {playerCorrectStatus[player.id] && (
-                      <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}>
+                      <div className="animate-scaleIn">
                         <Check className="w-4 h-4 text-white" />
-                      </motion.div>
+                      </div>
                     )}
                   </div>
                 )}
@@ -437,12 +414,9 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
 
       {/* Layout principal de dos columnas */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Columna principal - Ruleta/Tarjeta */}
         <div className="lg:col-span-2">
           {renderMainSection()}
         </div>
-
-        {/* Sidebar - Jugadores */}
         <div className="lg:col-span-1">
           {renderPlayersSection()}
         </div>
@@ -452,14 +426,26 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
       <RoomQRCode roomCode={roomCode} />
       <SongHistory songs={songHistory} />
       <PredictionsPanel predictions={playerPredictions} />
+
+      <style>{`
+        @keyframes scaleIn {
+          from { opacity: 0; transform: scale(0.8); }
+          to { opacity: 1; transform: scale(1); }
+        }
+        .animate-scaleIn { animation: scaleIn 0.3s ease-out forwards; }
+        @keyframes slideUp {
+          from { opacity: 0; transform: translateY(20px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-slideUp { animation: slideUp 0.3s ease-out forwards; }
+      `}</style>
     </GameLayout>
   );
 };
 
-GameMaster.propTypes = { 
-  roomCode: PropTypes.string.isRequired, 
-  difficulty: PropTypes.oneOf(['principiante', 'experto']).isRequired 
+GameMaster.propTypes = {
+  roomCode: PropTypes.string.isRequired,
+  difficulty: PropTypes.oneOf(['principiante', 'experto']).isRequired
 };
 
-// Aseguramos la exportación por defecto
-export default GameMaster;
+export default React.memo(GameMaster);
