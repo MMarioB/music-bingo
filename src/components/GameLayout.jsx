@@ -1,41 +1,37 @@
+import React from 'react';
 import { Users } from 'lucide-react';
 import PropTypes from 'prop-types';
+
+// Estilos estáticos extraídos fuera del componente para evitar recreación
+const gridStyle = {
+    backgroundImage: `linear-gradient(to right, #ff00ee 1px, transparent 1px), linear-gradient(to bottom, #ff00ee 1px, transparent 1px)`,
+    backgroundSize: '40px 40px',
+    transform: 'perspective(500px) rotateX(60deg)',
+    transformOrigin: 'bottom'
+};
+const titleStyle = {
+    background: 'linear-gradient(to right, #ff00ee, #00ffff)',
+    WebkitBackgroundClip: 'text',
+    WebkitTextFillColor: 'transparent',
+    textShadow: '0 2px 20px rgba(255,0,238,0.5)'
+};
+const subtitleStyle = { textShadow: '0 0 10px rgba(255,255,255,0.5)' };
 
 const GameLayout = ({ children, roomCode, playersCount, showSelect, selectContent }) => {
     return (
         <div className="min-h-screen bg-[#1a0133] flex flex-col relative overflow-hidden">
             {/* Fondo con cuadrícula */}
-            <div
-                className="absolute inset-0 opacity-10"
-                style={{
-                    backgroundImage: `
-            linear-gradient(to right, #ff00ee 1px, transparent 1px),
-            linear-gradient(to bottom, #ff00ee 1px, transparent 1px)
-          `,
-                    backgroundSize: '40px 40px',
-                    transform: 'perspective(500px) rotateX(60deg)',
-                    transformOrigin: 'bottom'
-                }}
-            />
+            <div className="absolute inset-0 opacity-10" style={gridStyle} />
 
             {/* Header mejorado */}
             <div className="w-full bg-gradient-to-b from-black/60 to-transparent backdrop-blur-sm">
                 <div className="max-w-xl mx-auto px-4 py-4 space-y-2">
                     {/* Título con mejor espaciado y diseño */}
                     <div className="text-center space-y-1">
-                        <h1 className="text-4xl font-bold tracking-wider"
-                            style={{
-                                background: 'linear-gradient(to right, #ff00ee, #00ffff)',
-                                WebkitBackgroundClip: 'text',
-                                WebkitTextFillColor: 'transparent',
-                                textShadow: '0 2px 20px rgba(255,0,238,0.5)'
-                            }}>
+                        <h1 className="text-4xl font-bold tracking-wider" style={titleStyle}>
                             DISCOHITS
                         </h1>
-                        <h2 className="text-2xl font-bold text-white/90"
-                            style={{
-                                textShadow: '0 0 10px rgba(255,255,255,0.5)'
-                            }}>
+                        <h2 className="text-2xl font-bold text-white/90" style={subtitleStyle}>
                             Music Bingo
                         </h2>
                     </div>
@@ -90,4 +86,4 @@ GameLayout.defaultProps = {
     selectContent: null
 };
 
-export default GameLayout;
+export default React.memo(GameLayout);

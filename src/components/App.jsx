@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import MusicBingoGame from "../components/PlayerView/MusicBingoGame";
 import GameMaster from "../components/GameMasterView/GameMaster";
 import GameRoom from "../components/GameRoom";
@@ -9,6 +9,44 @@ import { Button } from "../components/ui/button";
 import { Alert, AlertDescription } from "../components/ui/alert";
 import { AlertCircle, ArrowLeft, Music, Users } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+
+// Estilos estáticos extraídos fuera del componente
+const gridBgStyle = {
+  backgroundImage: `
+    linear-gradient(to right, #ff00ee 1px, transparent 1px),
+    linear-gradient(to bottom, #ff00ee 1px, transparent 1px)
+  `,
+  backgroundSize: '40px 40px',
+  transform: 'perspective(500px) rotateX(60deg)',
+  transformOrigin: 'bottom'
+};
+
+const discoBallStyle = {
+  background: 'radial-gradient(circle, rgba(255,255,255,0.8) 10%, rgba(255,255,255,0.3) 60%)',
+  boxShadow: '0 0 20px rgba(255,255,255,0.5)'
+};
+
+const neonTitleStyle = {
+  color: '#fff',
+  textShadow: `
+      0 0 7px #fff,
+      0 0 10px #fff,
+      0 0 21px #fff,
+      0 0 42px #ff00ee,
+      0 0 82px #ff00ee,
+      0 0 92px #ff00ee
+    `
+};
+
+const rainbowTextStyle = {
+  background: 'linear-gradient(to right, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #4b0082, #8b00ff)',
+  WebkitBackgroundClip: 'text',
+  WebkitTextFillColor: 'transparent',
+  textShadow: '0 0 20px rgba(255,255,255,0.5)'
+};
+
+const gameMasterBtnStyle = { boxShadow: '0 0 10px #00ff00, inset 0 0 20px rgba(0, 255, 0, 0.2)' };
+const playerBtnStyle = { boxShadow: '0 0 10px #ff00ee, inset 0 0 20px rgba(255, 0, 238, 0.2)' };
 
 function App() {
   const [gameState, setGameState] = useState({
@@ -243,28 +281,14 @@ function App() {
   return (
     <div className="min-h-screen bg-[#1a0133] p-4 relative overflow-hidden font-audiowide">
       {/* Fondo con cuadrícula tipo disco */}
-      <div
-        className="absolute inset-0 opacity-20"
-        style={{
-          backgroundImage: `
-            linear-gradient(to right, #ff00ee 1px, transparent 1px),
-            linear-gradient(to bottom, #ff00ee 1px, transparent 1px)
-          `,
-          backgroundSize: '40px 40px',
-          transform: 'perspective(500px) rotateX(60deg)',
-          transformOrigin: 'bottom'
-        }}
-      />
+      <div className="absolute inset-0 opacity-20" style={gridBgStyle} />
 
       {/* Efecto de bola de disco */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 0.6 }}
         className="absolute top-10 right-10 w-20 h-20 rounded-full"
-        style={{
-          background: 'radial-gradient(circle, rgba(255,255,255,0.8) 10%, rgba(255,255,255,0.3) 60%)',
-          boxShadow: '0 0 20px rgba(255,255,255,0.5)'
-        }}
+        style={discoBallStyle}
       />
 
       {/* Contenido principal */}
@@ -277,26 +301,11 @@ function App() {
             className="text-center mb-12 relative"
           >
             <h1 className="text-4xl md:text-5xl md:m-3 font-bold mb-4 tracking-wider"
-              style={{
-                color: '#fff',
-                textShadow: `
-                    0 0 7px #fff,
-                    0 0 10px #fff,
-                    0 0 21px #fff,
-                    0 0 42px #ff00ee,
-                    0 0 82px #ff00ee,
-                    0 0 92px #ff00ee
-                  `
-              }}>
+              style={neonTitleStyle}>
               DISCOHITS
             </h1>
             <h2 className="text-2xl md:text-4xl font-bold relative"
-              style={{
-                background: 'linear-gradient(to right, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #4b0082, #8b00ff)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                textShadow: '0 0 20px rgba(255,255,255,0.5)'
-              }}>
+              style={rainbowTextStyle}>
               Music BINGO
             </h2>
           </motion.div>
@@ -316,9 +325,7 @@ function App() {
                   <Button
                     onClick={() => handleRoleSelect('master')}
                     className="h-auto py-8 bg-black/30 border-2 border-[#00ff00] hover:bg-[#00ff00]/20 transform transition-all hover:scale-105 group text-white/90"
-                    style={{
-                      boxShadow: '0 0 10px #00ff00, inset 0 0 20px rgba(0, 255, 0, 0.2)',
-                    }}
+                    style={gameMasterBtnStyle}
                   >
                     <div className="flex items-center justify-center gap-3">
                       <Music className="w-8 h-8 group-hover:animate-spin" />
@@ -329,9 +336,7 @@ function App() {
                   <Button
                     onClick={() => handleRoleSelect('player')}
                     className="h-auto py-8 bg-black/30 border-2 border-[#ff00ee] hover:bg-[#ff00ee]/20 transform transition-all hover:scale-105 group text-white/90"
-                    style={{
-                      boxShadow: '0 0 10px #ff00ee, inset 0 0 20px rgba(255, 0, 238, 0.2)',
-                    }}
+                    style={playerBtnStyle}
                   >
                     <div className="flex items-center justify-center gap-3">
                       <Users className="w-8 h-8 group-hover:animate-bounce" />

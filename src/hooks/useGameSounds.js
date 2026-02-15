@@ -1,4 +1,4 @@
-import { useRef, useCallback, useEffect } from 'react';
+import { useRef, useCallback, useEffect, useMemo } from 'react';
 
 /**
  * Hook para manejar sonidos del juego
@@ -187,14 +187,15 @@ export const useGameSounds = () => {
 
   const isSoundEnabled = useCallback(() => enabledRef.current, []);
 
-  return {
-    playSuccess,    // ✅ Cuando aciertas
-    playError,      // ❌ Cuando fallas
-    playBingo,      // 🎉 Cuando haces BINGO
-    playNotification, // 🔔 Tu turno de marcar
-    playMark,       // 👆 Al marcar una celda
-    playNewRound,   // 🔄 Nueva ronda
+  // Memoizar el objeto de retorno para estabilizar la referencia
+  return useMemo(() => ({
+    playSuccess,
+    playError,
+    playBingo,
+    playNotification,
+    playMark,
+    playNewRound,
     toggleSound,
     isSoundEnabled,
-  };
+  }), [playSuccess, playError, playBingo, playNotification, playMark, playNewRound, toggleSound, isSoundEnabled]);
 };

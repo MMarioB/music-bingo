@@ -1,3 +1,4 @@
+import React from 'react';
 import { Alert, AlertDescription } from '../ui/alert';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AlertCircle, InfoIcon, Check, XCircleIcon, PartyPopper, Clock, Target, CheckCircle } from 'lucide-react';
@@ -104,4 +105,4 @@ const GameStatusAlert = (props) => {
   );
 };
 
-export default GameStatusAlert;
+export default React.memo(GameStatusAlert);

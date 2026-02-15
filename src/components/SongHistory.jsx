@@ -1,3 +1,4 @@
+import React from 'react';
 import { Card } from './ui/card';
 import { Music, Calendar, User, Clock } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -90,4 +91,4 @@ SongHistory.propTypes = {
   ),
 };
 
-export default SongHistory;
+export default React.memo(SongHistory);

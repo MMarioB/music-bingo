@@ -1,8 +1,7 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import PropTypes from 'prop-types';
 import { motion, AnimatePresence } from 'framer-motion';
 import confetti from 'canvas-confetti';
-// Asegúrate de que este import sea correcto para tu estructura de proyecto
 import { CATEGORIES_A, CATEGORIES_B } from './constants';
 
 const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () => {} }) => {
@@ -65,7 +64,7 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
         rotationRef.current = newRotation;
         setRotationState(newRotation);
 
-        console.log(`🎯 Ruleta: Segmento ${finalIndexInWheel} (${winner.name}), ángulo: ${segmentMidAngle.toFixed(1)}°, rotación final: ${newRotation.toFixed(1)}°`);
+        // Rotation calculated successfully
     };
 
     // 🎊 Función de confetti con los colores de la categoría ganadora
@@ -127,28 +126,33 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
         setFinalSelectedCategory(null);
     }, [difficulty]);
     
-    // El resto del código de renderizado es el mismo y ahora funcionará correctamente.
-    // ...
-    // --- RENDERIZADO (El JSX no necesita cambios) ---
-    const generateWheelSegments = () => {
+    // Pre-calcular geometría de los segmentos (solo cambia con difficulty)
+    const segmentGeometry = useMemo(() => {
+        const radius = 0.85;
+        const squarePosition = 0.55;
+        const squareSize = 0.25;
         return allCategories.map((category, index) => {
-            const isSelectedResult = finalSelectedCategory && category.id === finalSelectedCategory.id;
-            const isTemporarilyExcluded = excludedIds.includes(category.id) && !isSelectedResult;
-            const Icon = category.icon;
-            
             const startAngle = index * segmentAngle;
             const endAngle = startAngle + segmentAngle;
             const midAngle = startAngle + segmentAngle / 2;
-            const radius = 0.85;
             const startX = Math.cos((startAngle - 90) * Math.PI / 180) * radius;
             const startY = Math.sin((startAngle - 90) * Math.PI / 180) * radius;
             const endX = Math.cos((endAngle - 90) * Math.PI / 180) * radius;
             const endY = Math.sin((endAngle - 90) * Math.PI / 180) * radius;
-            const squarePosition = 0.55;
-            const squareSize = 0.25;
             const textX = Math.cos((midAngle - 90) * Math.PI / 180) * squarePosition;
             const textY = Math.sin((midAngle - 90) * Math.PI / 180) * squarePosition;
             const pathData = `M 0 0 L ${startX} ${startY} A ${radius} ${radius} 0 0 1 ${endX} ${endY} Z`;
+            return { pathData, textX, textY, squareSize };
+        });
+    }, [allCategories, segmentAngle]);
+
+    // Memoizar los segmentos SVG (solo recalcular cuando cambia selección o exclusiones)
+    const wheelSegments = useMemo(() => {
+        return allCategories.map((category, index) => {
+            const isSelectedResult = finalSelectedCategory && category.id === finalSelectedCategory.id;
+            const isTemporarilyExcluded = excludedIds.includes(category.id) && !isSelectedResult;
+            const Icon = category.icon;
+            const { pathData, textX, textY, squareSize } = segmentGeometry[index];
 
             return (
                 <g key={category.id} className="transition-opacity duration-500" style={{ opacity: isTemporarilyExcluded ? 0.3 : 1 }}>
@@ -195,7 +199,7 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
                 </g>
             );
         });
-    };
+    }, [allCategories, finalSelectedCategory, excludedIds, segmentGeometry]);
     
     const isCycleComplete = excludedIds.length >= allCategories.length;
     
@@ -271,7 +275,7 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
                                 </feMerge>
                             </filter>
                         </defs>
-                        {generateWheelSegments()}
+                        {wheelSegments}
                         <circle cx="0" cy="0" r="0.15" fill="white" style={{ filter: 'url(#neonGlow)' }} />
                     </svg>
                 </motion.div>
