@@ -58,12 +58,11 @@ const MusicBingoGame = ({ playerName, roomCode, difficulty }) => {
           </div>
         )}
 
-        {/* Audio preview - auto-play para jugadores */}
+        {/* Spotify embed player - reproduce 30s del track */}
         {logic.currentSong && !logic.currentSong.revealed && logic.songPlaying && (
           <AudioPlayer
-            previewUrl={logic.currentSong.previewUrl}
-            autoPlay={true}
-            showControls={true}
+            spotifyUrl={logic.currentSong.spotifyUrl}
+            compact={true}
           />
         )}
 

@@ -164,12 +164,11 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
             />
           )}
 
-          {/* Audio preview del navegador */}
+          {/* Spotify embed player - reproduce 30s del track */}
           {currentCard && !currentCard.revealed && (
             <AudioPlayer
-              previewUrl={currentCard.previewUrl}
-              autoPlay={true}
-              showControls={true}
+              spotifyUrl={currentCard.spotifyUrl}
+              compact={true}
             />
           )}
 
