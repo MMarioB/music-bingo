@@ -408,15 +408,6 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
         throw new Error('No se encontraron canciones.');
       }
 
-      try {
-        await spotify.playTrack(randomTrack.uri);
-      } catch (e) {
-        console.error('Error de Spotify API:', e);
-        setConnectionError('Error de Spotify: No se encontró un dispositivo activo. Asegúrate de tener Spotify abierto.');
-        setIsLoading(false);
-        return;
-      }
-
       const albumImage = randomTrack.album.images && randomTrack.album.images.length > 0
         ? randomTrack.album.images[1]?.url || randomTrack.album.images[0]?.url
         : null;
@@ -430,6 +421,7 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
           year: parseInt(randomTrack.album.release_date.split('-')[0]),
           musicCategory: musicCategoryToUse,
           spotifyUrl: randomTrack.external_urls.spotify,
+          previewUrl: randomTrack.preview_url || null,
           albumImage: albumImage,
           albumName: randomTrack.album.name
         }
@@ -439,7 +431,6 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
         console.error('Error al iniciar canción:', response2.error);
         setConnectionError(response2.error);
       } else {
-        window.open(randomTrack.external_urls.spotify, '_blank');
         startTimer();
       }
 

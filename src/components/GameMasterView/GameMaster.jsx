@@ -11,6 +11,7 @@ import RoomQRCode from '../RoomQRCode';
 import SongHistory from '../SongHistory';
 import GameLayout from '../GameLayout';
 import SongTimer from './SongTimer';
+import AudioPlayer from '../AudioPlayer';
 import PropTypes from 'prop-types';
 import { useGameMasterLogic } from './GameMasterLogic';
 import { MUSIC_CATEGORIES } from './constants';
@@ -160,6 +161,15 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
               onResume={resumeTimer}
               onAddTime={() => addTime(15)}
               onRevealNow={handleRevealSong}
+            />
+          )}
+
+          {/* Audio preview del navegador */}
+          {currentCard && !currentCard.revealed && (
+            <AudioPlayer
+              previewUrl={currentCard.previewUrl}
+              autoPlay={true}
+              showControls={true}
             />
           )}
 
