@@ -5,6 +5,7 @@ import { useMusicBingoLogic } from './MusicBingoGameLogic';
 import GameLayout from '../GameLayout';
 import PlayerPredictions from '../PlayerView/PlayerPredictions';
 import GameStatusAlert from '../PlayerView/GameStatusAlert';
+import AudioPlayer from '../AudioPlayer';
 import BingoBoard from './BingoBoard';
 
 const MusicBingoGame = ({ playerName, roomCode, difficulty }) => {
@@ -55,6 +56,15 @@ const MusicBingoGame = ({ playerName, roomCode, difficulty }) => {
           <div className={`${logic.currentCategory.color} p-3 rounded-lg text-center border border-white/20`}>
             <h3 className="font-semibold text-lg text-gray-800">{logic.currentCategory.name}</h3>
           </div>
+        )}
+
+        {/* Audio preview - auto-play para jugadores */}
+        {logic.currentSong && !logic.currentSong.revealed && logic.songPlaying && (
+          <AudioPlayer
+            previewUrl={logic.currentSong.previewUrl}
+            autoPlay={true}
+            showControls={true}
+          />
         )}
 
         {logic.board.length > 0 && (
