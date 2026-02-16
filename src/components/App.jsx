@@ -14,37 +14,33 @@ const GameRoom = lazy(() => import("../components/GameRoom"));
 // Estilos estáticos extraídos fuera del componente
 const gridBgStyle = {
   backgroundImage: `
-    linear-gradient(to right, #ff00ee 1px, transparent 1px),
-    linear-gradient(to bottom, #ff00ee 1px, transparent 1px)
+    linear-gradient(to right, rgba(180, 0, 160, 0.6) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(180, 0, 160, 0.6) 1px, transparent 1px)
   `,
   backgroundSize: '40px 40px',
   transform: 'perspective(500px) rotateX(60deg)',
-  transformOrigin: 'bottom'
-};
-
-const discoBallStyle = {
-  background: 'radial-gradient(circle, rgba(255,255,255,0.8) 10%, rgba(255,255,255,0.3) 60%)',
-  boxShadow: '0 0 20px rgba(255,255,255,0.5)',
-  opacity: 0.6
+  transformOrigin: 'bottom',
+  maskImage: 'linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.3) 40%, transparent 70%)',
+  WebkitMaskImage: 'linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.3) 40%, transparent 70%)',
 };
 
 const neonTitleStyle = {
   color: '#fff',
   textShadow: `
-      0 0 7px #fff,
-      0 0 10px #fff,
-      0 0 21px #fff,
-      0 0 42px #ff00ee,
-      0 0 82px #ff00ee,
-      0 0 92px #ff00ee
+      0 0 4px #fff,
+      0 0 8px rgba(255,255,255,0.6),
+      0 0 20px #ff00ee,
+      0 0 40px rgba(255,0,238,0.5)
     `
 };
 
-const rainbowTextStyle = {
-  background: 'linear-gradient(to right, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #4b0082, #8b00ff)',
-  WebkitBackgroundClip: 'text',
-  WebkitTextFillColor: 'transparent',
-  textShadow: '0 0 20px rgba(255,255,255,0.5)'
+const subtitleStyle = {
+  color: '#00e5ff',
+  textShadow: `
+      0 0 4px rgba(0,229,255,0.4),
+      0 0 15px rgba(0,229,255,0.3),
+      0 0 30px rgba(0,229,255,0.15)
+    `
 };
 
 const gameMasterBtnStyle = { boxShadow: '0 0 10px #00ff00, inset 0 0 20px rgba(0, 255, 0, 0.2)' };
@@ -198,26 +194,20 @@ function App() {
 
   return (
     <div className="min-h-screen bg-[#1a0133] p-4 relative overflow-hidden font-audiowide">
-      {/* Fondo con cuadrícula tipo disco */}
-      <div className="absolute inset-0 opacity-20" style={gridBgStyle} />
-
-      {/* Efecto de bola de disco */}
-      <div
-        className="absolute top-10 right-10 w-20 h-20 rounded-full animate-fadeIn"
-        style={discoBallStyle}
-      />
+      {/* Fondo con cuadrícula synthwave */}
+      <div className="absolute inset-0 opacity-30" style={gridBgStyle} />
 
       {/* Contenido principal */}
       <div className="w-full min-h-screen flex flex-col items-center justify-center relative z-10">
         {/* Logo y título con efecto neón */}
         {showTitle && (
-          <div className="text-center mb-12 relative animate-slideDown">
-            <h1 className="text-4xl md:text-5xl md:m-3 font-bold mb-4 tracking-wider"
+          <div className="text-center mb-16 relative animate-slideDown">
+            <h1 className="text-4xl md:text-6xl font-bold mb-3 tracking-widest"
               style={neonTitleStyle}>
               DISCOHITS
             </h1>
-            <h2 className="text-2xl md:text-4xl font-bold relative"
-              style={rainbowTextStyle}>
+            <h2 className="text-2xl md:text-4xl font-bold tracking-wide"
+              style={subtitleStyle}>
               Music BINGO
             </h2>
           </div>
@@ -227,32 +217,32 @@ function App() {
         <Suspense fallback={<LoadingFallback />}>
           {gameState.phase === 'role-selection' && (
             <div className="w-full max-w-md animate-scaleIn">
-              <Card className="p-8 bg-black/40 shadow-2xl backdrop-blur-sm border border-white/10">
-                <div className="grid gap-6">
+              <Card className="p-10 bg-black/40 shadow-2xl backdrop-blur-sm border border-white/10 rounded-2xl">
+                <div className="grid gap-7">
                   <Button
                     onClick={() => handleRoleSelect('master')}
-                    className="h-auto py-8 bg-black/30 border-2 border-[#00ff00] hover:bg-[#00ff00]/20 transform transition-all hover:scale-105 group text-white/90"
+                    className="h-auto py-8 bg-black/30 border-2 border-[#00ff00] hover:bg-[#00ff00]/15 transform transition-all duration-300 hover:scale-[1.04] group text-white/90 neon-btn-green"
                     style={gameMasterBtnStyle}
                   >
-                    <div className="flex items-center justify-center gap-3">
-                      <Music className="w-8 h-8 group-hover:animate-spin" />
+                    <div className="flex items-center justify-center gap-4">
+                      <Music className="w-7 h-7 group-hover:animate-spin transition-transform" />
                       <span className="text-xl font-bold tracking-wide">Game Master</span>
                     </div>
                   </Button>
 
                   <Button
                     onClick={() => handleRoleSelect('player')}
-                    className="h-auto py-8 bg-black/30 border-2 border-[#ff00ee] hover:bg-[#ff00ee]/20 transform transition-all hover:scale-105 group text-white/90"
+                    className="h-auto py-8 bg-black/30 border-2 border-[#ff00ee] hover:bg-[#ff00ee]/15 transform transition-all duration-300 hover:scale-[1.04] group text-white/90 neon-btn-magenta"
                     style={playerBtnStyle}
                   >
-                    <div className="flex items-center justify-center gap-3">
-                      <Users className="w-8 h-8 group-hover:animate-bounce" />
+                    <div className="flex items-center justify-center gap-4">
+                      <Users className="w-7 h-7 group-hover:animate-bounce transition-transform" />
                       <span className="text-xl font-bold tracking-wide">Jugador</span>
                     </div>
                   </Button>
                 </div>
 
-                <p className="text-white/60 text-center mt-6 text-sm">
+                <p className="text-white/50 text-center mt-8 text-base tracking-wide">
                   El bingo de las abuelas
                 </p>
               </Card>
@@ -372,11 +362,6 @@ function App() {
 
       {/* CSS animations */}
       <style>{`
-        @keyframes fadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-        .animate-fadeIn { animation: fadeIn 0.5s ease-out forwards; }
         @keyframes slideDown {
           from { opacity: 0; transform: translateY(-20px); }
           to { opacity: 1; transform: translateY(0); }
@@ -397,6 +382,12 @@ function App() {
           to { opacity: 1; transform: translateX(0); }
         }
         .animate-slideRight { animation: slideRight 0.3s ease-out forwards; }
+        .neon-btn-green:hover {
+          box-shadow: 0 0 18px #00ff00, 0 0 40px rgba(0, 255, 0, 0.15), inset 0 0 25px rgba(0, 255, 0, 0.25) !important;
+        }
+        .neon-btn-magenta:hover {
+          box-shadow: 0 0 18px #ff00ee, 0 0 40px rgba(255, 0, 238, 0.15), inset 0 0 25px rgba(255, 0, 238, 0.25) !important;
+        }
       `}</style>
     </div>
   );
