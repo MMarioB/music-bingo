@@ -81,13 +81,19 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
   const renderMainSection = () => (
     <div>
       {/* Banner de controlador activo */}
-      {isControlled && (
+      {isControlled ? (
         <div className="mb-4 bg-cyan-500/20 border border-cyan-500/40 rounded-lg p-3 flex items-center justify-center gap-2 animate-slideUp">
           <span className="text-cyan-300 text-sm font-medium">
             🎮 {currentController.name} controla esta ronda
           </span>
         </div>
-      )}
+      ) : currentController && currentController.id === gmPlayer?.id ? (
+        <div className="mb-4 bg-purple-500/20 border border-purple-500/40 rounded-lg p-3 flex items-center justify-center gap-2 animate-slideUp">
+          <span className="text-purple-300 text-sm font-medium">
+            🎮 Tu turno de controlar esta ronda
+          </span>
+        </div>
+      ) : null}
 
       {gameStep === 'wheel' ? (
         isControlled ? (
