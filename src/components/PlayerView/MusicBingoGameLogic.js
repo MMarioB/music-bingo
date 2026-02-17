@@ -369,6 +369,22 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
         }
     }, [roomCode]);
 
+    // === Control rotativo: detectar si este jugador es el controlador ===
+    const isController = useMemo(() => {
+        if (!gameState.currentControllerId) return false;
+        const currentPlayer = gameState.connectedPlayers.find(p => p.name === playerName);
+        return currentPlayer ? currentPlayer.id === gameState.currentControllerId : false;
+    }, [gameState.currentControllerId, gameState.connectedPlayers, playerName]);
+
+    const sendControllerAction = useCallback(async (action, payload = {}) => {
+        try {
+            await gameSocket.sendControllerAction({ roomCode, action, payload });
+        } catch (err) {
+            console.error('Error enviando acción de controlador:', err);
+            setError('Error al enviar acción');
+        }
+    }, [roomCode]);
+
     return useMemo(() => ({
         board,
         ...gameState,
@@ -380,5 +396,7 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
         handlePrediction,
         hasMarkedInCurrentRound,
         markingJustDisabled,
-    }), [board, gameState, myPredictions, error, serverWaking, handleCellClick, handlePrediction, hasMarkedInCurrentRound, markingJustDisabled]);
+        isController,
+        sendControllerAction,
+    }), [board, gameState, myPredictions, error, serverWaking, handleCellClick, handlePrediction, hasMarkedInCurrentRound, markingJustDisabled, isController, sendControllerAction]);
 };

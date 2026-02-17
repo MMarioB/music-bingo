@@ -111,6 +111,10 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
   const [gmHasMarkedInCurrentRound, setGmHasMarkedInCurrentRound] = useState(false);
   const [gmPredictions, setGmPredictions] = useState([]);
 
+  // === Control rotativo ===
+  const [currentController, setCurrentController] = useState(null); // {id, name}
+  const controllerIndexRef = useRef(-1);
+
   // Estados del timer
   const [timerDuration, setTimerDuration] = useState(30);
   const [timerRunning, setTimerRunning] = useState(false);
@@ -242,6 +246,15 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
 
         if (newGameState.currentSong?.revealed && prevState.currentSong && !prevState.currentSong.revealed) {
           setSongHistory(prev => [newGameState.currentSong, ...prev].slice(0, 10));
+        }
+
+        // Sincronizar controlador desde el servidor
+        if (newGameState.currentControllerId !== undefined) {
+          setCurrentController(
+            newGameState.currentControllerId
+              ? { id: newGameState.currentControllerId, name: newGameState.currentControllerName }
+              : null
+          );
         }
 
         return updates;
@@ -436,6 +449,31 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
       await gameSocket.submitPrediction({ roomCode, prediction });
     } catch (err) {
       console.error('Error al enviar predicción del GM:', err);
+    }
+  }, [roomCode]);
+
+  // === Rotación de controlador ===
+  const rotateController = useCallback(async () => {
+    const state = gameStateRef.current;
+    const nonHostPlayers = state.connectedPlayers.filter(p => !p.isHost);
+    if (nonHostPlayers.length === 0) {
+      // Sin jugadores, el host controla
+      setCurrentController(null);
+      return;
+    }
+
+    controllerIndexRef.current = (controllerIndexRef.current + 1) % nonHostPlayers.length;
+    const nextController = nonHostPlayers[controllerIndexRef.current];
+
+    try {
+      await gameSocket.setController({
+        roomCode,
+        controllerId: nextController.id,
+        controllerName: nextController.name
+      });
+      setCurrentController({ id: nextController.id, name: nextController.name });
+    } catch (err) {
+      console.error('Error al asignar controlador:', err);
     }
   }, [roomCode]);
 
@@ -675,11 +713,51 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
       if (response && response.error) {
         throw new Error(response.error);
       }
+      // Rotar controlador automáticamente después de reiniciar
+      // Pequeño delay para que el gameState se actualice primero
+      setTimeout(() => rotateController(), 300);
     } catch (error) {
       console.error('Error al iniciar nueva ronda:', error);
       setConnectionError(`Error al iniciar nueva ronda: ${error.message}`);
     }
-  }, [roomCode, stopTimer]);
+  }, [roomCode, stopTimer, rotateController]);
+
+  // === Listener de acciones del controlador (auto-ejecutar en el host) ===
+  useEffect(() => {
+    const handleControllerAction = ({ action, payload }) => {
+      switch (action) {
+        case 'selectCategory':
+          handleCategorySelected(payload.category);
+          break;
+        case 'generateCard':
+          generateNewCard();
+          break;
+        case 'revealSong':
+          handleRevealSong();
+          break;
+        case 'markPlayer':
+          handlePlayerCorrectToggle(payload.playerId);
+          break;
+        case 'toggleMarking':
+          handleMarkingToggle();
+          break;
+        case 'newRound':
+          startNewRound();
+          break;
+        case 'finishGame':
+          finishGame();
+          break;
+        default:
+          console.warn('Acción de controlador desconocida:', action);
+      }
+    };
+
+    gameSocket.on('controllerAction', handleControllerAction);
+    return () => {
+      gameSocket.off('controllerAction');
+    };
+  }, [handleCategorySelected, generateNewCard, handleRevealSong,
+      handlePlayerCorrectToggle, handleMarkingToggle, startNewRound, finishGame]);
 
   // Memoizar retorno para estabilizar referencia
   return useMemo(() => ({
@@ -719,7 +797,9 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
     handleGMCellClick,
     gmHasMarkedInCurrentRound,
     gmPredictions,
-    handleGMPrediction
+    handleGMPrediction,
+    currentController,
+    rotateController
   }), [
     gameState, difficulty, isLoading, connectionError, isTokenValid,
     tokenWarning, serverWaking, songHistory, loggedIn, login, logout,
@@ -728,6 +808,6 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
     finishGame, timerDuration, timerRunning, timerPaused, timeRemaining,
     startTimer, pauseTimer, resumeTimer, stopTimer, addTime,
     selectedMusicTheme, gmBoard, handleGMCellClick, gmHasMarkedInCurrentRound,
-    gmPredictions, handleGMPrediction
+    gmPredictions, handleGMPrediction, currentController, rotateController
   ]);
 };
