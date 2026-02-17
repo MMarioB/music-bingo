@@ -117,7 +117,7 @@ const MusicBingoGame = ({ playerName, roomCode, difficulty }) => {
             {!logic.isMarkingEnabled && (
               <div className="space-y-1">
                 <p className="text-xs text-white/50 mb-1">Marca los acertantes:</p>
-                {logic.connectedPlayers.filter(p => !p.isHost).map(player => (
+                {logic.connectedPlayers.map(player => (
                   <div
                     key={player.id}
                     onClick={() => onControllerMarkPlayer(player.id)}
