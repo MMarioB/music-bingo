@@ -13,6 +13,7 @@ import GameLayout from '../GameLayout';
 import SongTimer from './SongTimer';
 import AudioPlayer from '../AudioPlayer';
 import BingoBoard from '../PlayerView/BingoBoard';
+import PlayerPredictions from '../PlayerView/PlayerPredictions';
 import PropTypes from 'prop-types';
 import { useGameMasterLogic } from './GameMasterLogic';
 import { MUSIC_CATEGORIES } from './constants';
@@ -59,7 +60,9 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
     setSelectedMusicTheme,
     gmBoard,
     handleGMCellClick,
-    gmHasMarkedInCurrentRound
+    gmHasMarkedInCurrentRound,
+    gmPredictions,
+    handleGMPrediction
   } = useGameMasterLogic({ roomCode, initialDifficulty });
 
   useEffect(() => {
@@ -455,6 +458,16 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
               />
             </div>
           )}
+
+          {/* Predicciones del GM */}
+          <PlayerPredictions
+            gameState={{
+              songPlaying: !!currentCard && !currentCard?.revealed,
+              currentSong: currentCard
+            }}
+            myPredictions={gmPredictions}
+            onSubmitPrediction={handleGMPrediction}
+          />
         </div>
         <div className="lg:col-span-1">
           {renderPlayersSection()}
