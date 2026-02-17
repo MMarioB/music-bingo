@@ -66,7 +66,9 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
     currentController
   } = useGameMasterLogic({ roomCode, initialDifficulty });
 
-  const isControlled = !!currentController;
+  // isControlled = true solo cuando OTRO jugador controla (no el propio GM)
+  const gmPlayer = connectedPlayers.find(p => p.isHost);
+  const isControlled = !!currentController && currentController.id !== gmPlayer?.id;
 
   useEffect(() => {
     let timer;

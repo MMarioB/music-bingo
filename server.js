@@ -50,16 +50,15 @@ const socketToRoom = new Map();
 const orphanedRooms = new Map();
 const ORPHAN_TIMEOUT = 30000; // 30 segundos para que el host se reconecte
 
-// Rotación automática de controlador
+// Rotación automática de controlador (TODOS los jugadores, incluido el host)
 const rotateController = (room) => {
-  const nonHostPlayers = room.players.filter(p => !p.isHost);
-  if (nonHostPlayers.length === 0) {
+  if (room.players.length === 0) {
     room.currentControllerId = null;
     room.currentControllerName = null;
     return;
   }
-  room.controllerIndex = (room.controllerIndex + 1) % nonHostPlayers.length;
-  const next = nonHostPlayers[room.controllerIndex];
+  room.controllerIndex = (room.controllerIndex + 1) % room.players.length;
+  const next = room.players[room.controllerIndex];
   room.currentControllerId = next.id;
   room.currentControllerName = next.name;
   if (DEBUG) console.log(`[DEBUG] Controller rotado a: ${next.name} (${next.id})`);
