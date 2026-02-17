@@ -109,6 +109,7 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
   // === Estado del tablero del GM (para que también juegue) ===
   const [gmBoard, setGmBoard] = useState([]);
   const [gmHasMarkedInCurrentRound, setGmHasMarkedInCurrentRound] = useState(false);
+  const [gmPredictions, setGmPredictions] = useState([]);
 
   // Estados del timer
   const [timerDuration, setTimerDuration] = useState(30);
@@ -229,6 +230,7 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
         if (newGameState.currentSong &&
             (!prevState.currentSong || newGameState.currentSong.uri !== prevState.currentSong.uri)) {
           updates.playerPredictions = {};
+          setGmPredictions([]);
         }
 
         if (newGameState.playerCorrectStatus !== undefined) {
@@ -427,6 +429,15 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
       return prevBoard;
     });
   }, [checkWinner, roomCode]);
+
+  const handleGMPrediction = useCallback(async (prediction) => {
+    setGmPredictions(prev => [...prev, prediction]);
+    try {
+      await gameSocket.submitPrediction({ roomCode, prediction });
+    } catch (err) {
+      console.error('Error al enviar predicción del GM:', err);
+    }
+  }, [roomCode]);
 
   const handlePlayerCorrectToggle = useCallback(async (playerId) => {
     try {
@@ -706,7 +717,9 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
     setSelectedMusicTheme,
     gmBoard,
     handleGMCellClick,
-    gmHasMarkedInCurrentRound
+    gmHasMarkedInCurrentRound,
+    gmPredictions,
+    handleGMPrediction
   }), [
     gameState, difficulty, isLoading, connectionError, isTokenValid,
     tokenWarning, serverWaking, songHistory, loggedIn, login, logout,
@@ -714,6 +727,7 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
     generateNewCard, handleRevealSong, handleMarkingToggle, startNewRound,
     finishGame, timerDuration, timerRunning, timerPaused, timeRemaining,
     startTimer, pauseTimer, resumeTimer, stopTimer, addTime,
-    selectedMusicTheme, gmBoard, handleGMCellClick, gmHasMarkedInCurrentRound
+    selectedMusicTheme, gmBoard, handleGMCellClick, gmHasMarkedInCurrentRound,
+    gmPredictions, handleGMPrediction
   ]);
 };
