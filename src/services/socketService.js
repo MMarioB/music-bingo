@@ -290,6 +290,8 @@ class GameWebSocket {
   async winner(data) { await this._emit('winner', data, false); }
   async gameOver(data) { await this._emit('gameOver', data, false); }
   restartGame(data) { return this._emit('restartGame', data, true, 10000); }
+  setController(data) { return this._emit('setController', data, true); }
+  async sendControllerAction(data) { await this._emit('controllerAction', data, false); }
 
   // --- GESTIÓN DE EVENTOS Y CONEXIÓN ---
   async ensureConnection() {

@@ -70,6 +70,8 @@ const emitGameState = (roomCode) => {
     gameOver: room.gameOver,
     // BUGFIX: Incluir difficulty en todos los gameStateUpdate
     difficulty: room.config?.difficulty || 'principiante',
+    currentControllerId: room.currentControllerId,
+    currentControllerName: room.currentControllerName,
   };
 
   io.to(roomCode).emit('gameStateUpdate', gameState);
@@ -95,6 +97,9 @@ io.on('connection', (socket) => {
         winners: [],
         gameOver: false,
         createdAt: new Date(),
+        currentControllerId: null,
+        currentControllerName: null,
+        controllerIndex: -1,
       });
       socket.join(roomCode);
       socketToRoom.set(socket.id, roomCode);
@@ -484,6 +489,7 @@ io.on('connection', (socket) => {
       room.songPlaying = false;
       room.winners = [];
       room.gameOver = false;
+      // No resetear controller aquí - el host lo rotará después
       room.players.forEach(p => {
         p.isCorrect = false;
         p.ready = p.isHost;
@@ -516,6 +522,42 @@ io.on('connection', (socket) => {
       emitGameState(roomCode);
     } catch (error) {
       console.error('Error updating room:', error);
+    }
+  });
+
+  // Host asigna un controlador para la ronda
+  socket.on('setController', ({ roomCode, controllerId, controllerName }, callback) => {
+    try {
+      const room = gameRooms.get(roomCode);
+      if (!room || room.hostId !== socket.id) {
+        if (callback) callback({ error: 'No autorizado' });
+        return;
+      }
+
+      room.currentControllerId = controllerId;
+      room.currentControllerName = controllerName;
+
+      if (callback) callback({ success: true });
+      emitGameState(roomCode);
+    } catch (error) {
+      console.error('Error setting controller:', error);
+      if (callback) callback({ error: error.message });
+    }
+  });
+
+  // Controlador envía acción → servidor la reenvía al host
+  socket.on('controllerAction', ({ roomCode, action, payload }) => {
+    try {
+      const room = gameRooms.get(roomCode);
+      if (!room) return;
+
+      // Verificar que el emisor es el controlador actual
+      if (socket.id !== room.currentControllerId) return;
+
+      // Reenviar al host
+      io.to(room.hostId).emit('controllerAction', { action, payload });
+    } catch (error) {
+      console.error('Error relaying controller action:', error);
     }
   });
 
@@ -557,6 +599,11 @@ io.on('connection', (socket) => {
     // Jugadores regulares
     const playerIndex = room.players.findIndex(p => p.id === socket.id);
     if (playerIndex > -1) {
+      // Si el controlador se desconecta, limpiar el controlador
+      if (room.currentControllerId === socket.id) {
+        room.currentControllerId = null;
+        room.currentControllerName = null;
+      }
       room.players.splice(playerIndex, 1);
       emitGameState(roomCode);
     }

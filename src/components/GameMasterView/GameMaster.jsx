@@ -62,8 +62,12 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
     handleGMCellClick,
     gmHasMarkedInCurrentRound,
     gmPredictions,
-    handleGMPrediction
+    handleGMPrediction,
+    currentController,
+    rotateController
   } = useGameMasterLogic({ roomCode, initialDifficulty });
+
+  const isControlled = !!currentController;
 
   useEffect(() => {
     let timer;
@@ -75,10 +79,25 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
 
   const renderMainSection = () => (
     <div>
-      {gameStep === 'wheel' ? (
-        <div className="flex items-center justify-center animate-scaleIn">
-          <CategoryWheel difficulty={difficulty} onCategorySelected={handleCategorySelected} />
+      {/* Banner de controlador activo */}
+      {isControlled && (
+        <div className="mb-4 bg-cyan-500/20 border border-cyan-500/40 rounded-lg p-3 flex items-center justify-center gap-2 animate-slideUp">
+          <span className="text-cyan-300 text-sm font-medium">
+            🎮 {currentController.name} controla esta ronda
+          </span>
         </div>
+      )}
+
+      {gameStep === 'wheel' ? (
+        isControlled ? (
+          <div className="text-center py-12 text-white/50 animate-slideUp">
+            <p className="text-lg">Esperando a que {currentController.name} gire la ruleta...</p>
+          </div>
+        ) : (
+          <div className="flex items-center justify-center animate-scaleIn">
+            <CategoryWheel difficulty={difficulty} onCategorySelected={handleCategorySelected} />
+          </div>
+        )
       ) : (
         <div className="space-y-4 animate-slideUp">
           {/* Alerta de ganadores */}
@@ -119,8 +138,8 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
             </div>
           )}
 
-          {/* Selector de tema musical */}
-          {!currentCard && selectedCategory && (
+          {/* Selector de tema musical (solo si host controla) */}
+          {!isControlled && !currentCard && selectedCategory && (
             <Card className="bg-black/30 border border-white/20 p-4">
               <div className="flex items-center gap-2 mb-3">
                 <MusicIcon className="w-4 h-4 text-purple-400" />
@@ -189,14 +208,20 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
 
           {/* Tarjeta de canción o botón generar */}
           {!currentCard ? (
-            <Button
-              onClick={generateNewCard}
-              disabled={isLoading || !selectedCategory}
-              className="w-full h-12 bg-gradient-to-r from-purple-600/80 to-indigo-600/80 hover:from-purple-600 hover:to-indigo-600 border border-purple-400/50 text-base font-medium"
-              style={generateBtnShadow}
-            >
-              {isLoading ? 'Generando...' : selectedCategory ? 'Generar Tarjeta' : 'Selecciona una categoría primero'}
-            </Button>
+            isControlled ? (
+              <div className="text-center py-6 text-white/40 text-sm">
+                {isLoading ? 'Generando tarjeta...' : `Esperando a ${currentController.name}...`}
+              </div>
+            ) : (
+              <Button
+                onClick={generateNewCard}
+                disabled={isLoading || !selectedCategory}
+                className="w-full h-12 bg-gradient-to-r from-purple-600/80 to-indigo-600/80 hover:from-purple-600 hover:to-indigo-600 border border-purple-400/50 text-base font-medium"
+                style={generateBtnShadow}
+              >
+                {isLoading ? 'Generando...' : selectedCategory ? 'Generar Tarjeta' : 'Selecciona una categoría primero'}
+              </Button>
+            )
           ) : (
             <Card className="bg-black/30 border border-white/20 overflow-hidden">
               {currentCard.albumImage && (
@@ -247,16 +272,18 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
                 </div>
 
                 {!currentCard.revealed ? (
-                  <div className="space-y-2">
-                    <Button
-                      onClick={handleRevealSong}
-                      className="w-full h-11 bg-gradient-to-r from-purple-600/80 to-indigo-600/80 hover:from-purple-600 hover:to-indigo-600 border border-purple-400/50 text-base font-semibold"
-                      style={generateBtnShadow}
-                    >
-                      <ExternalLinkIcon className="mr-2 h-5 w-5" />
-                      Revelar Canción
-                    </Button>
-                  </div>
+                  !isControlled && (
+                    <div className="space-y-2">
+                      <Button
+                        onClick={handleRevealSong}
+                        className="w-full h-11 bg-gradient-to-r from-purple-600/80 to-indigo-600/80 hover:from-purple-600 hover:to-indigo-600 border border-purple-400/50 text-base font-semibold"
+                        style={generateBtnShadow}
+                      >
+                        <ExternalLinkIcon className="mr-2 h-5 w-5" />
+                        Revelar Canción
+                      </Button>
+                    </div>
+                  )
                 ) : (
                   <div className="space-y-2">
                     {currentCard.spotifyUrl && (
@@ -272,31 +299,35 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
                       </Button>
                     )}
 
-                    <Button
-                      onClick={handleMarkingToggle}
-                      disabled={!Object.values(playerCorrectStatus || {}).some(correct => correct) && !isMarkingEnabled}
-                      className={`w-full h-10 transition-all duration-300 ${
-                        isMarkingEnabled
-                          ? 'bg-yellow-500/80 hover:bg-yellow-500 border-yellow-400'
-                          : Object.values(playerCorrectStatus || {}).some(correct => correct)
-                            ? 'bg-green-500/80 hover:bg-green-500 border-green-400'
-                            : 'bg-gray-500/50 border-gray-400 cursor-not-allowed'
-                      } border`}
-                    >
-                      {isMarkingEnabled
-                        ? 'Deshabilitar Marcado'
-                        : Object.values(playerCorrectStatus || {}).some(correct => correct)
-                          ? 'Habilitar Marcado para Acertantes'
-                          : 'Marca al menos un acertante'}
-                    </Button>
-                    <Button
-                      onClick={startNewRound}
-                      variant="outline"
-                      className="w-full h-10 border-white/20 text-white/80 hover:bg-white/10"
-                    >
-                      <RefreshCwIcon className="w-4 h-4 mr-2" />
-                      Nueva Ronda
-                    </Button>
+                    {!isControlled && (
+                      <>
+                        <Button
+                          onClick={handleMarkingToggle}
+                          disabled={!Object.values(playerCorrectStatus || {}).some(correct => correct) && !isMarkingEnabled}
+                          className={`w-full h-10 transition-all duration-300 ${
+                            isMarkingEnabled
+                              ? 'bg-yellow-500/80 hover:bg-yellow-500 border-yellow-400'
+                              : Object.values(playerCorrectStatus || {}).some(correct => correct)
+                                ? 'bg-green-500/80 hover:bg-green-500 border-green-400'
+                                : 'bg-gray-500/50 border-gray-400 cursor-not-allowed'
+                          } border`}
+                        >
+                          {isMarkingEnabled
+                            ? 'Deshabilitar Marcado'
+                            : Object.values(playerCorrectStatus || {}).some(correct => correct)
+                              ? 'Habilitar Marcado para Acertantes'
+                              : 'Marca al menos un acertante'}
+                        </Button>
+                        <Button
+                          onClick={startNewRound}
+                          variant="outline"
+                          className="w-full h-10 border-white/20 text-white/80 hover:bg-white/10"
+                        >
+                          <RefreshCwIcon className="w-4 h-4 mr-2" />
+                          Nueva Ronda
+                        </Button>
+                      </>
+                    )}
                   </div>
                 )}
               </div>
@@ -335,7 +366,7 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
               }`}
             >
               <div className="flex items-center gap-3 flex-1 min-w-0">
-                {currentCard?.revealed && !isMarkingEnabled && (
+                {!isControlled && currentCard?.revealed && !isMarkingEnabled && (
                   <div
                     onClick={() => handlePlayerCorrectToggle(player.id)}
                     className={`w-6 h-6 rounded border-2 flex items-center justify-center cursor-pointer flex-shrink-0 transition-all ${
