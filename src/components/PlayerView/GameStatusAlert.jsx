@@ -15,7 +15,8 @@ const alertConfig = {
 };
 
 const getAlertInfo = ({ gameState, playerName }) => {
-  const { gameStep, isMarkingEnabled, playerCorrectStatus, currentCategory, currentSong, winners, connectionError, hasMarkedInCurrentRound, markingJustDisabled, serverWaking, error } = gameState;
+  const { gameStep, isMarkingEnabled, playerCorrectStatus, currentCategory, currentSong, winners, connectionError, hasMarkedInCurrentRound, markingJustDisabled, serverWaking, error, currentControllerName } = gameState;
+  const controllerLabel = currentControllerName || 'el Game Master';
 
   if (serverWaking && error) return { type: 'serverWaking', message: error };
   if (connectionError) return { type: 'error', message: `❌ ${connectionError}` };
@@ -31,17 +32,17 @@ const getAlertInfo = ({ gameState, playerName }) => {
     if (isEligible) {
       if (isMarkingEnabled) {
         if (hasMarkedInCurrentRound) {
-          return { type: 'marked', message: '✅ Celda marcada correctamente. Espera a que el Game Master deshabilite el marcado.' };
+          return { type: 'marked', message: `✅ Celda marcada correctamente. Espera a que ${controllerLabel} deshabilite el marcado.` };
         }
         if (currentCategory) {
           return { type: 'success', message: `🎯 ¡Correcto! Marca UNA casilla de "${currentCategory.name}". Puedes desmarcar y cambiar si te equivocas.` };
         }
-        return { type: 'success', message: '✅ ¡Has acertado! Espera a que el Game Master seleccione una categoría para marcar.' };
+        return { type: 'success', message: `✅ ¡Has acertado! Espera a que ${controllerLabel} seleccione una categoría para marcar.` };
       } else {
         if (markingJustDisabled) {
           return { type: 'info', message: '✅ Marcado deshabilitado. Preparando siguiente ronda...' };
         }
-        return { type: 'waiting', message: '⏳ ¡Has acertado! Espera a que el Game Master habilite el marcado.' };
+        return { type: 'waiting', message: `⏳ ¡Has acertado! Espera a que ${controllerLabel} habilite el marcado.` };
       }
     } else {
       const gameMasterHasStartedReview = isMarkingEnabled || Object.values(playerCorrectStatus || {}).some(status => status === true);
@@ -49,7 +50,7 @@ const getAlertInfo = ({ gameState, playerName }) => {
       if (currentSong?.revealed && gameMasterHasStartedReview) {
         return { type: 'error', message: '❌ No has acertado esta vez. ¡Sigue intentando en la próxima ronda!' };
       } else if (currentSong?.revealed) {
-        return { type: 'pending', message: '🎵 Canción revelada. Espera a que el Game Master revise las predicciones...' };
+        return { type: 'pending', message: `🎵 Canción revelada. Espera a que ${controllerLabel} revise las predicciones...` };
       }
     }
   }
@@ -59,11 +60,11 @@ const getAlertInfo = ({ gameState, playerName }) => {
   }
 
   if (gameStep === 'playing' && !currentSong) {
-    return { type: 'info', message: '⏳ Espera a que el Game Master reproduzca una canción...' };
+    return { type: 'info', message: `⏳ Espera a que ${controllerLabel} reproduzca una canción...` };
   }
 
   if (gameStep === 'wheel') {
-    return { type: 'info', message: '🎡 El Game Master está girando la ruleta para seleccionar una categoría...' };
+    return { type: 'info', message: `🎡 ${controllerLabel} está girando la ruleta para seleccionar una categoría...` };
   }
 
   if (gameStep === 'waiting') {
