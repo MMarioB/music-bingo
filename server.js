@@ -50,6 +50,21 @@ const socketToRoom = new Map();
 const orphanedRooms = new Map();
 const ORPHAN_TIMEOUT = 30000; // 30 segundos para que el host se reconecte
 
+// Rotación automática de controlador
+const rotateController = (room) => {
+  const nonHostPlayers = room.players.filter(p => !p.isHost);
+  if (nonHostPlayers.length === 0) {
+    room.currentControllerId = null;
+    room.currentControllerName = null;
+    return;
+  }
+  room.controllerIndex = (room.controllerIndex + 1) % nonHostPlayers.length;
+  const next = nonHostPlayers[room.controllerIndex];
+  room.currentControllerId = next.id;
+  room.currentControllerName = next.name;
+  if (DEBUG) console.log(`[DEBUG] Controller rotado a: ${next.name} (${next.id})`);
+};
+
 const emitGameState = (roomCode) => {
   const room = gameRooms.get(roomCode);
   if (!room) return;
@@ -221,6 +236,8 @@ io.on('connection', (socket) => {
 
       room.phase = 'wheel';
       if (difficulty) room.config.difficulty = difficulty;
+      // Asignar primer controlador al iniciar el juego
+      rotateController(room);
       emitGameState(roomCode);
     } catch (error) {
       console.error('Error starting game:', error);
@@ -489,11 +506,12 @@ io.on('connection', (socket) => {
       room.songPlaying = false;
       room.winners = [];
       room.gameOver = false;
-      // No resetear controller aquí - el host lo rotará después
       room.players.forEach(p => {
         p.isCorrect = false;
         p.ready = p.isHost;
       });
+      // Rotar controlador automáticamente en cada nueva ronda
+      rotateController(room);
 
       if (DEBUG) console.log(`[DEBUG] restartGame - Éxito para sala ${roomCode}`);
       callback({ success: true });

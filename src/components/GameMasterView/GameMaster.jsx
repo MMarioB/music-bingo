@@ -63,8 +63,7 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
     gmHasMarkedInCurrentRound,
     gmPredictions,
     handleGMPrediction,
-    currentController,
-    rotateController
+    currentController
   } = useGameMasterLogic({ roomCode, initialDifficulty });
 
   const isControlled = !!currentController;

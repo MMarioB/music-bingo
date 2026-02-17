@@ -111,9 +111,8 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
   const [gmHasMarkedInCurrentRound, setGmHasMarkedInCurrentRound] = useState(false);
   const [gmPredictions, setGmPredictions] = useState([]);
 
-  // === Control rotativo ===
+  // === Control rotativo (el servidor gestiona la rotación) ===
   const [currentController, setCurrentController] = useState(null); // {id, name}
-  const controllerIndexRef = useRef(-1);
 
   // Estados del timer
   const [timerDuration, setTimerDuration] = useState(30);
@@ -452,31 +451,6 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
     }
   }, [roomCode]);
 
-  // === Rotación de controlador ===
-  const rotateController = useCallback(async () => {
-    const state = gameStateRef.current;
-    const nonHostPlayers = state.connectedPlayers.filter(p => !p.isHost);
-    if (nonHostPlayers.length === 0) {
-      // Sin jugadores, el host controla
-      setCurrentController(null);
-      return;
-    }
-
-    controllerIndexRef.current = (controllerIndexRef.current + 1) % nonHostPlayers.length;
-    const nextController = nonHostPlayers[controllerIndexRef.current];
-
-    try {
-      await gameSocket.setController({
-        roomCode,
-        controllerId: nextController.id,
-        controllerName: nextController.name
-      });
-      setCurrentController({ id: nextController.id, name: nextController.name });
-    } catch (err) {
-      console.error('Error al asignar controlador:', err);
-    }
-  }, [roomCode]);
-
   const handlePlayerCorrectToggle = useCallback(async (playerId) => {
     try {
       const response = await gameSocket.markPlayerCorrect({ roomCode, playerId });
@@ -713,14 +687,12 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
       if (response && response.error) {
         throw new Error(response.error);
       }
-      // Rotar controlador automáticamente después de reiniciar
-      // Pequeño delay para que el gameState se actualice primero
-      setTimeout(() => rotateController(), 300);
+      // La rotación de controlador se hace automáticamente en el servidor
     } catch (error) {
       console.error('Error al iniciar nueva ronda:', error);
       setConnectionError(`Error al iniciar nueva ronda: ${error.message}`);
     }
-  }, [roomCode, stopTimer, rotateController]);
+  }, [roomCode, stopTimer]);
 
   // === Listener de acciones del controlador (auto-ejecutar en el host) ===
   useEffect(() => {
@@ -798,8 +770,7 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
     gmHasMarkedInCurrentRound,
     gmPredictions,
     handleGMPrediction,
-    currentController,
-    rotateController
+    currentController
   }), [
     gameState, difficulty, isLoading, connectionError, isTokenValid,
     tokenWarning, serverWaking, songHistory, loggedIn, login, logout,
@@ -808,6 +779,6 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
     finishGame, timerDuration, timerRunning, timerPaused, timeRemaining,
     startTimer, pauseTimer, resumeTimer, stopTimer, addTime,
     selectedMusicTheme, gmBoard, handleGMCellClick, gmHasMarkedInCurrentRound,
-    gmPredictions, handleGMPrediction, currentController, rotateController
+    gmPredictions, handleGMPrediction, currentController
   ]);
 };
