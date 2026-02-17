@@ -2,6 +2,80 @@ import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { useSpotify } from '../../hooks/useSpotify';
 import { gameSocket } from '../../services/socketService';
 import { ARTISTS } from './constants';
+import { BOARD_SIZE, MIN_DIFFERENT_CATEGORIES, CATEGORIES_A, CATEGORIES_B } from '../Wheel/constants';
+
+// === Board generation helpers (reutilizados de MusicBingoGameLogic) ===
+const hasMaxOnePairPerCategory = (board, position, categoryName, categoryPairsCount) => {
+  const row = Math.floor(position / BOARD_SIZE);
+  const col = position % BOARD_SIZE;
+  let pairsWouldForm = 0;
+  if (col > 0 && board[position - 1]?.name === categoryName) pairsWouldForm++;
+  if (row > 0 && board[position - BOARD_SIZE]?.name === categoryName) pairsWouldForm++;
+  if (row > 0 && col > 0 && board[position - BOARD_SIZE - 1]?.name === categoryName) pairsWouldForm++;
+  if (row > 0 && col < BOARD_SIZE - 1 && board[position - BOARD_SIZE + 1]?.name === categoryName) pairsWouldForm++;
+  return (categoryPairsCount[categoryName] || 0) + pairsWouldForm <= 1;
+};
+
+const updateCategoryPairsCount = (board, position, categoryName, categoryPairsCount) => {
+  const row = Math.floor(position / BOARD_SIZE);
+  const col = position % BOARD_SIZE;
+  let pairsFormed = 0;
+  if (col > 0 && board[position - 1]?.name === categoryName) pairsFormed++;
+  if (row > 0 && board[position - BOARD_SIZE]?.name === categoryName) pairsFormed++;
+  if (row > 0 && col > 0 && board[position - BOARD_SIZE - 1]?.name === categoryName) pairsFormed++;
+  if (row > 0 && col < BOARD_SIZE - 1 && board[position - BOARD_SIZE + 1]?.name === categoryName) pairsFormed++;
+  if (pairsFormed > 0) {
+    categoryPairsCount[categoryName] = (categoryPairsCount[categoryName] || 0) + pairsFormed;
+  }
+};
+
+const hasExactlyOneWinnableLine = (board) => {
+  let count = 0;
+  for (let i = 0; i < BOARD_SIZE; i++) {
+    if (new Set(board.slice(i * BOARD_SIZE, (i + 1) * BOARD_SIZE).map(c => c.name)).size === 5) count++;
+  }
+  for (let col = 0; col < BOARD_SIZE; col++) {
+    if (new Set(Array(BOARD_SIZE).fill(0).map((_, r) => board[r * BOARD_SIZE + col].name)).size === 5) count++;
+  }
+  if (new Set(Array(BOARD_SIZE).fill(0).map((_, i) => board[i * BOARD_SIZE + i].name)).size === 5) count++;
+  if (new Set(Array(BOARD_SIZE).fill(0).map((_, i) => board[i * BOARD_SIZE + (BOARD_SIZE - 1 - i)].name)).size === 5) count++;
+  return count === 1;
+};
+
+const generateValidBoard = (difficulty) => {
+  const categories = difficulty === 'experto' ? CATEGORIES_B : CATEGORIES_A;
+  const pool = [];
+  categories.forEach(cat => { for (let i = 0; i < 5; i++) pool.push({ ...cat, marked: false }); });
+
+  for (let attempts = 0; attempts < 100; attempts++) {
+    const shuffled = [...pool];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    const board = [];
+    const pairsCount = {};
+    let valid = true;
+    for (let pos = 0; pos < 25; pos++) {
+      let placed = false;
+      for (let i = 0; i < shuffled.length; i++) {
+        if (hasMaxOnePairPerCategory(board, pos, shuffled[i].name, pairsCount)) {
+          board.push(shuffled[i]);
+          updateCategoryPairsCount(board, pos, shuffled[i].name, pairsCount);
+          shuffled.splice(i, 1);
+          placed = true;
+          break;
+        }
+      }
+      if (!placed) { valid = false; break; }
+    }
+    if (valid && board.length === 25 && hasExactlyOneWinnableLine(board)) return board;
+  }
+  // Fallback
+  const fb = [...pool];
+  for (let i = fb.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [fb[i], fb[j]] = [fb[j], fb[i]]; }
+  return fb;
+};
 
 const getInitialGameState = () => ({
   currentCard: null,
@@ -32,6 +106,10 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
   // Estado para el tema musical seleccionado manualmente ('auto' = aleatorio)
   const [selectedMusicTheme, setSelectedMusicTheme] = useState('auto');
 
+  // === Estado del tablero del GM (para que también juegue) ===
+  const [gmBoard, setGmBoard] = useState([]);
+  const [gmHasMarkedInCurrentRound, setGmHasMarkedInCurrentRound] = useState(false);
+
   // Estados del timer
   const [timerDuration, setTimerDuration] = useState(30);
   const [timerRunning, setTimerRunning] = useState(false);
@@ -41,6 +119,13 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
   // Ref para acceso estable en event handlers
   const gameStateRef = useRef(gameState);
   gameStateRef.current = gameState;
+
+  // Refs para el tablero del GM
+  const gmBoardGenerated = useRef(false);
+  const lastGmBoardDifficulty = useRef(null);
+  const gmHasMarkedRef = useRef(false);
+  gmHasMarkedRef.current = gmHasMarkedInCurrentRound;
+  const previousGmMarkingEnabled = useRef(false);
 
   // Listen for server waking events
   useEffect(() => {
@@ -251,6 +336,97 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
   const addTime = useCallback((seconds = 15) => {
     setTimeRemaining(prev => prev + seconds);
   }, []);
+
+  // === Lógica del tablero del GM ===
+  const validateLine = useCallback((line) => {
+    const categoryCounts = {};
+    let markedCount = 0;
+    line.forEach(cell => {
+      if (cell.marked) {
+        categoryCounts[cell.name] = (categoryCounts[cell.name] || 0) + 1;
+        markedCount++;
+      }
+    });
+    if (markedCount !== BOARD_SIZE) return false;
+    if (Object.values(categoryCounts).some(count => count > 2)) return false;
+    return Object.keys(categoryCounts).length >= MIN_DIFFERENT_CATEGORIES;
+  }, []);
+
+  const checkWinner = useCallback((newBoard) => {
+    for (let i = 0; i < BOARD_SIZE; i++) {
+      if (validateLine(newBoard.slice(i * BOARD_SIZE, (i + 1) * BOARD_SIZE))) return true;
+      const column = Array(BOARD_SIZE).fill(0).map((_, j) => newBoard[j * BOARD_SIZE + i]);
+      if (validateLine(column)) return true;
+    }
+    const diag1 = Array(BOARD_SIZE).fill(0).map((_, i) => newBoard[i * BOARD_SIZE + i]);
+    const diag2 = Array(BOARD_SIZE).fill(0).map((_, i) => newBoard[i * BOARD_SIZE + (BOARD_SIZE - 1 - i)]);
+    return validateLine(diag1) || validateLine(diag2);
+  }, [validateLine]);
+
+  // Generar tablero del GM al inicio
+  useEffect(() => {
+    if (!gmBoardGenerated.current) {
+      setGmBoard(generateValidBoard(difficulty));
+      gmBoardGenerated.current = true;
+      lastGmBoardDifficulty.current = difficulty;
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Regenerar tablero del GM si cambia la dificultad
+  useEffect(() => {
+    if (
+      gmBoardGenerated.current &&
+      difficulty !== lastGmBoardDifficulty.current
+    ) {
+      setGmBoard(generateValidBoard(difficulty));
+      lastGmBoardDifficulty.current = difficulty;
+    }
+  }, [difficulty]);
+
+  // Resetear flag de marcado del GM cuando se habilita marcado
+  useEffect(() => {
+    if (gameState.isMarkingEnabled && !previousGmMarkingEnabled.current) {
+      setGmHasMarkedInCurrentRound(false);
+    }
+    previousGmMarkingEnabled.current = gameState.isMarkingEnabled;
+  }, [gameState.isMarkingEnabled]);
+
+  const handleGMCellClick = useCallback((index) => {
+    const state = gameStateRef.current;
+    if (!state.isMarkingEnabled) return;
+
+    // GM necesita estar marcado como correcto (igual que los jugadores)
+    const gmPlayer = state.connectedPlayers.find(p => p.isHost);
+    if (!gmPlayer || !state.playerCorrectStatus[gmPlayer.id]) return;
+
+    setGmBoard(prevBoard => {
+      const newBoard = [...prevBoard];
+      const cell = newBoard[index];
+
+      if (state.currentCategory && cell.name === state.currentCategory.name) {
+        if (cell.marked) {
+          if (gmHasMarkedRef.current) {
+            newBoard[index] = { ...cell, marked: false };
+            setGmHasMarkedInCurrentRound(false);
+            return newBoard;
+          }
+          return prevBoard;
+        }
+
+        if (gmHasMarkedRef.current) return prevBoard;
+
+        newBoard[index] = { ...cell, marked: true };
+        setGmHasMarkedInCurrentRound(true);
+
+        if (checkWinner(newBoard)) {
+          gameSocket.declareWinner({ roomCode, playerName: 'Game Master' })
+            .catch(() => setConnectionError('Error al declarar ganador'));
+        }
+        return newBoard;
+      }
+      return prevBoard;
+    });
+  }, [checkWinner, roomCode]);
 
   const handlePlayerCorrectToggle = useCallback(async (playerId) => {
     try {
@@ -527,7 +703,10 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
     stopTimer,
     addTime,
     selectedMusicTheme,
-    setSelectedMusicTheme
+    setSelectedMusicTheme,
+    gmBoard,
+    handleGMCellClick,
+    gmHasMarkedInCurrentRound
   }), [
     gameState, difficulty, isLoading, connectionError, isTokenValid,
     tokenWarning, serverWaking, songHistory, loggedIn, login, logout,
@@ -535,6 +714,6 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
     generateNewCard, handleRevealSong, handleMarkingToggle, startNewRound,
     finishGame, timerDuration, timerRunning, timerPaused, timeRemaining,
     startTimer, pauseTimer, resumeTimer, stopTimer, addTime,
-    selectedMusicTheme
+    selectedMusicTheme, gmBoard, handleGMCellClick, gmHasMarkedInCurrentRound
   ]);
 };

@@ -12,6 +12,7 @@ import SongHistory from '../SongHistory';
 import GameLayout from '../GameLayout';
 import SongTimer from './SongTimer';
 import AudioPlayer from '../AudioPlayer';
+import BingoBoard from '../PlayerView/BingoBoard';
 import PropTypes from 'prop-types';
 import { useGameMasterLogic } from './GameMasterLogic';
 import { MUSIC_CATEGORIES } from './constants';
@@ -55,7 +56,10 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
     resumeTimer,
     addTime,
     selectedMusicTheme,
-    setSelectedMusicTheme
+    setSelectedMusicTheme,
+    gmBoard,
+    handleGMCellClick,
+    gmHasMarkedInCurrentRound
   } = useGameMasterLogic({ roomCode, initialDifficulty });
 
   useEffect(() => {
@@ -164,12 +168,14 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
             />
           )}
 
-          {/* Spotify embed player - reproduce 30s del track */}
+          {/* Spotify embed oculto - reproduce audio sin mostrar info de la canción (evita spoiler al GM) */}
           {currentCard && !currentCard.revealed && (
-            <AudioPlayer
-              spotifyUrl={currentCard.spotifyUrl}
-              compact={true}
-            />
+            <div style={{ position: 'fixed', left: '-9999px', opacity: 0, pointerEvents: 'none' }} aria-hidden="true">
+              <AudioPlayer
+                spotifyUrl={currentCard.spotifyUrl}
+                compact={true}
+              />
+            </div>
           )}
 
           {/* Tarjeta de canción o botón generar */}
@@ -320,7 +326,7 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
               }`}
             >
               <div className="flex items-center gap-3 flex-1 min-w-0">
-                {currentCard?.revealed && !isMarkingEnabled && !player.isHost && (
+                {currentCard?.revealed && !isMarkingEnabled && (
                   <div
                     onClick={() => handlePlayerCorrectToggle(player.id)}
                     className={`w-6 h-6 rounded border-2 flex items-center justify-center cursor-pointer flex-shrink-0 transition-all ${
@@ -423,8 +429,26 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
 
       {/* Layout principal de dos columnas */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
+        <div className="lg:col-span-2 space-y-4">
           {renderMainSection()}
+
+          {/* Tablero del GM */}
+          {gmBoard.length > 0 && (
+            <div className="animate-slideUp">
+              <h3 className="text-sm font-semibold text-white/60 mb-2 text-center">Tu Tablero</h3>
+              <BingoBoard
+                board={gmBoard}
+                canMark={(() => {
+                  if (!isMarkingEnabled) return false;
+                  const gmPlayer = connectedPlayers.find(p => p.isHost);
+                  return gmPlayer ? !!playerCorrectStatus[gmPlayer.id] : false;
+                })()}
+                currentCategory={selectedCategory}
+                currentSong={currentCard}
+                onCellClick={handleGMCellClick}
+              />
+            </div>
+          )}
         </div>
         <div className="lg:col-span-1">
           {renderPlayersSection()}
