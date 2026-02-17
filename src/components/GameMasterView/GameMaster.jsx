@@ -168,13 +168,19 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
             />
           )}
 
-          {/* Spotify embed oculto - reproduce audio sin mostrar info de la canción (evita spoiler al GM) */}
+          {/* Spotify embed con overlay - reproduce audio pero oculta info de la canción */}
           {currentCard && !currentCard.revealed && (
-            <div style={{ position: 'fixed', left: '-9999px', opacity: 0, pointerEvents: 'none' }} aria-hidden="true">
+            <div className="relative rounded-lg overflow-hidden">
               <AudioPlayer
                 spotifyUrl={currentCard.spotifyUrl}
                 compact={true}
               />
+              <div
+                className="absolute inset-0 bg-black/70 backdrop-blur-xl flex items-center justify-center"
+                style={{ pointerEvents: 'none' }}
+              >
+                <span className="text-white/50 text-sm font-medium tracking-wide">Pulsa play para escuchar</span>
+              </div>
             </div>
           )}
 
@@ -226,7 +232,7 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
                   </div>
                 )}
 
-                <div className="grid grid-cols-2 gap-2">
+                <div className={`grid grid-cols-2 gap-2 transition-all duration-500 ${currentCard.revealed ? '' : 'blur-md select-none'}`}>
                   <div className="bg-white/10 backdrop-blur-sm rounded-lg p-2 flex items-center justify-between">
                     <CalendarIcon className="w-4 h-4 text-purple-400" />
                     <span className="text-lg font-bold text-white">{currentCard.year}</span>
