@@ -125,6 +125,7 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
     const [board, setBoard] = useState([]);
     const [error, setError] = useState(null);
     const [myPredictions, setMyPredictions] = useState([]);
+    const [playerPredictions, setPlayerPredictions] = useState({});
     const [hasMarkedInCurrentRound, setHasMarkedInCurrentRound] = useState(false);
     const [markingJustDisabled, setMarkingJustDisabled] = useState(false);
     const [serverWaking, setServerWaking] = useState(false);
@@ -224,6 +225,7 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
 
                 if (!serverState.currentCategory && prevState.currentCategory) {
                     setMyPredictions([]);
+                    setPlayerPredictions({});
                 }
 
                 return updates;
@@ -271,11 +273,16 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
             }));
         };
 
+        const handlePlayerPrediction = ({ playerName: predPlayer, prediction }) => {
+            setPlayerPredictions(prev => ({ ...prev, [predPlayer]: prediction }));
+        };
+
         gameSocket.on('gameStateUpdate', handleGameStateUpdate);
         gameSocket.on('error', handleError);
         gameSocket.on('markingEnabled', handleMarkingEnabled);
         gameSocket.on('markingDisabled', handleMarkingDisabled);
         gameSocket.on('playerMarkedCorrect', handlePlayerMarked);
+        gameSocket.on('playerPrediction', handlePlayerPrediction);
 
         return () => {
             gameSocket.off('gameStateUpdate', handleGameStateUpdate);
@@ -283,6 +290,7 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
             gameSocket.off('markingEnabled', handleMarkingEnabled);
             gameSocket.off('markingDisabled', handleMarkingDisabled);
             gameSocket.off('playerMarkedCorrect', handlePlayerMarked);
+            gameSocket.off('playerPrediction', handlePlayerPrediction);
         };
     }, [sounds, confetti]);
 
@@ -389,6 +397,7 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
         board,
         ...gameState,
         myPredictions,
+        playerPredictions,
         error,
         serverWaking,
         setError,
@@ -398,5 +407,5 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
         markingJustDisabled,
         isController,
         sendControllerAction,
-    }), [board, gameState, myPredictions, error, serverWaking, handleCellClick, handlePrediction, hasMarkedInCurrentRound, markingJustDisabled, isController, sendControllerAction]);
+    }), [board, gameState, myPredictions, playerPredictions, error, serverWaking, handleCellClick, handlePrediction, hasMarkedInCurrentRound, markingJustDisabled, isController, sendControllerAction]);
 };
