@@ -15,7 +15,7 @@ const SongHistory = ({ songs = [] }) => {
         <h3 className="text-white font-semibold text-sm">Historial de Canciones</h3>
       </div>
 
-      <div className="space-y-2 max-h-[300px] overflow-y-auto">
+      <div className="space-y-2 max-h-[300px] overflow-y-auto overflow-x-hidden">
         {songs.map((song, index) => (
           <div
             key={`${song.title}-${index}`}

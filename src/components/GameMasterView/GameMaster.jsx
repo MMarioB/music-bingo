@@ -376,7 +376,7 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
       </div>
 
       {connectedPlayers.length > 0 ? (
-        <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-2">
+        <div className="space-y-2 max-h-[60vh] overflow-y-auto overflow-x-hidden pr-2">
           {connectedPlayers.map((player) => (
             <div
               key={player.id}

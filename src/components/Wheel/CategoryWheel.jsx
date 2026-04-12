@@ -173,7 +173,7 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
     const isCycleComplete = excludedIds.length >= allCategories.length;
 
     return (
-        <div className="flex flex-col items-center justify-center gap-4 w-full">
+        <div className="flex flex-col items-center justify-center gap-4 w-full overflow-x-hidden">
             {/* Indicador de progreso del ciclo */}
             <div className="flex items-center gap-3 bg-gradient-to-r from-purple-500/20 to-pink-500/20 backdrop-blur-sm border border-white/20 rounded-xl px-4 py-2 animate-fadeIn">
                 <div className="flex items-center gap-2">
@@ -301,8 +301,8 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
                     animation: wheelBtnPulse 2s ease-in-out infinite;
                 }
                 @keyframes popIn {
-                    0% { opacity: 0; transform: scale(0.8) translateY(20px); }
-                    60% { transform: scale(1.1) translateY(0); }
+                    0% { opacity: 0; transform: scale(0.85) translateY(20px); }
+                    60% { transform: scale(1.02) translateY(0); }
                     100% { opacity: 1; transform: scale(1) translateY(0); }
                 }
                 .animate-popIn {
