@@ -229,6 +229,10 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
                 {isLoading ? 'Generando...' : selectedCategory ? 'Generar Tarjeta' : 'Selecciona una categoría primero'}
               </Button>
             )
+          ) : isControlled && !currentCard.revealed ? (
+            <div className="text-center py-6 text-white/40 text-sm animate-slideUp">
+              Canción sonando... Espera a que {currentController?.name} la revele
+            </div>
           ) : (
             <Card className="bg-black/30 border border-white/20 overflow-hidden">
               {currentCard.albumImage && (
