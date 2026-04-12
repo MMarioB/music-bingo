@@ -49,6 +49,7 @@ const DEFAULT_ICON_PROPS = {
 
 export const CATEGORIES_A = [
   {
+    id: 'grupo-solista',
     name: 'Grupo o solista',
     color: 'bg-green-500/80',          // Color del fondo para el tablero
     wheelColor: WHEEL_COLORS.green.base,// Color base para la ruleta
@@ -61,6 +62,7 @@ export const CATEGORIES_A = [
     }
   },
   {
+    id: 'anterior-2000',
     name: '¿Anterior al 2000?',
     color: 'bg-pink-500/80',
     wheelColor: WHEEL_COLORS.pink.base,
@@ -73,6 +75,7 @@ export const CATEGORIES_A = [
     }
   },
   {
+    id: 'cuatro-anos',
     name: '4 años arriba o abajo',
     color: 'bg-yellow-500/80',
     wheelColor: WHEEL_COLORS.yellow.base,
@@ -85,6 +88,7 @@ export const CATEGORIES_A = [
     }
   },
   {
+    id: 'decada',
     name: 'Década',
     color: 'bg-purple-500/80',
     wheelColor: WHEEL_COLORS.purple.base,
@@ -97,6 +101,7 @@ export const CATEGORIES_A = [
     }
   },
   {
+    id: 'dos-anos',
     name: '2 años arriba o abajo',
     color: 'bg-blue-500/80',
     wheelColor: WHEEL_COLORS.blue.base,
@@ -112,6 +117,7 @@ export const CATEGORIES_A = [
 
 export const CATEGORIES_B = [
   {
+    id: 'titulo-cancion',
     name: 'Título de la canción',
     color: 'bg-green-500/80',
     wheelColor: WHEEL_COLORS.green.base,
@@ -124,6 +130,7 @@ export const CATEGORIES_B = [
     }
   },
   {
+    id: 'ano-exacto',
     name: 'Año exacto',
     color: 'bg-pink-500/80',
     wheelColor: WHEEL_COLORS.pink.base,
@@ -136,6 +143,7 @@ export const CATEGORIES_B = [
     }
   },
   {
+    id: 'nombre-grupo-solista',
     name: 'Nombre del grupo o solista',
     color: 'bg-yellow-500/80',
     wheelColor: WHEEL_COLORS.yellow.base,
@@ -148,6 +156,7 @@ export const CATEGORIES_B = [
     }
   },
   {
+    id: 'decada-b',
     name: 'Década',
     color: 'bg-purple-500/80',
     wheelColor: WHEEL_COLORS.purple.base,
@@ -160,6 +169,7 @@ export const CATEGORIES_B = [
     }
   },
   {
+    id: 'tres-anos',
     name: '3 años arriba o abajo',
     color: 'bg-blue-500/80',
     wheelColor: WHEEL_COLORS.blue.base,
