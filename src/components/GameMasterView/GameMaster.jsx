@@ -116,9 +116,11 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
                     <Trophy className="h-5 w-5 text-yellow-400 mr-2" />
                     {winners.length > 1 ? '¡Hay varios ganadores!' : '¡Tenemos un ganador!'}
                   </h3>
-                  <Button onClick={finishGame} className="bg-purple-600 hover:bg-purple-700 text-white text-sm">
-                    Finalizar Juego
-                  </Button>
+                  {!isControlled && (
+                    <Button onClick={finishGame} className="bg-purple-600 hover:bg-purple-700 text-white text-sm">
+                      Finalizar Juego
+                    </Button>
+                  )}
                 </div>
                 <div className="space-y-1">
                   {winners.map(winner => (
@@ -197,8 +199,8 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
             />
           )}
 
-          {/* Spotify embed con overlay - reproduce audio pero oculta info de la canción */}
-          {currentCard && !currentCard.revealed && (
+          {/* Spotify embed con overlay - solo cuando el GM controla la ronda */}
+          {currentCard && !currentCard.revealed && !isControlled && (
             <div className="relative rounded-lg overflow-hidden">
               <AudioPlayer
                 spotifyUrl={currentCard.spotifyUrl}
@@ -427,7 +429,7 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
   );
 
   return (
-    <GameLayout roomCode={roomCode} playersCount={connectedPlayers.length}>
+    <GameLayout roomCode={roomCode} playersCount={connectedPlayers.length} maxWidth="max-w-5xl">
       {/* Alertas globales */}
       <div className="space-y-3 mb-4">
         {serverWaking && connectionError ? (
