@@ -197,8 +197,8 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
             />
           )}
 
-          {/* Spotify embed con overlay - reproduce audio pero oculta info de la canción */}
-          {currentCard && !currentCard.revealed && (
+          {/* Spotify embed con overlay - solo cuando el GM controla la ronda */}
+          {currentCard && !currentCard.revealed && !isControlled && (
             <div className="relative rounded-lg overflow-hidden">
               <AudioPlayer
                 spotifyUrl={currentCard.spotifyUrl}
