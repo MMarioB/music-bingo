@@ -199,6 +199,16 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
             />
           )}
 
+          {/* Auto-play preview cuando el GM controla la ronda y hay previewUrl */}
+          {currentCard?.previewUrl && !currentCard?.revealed && !isControlled && (
+            <audio
+              key={currentCard.previewUrl}
+              src={currentCard.previewUrl}
+              autoPlay
+              className="hidden"
+            />
+          )}
+
           {/* Spotify embed con overlay - solo cuando el GM controla la ronda */}
           {currentCard && !currentCard.revealed && !isControlled && (
             <div className="relative rounded-lg overflow-hidden">

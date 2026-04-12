@@ -296,10 +296,15 @@ io.on('connection', (socket) => {
       const player = room.players.find(p => p.id === socket.id);
       if (!player) return;
 
-      io.to(room.hostId).emit('playerPrediction', {
-        playerName: player.name,
-        prediction: prediction
-      });
+      const predictionData = { playerName: player.name, prediction };
+
+      // Enviar al host siempre
+      io.to(room.hostId).emit('playerPrediction', predictionData);
+
+      // Enviar también al controlador actual si es distinto del host
+      if (room.currentControllerId && room.currentControllerId !== room.hostId) {
+        io.to(room.currentControllerId).emit('playerPrediction', predictionData);
+      }
     } catch (error) {
       console.error('Error submitting prediction:', error);
     }

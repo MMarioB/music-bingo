@@ -6,6 +6,7 @@ import GameLayout from '../GameLayout';
 import PlayerPredictions from '../PlayerView/PlayerPredictions';
 import GameStatusAlert from '../PlayerView/GameStatusAlert';
 import BingoBoard from './BingoBoard';
+import PredictionsPanel from '../GameMasterView/PredictionsPanel';
 import { Button } from '../ui/button';
 
 const CategoryWheel = lazy(() => import('../Wheel/CategoryWheel'));
@@ -101,6 +102,16 @@ const MusicBingoGame = ({ playerName, roomCode, difficulty }) => {
           >
             Generar Tarjeta
           </Button>
+        )}
+
+        {/* Auto-play preview cuando hay previewUrl disponible */}
+        {logic.currentSong?.previewUrl && !logic.currentSong?.revealed && (
+          <audio
+            key={logic.currentSong.previewUrl}
+            src={logic.currentSong.previewUrl}
+            autoPlay
+            className="hidden"
+          />
         )}
 
         {/* Canción sonando - abrir Spotify y revelar */}
@@ -226,6 +237,15 @@ const MusicBingoGame = ({ playerName, roomCode, difficulty }) => {
           myPredictions={logic.myPredictions}
           onSubmitPrediction={logic.handlePrediction}
         />
+
+        {/* Panel de predicciones de todos los jugadores (solo visible para el controlador) */}
+        {logic.isController && (
+          <PredictionsPanel
+            predictions={logic.playerPredictions || {}}
+            currentSong={logic.currentSong}
+            markedCorrect={logic.playerCorrectStatus || {}}
+          />
+        )}
       </div>
     </GameLayout>
   );
