@@ -65,8 +65,8 @@ const GameLayout = ({ children, roomCode, playersCount, showSelect, selectConten
             </div>
 
             {/* Contenido principal */}
-            <div className="flex-1 flex flex-col p-4 overflow-y-auto">
-                <div className={`${mw} w-full mx-auto flex-1 flex flex-col justify-between`}>
+            <div className="flex-1 flex flex-col p-4 overflow-y-auto overflow-x-hidden">
+                <div className={`${mw} w-full mx-auto flex-1 flex flex-col`}>
                     {children}
                 </div>
             </div>

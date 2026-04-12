@@ -65,7 +65,7 @@ const PlayerPredictions = ({ gameState, onSubmitPrediction, myPredictions = [] }
       {gameState.songPlaying && (
         <form
           onSubmit={handleSubmit}
-          className="flex gap-2 animate-slideUp"
+          className="flex gap-2 animate-slideUp w-full"
         >
           <div className="space-y-2">
             {error && (
