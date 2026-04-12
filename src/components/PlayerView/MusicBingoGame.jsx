@@ -54,6 +54,10 @@ const MusicBingoGame = ({ playerName, roomCode, difficulty }) => {
     logic.sendControllerAction('newRound');
   }, [logic.sendControllerAction]);
 
+  const onControllerFinishGame = useCallback(() => {
+    logic.sendControllerAction('finishGame');
+  }, [logic.sendControllerAction]);
+
   const renderGameOver = () => (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-50">
       <div className="bg-black/90 border border-purple-500/50 rounded-lg p-6 max-w-md w-full">
@@ -175,6 +179,16 @@ const MusicBingoGame = ({ playerName, roomCode, difficulty }) => {
               <RefreshCwIcon className="w-3 h-3 mr-2" />
               Nueva Ronda
             </Button>
+
+            {logic.winners?.length > 0 && (
+              <Button
+                onClick={onControllerFinishGame}
+                className="w-full h-9 text-sm bg-purple-600 hover:bg-purple-700 text-white"
+              >
+                <Trophy className="w-3 h-3 mr-2" />
+                Finalizar Juego
+              </Button>
+            )}
           </div>
         )}
       </div>

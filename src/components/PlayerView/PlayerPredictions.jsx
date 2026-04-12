@@ -38,9 +38,9 @@ const PlayerPredictions = ({ gameState, onSubmitPrediction, myPredictions = [] }
   }, [gameState.currentSong]);
 
   return (
-    <div className="relative bottom-4 sm:bottom-6 right-4 sm:right-6 flex flex-col items-end gap-3 z-40 mb-20">
+    <div className="flex flex-col items-end gap-3 z-40 w-full">
       {myPredictions.length > 0 && gameState.songPlaying && (
-        <div className="bg-black/60 backdrop-blur-sm border border-purple-500/30 rounded-lg p-3 max-w-xs animate-slideUp">
+        <div className="bg-black/60 backdrop-blur-sm border border-purple-500/30 rounded-lg p-3 w-full sm:max-w-xs animate-slideUp">
           <h3 className="text-xs font-semibold text-purple-300 mb-2">Tus predicciones:</h3>
           <div className="space-y-1 max-h-32 overflow-y-auto">
             {myPredictions.map((pred, index) => (
@@ -81,7 +81,7 @@ const PlayerPredictions = ({ gameState, onSubmitPrediction, myPredictions = [] }
                     value={prediction}
                     onChange={handleChange}
                     placeholder="¿Qué canción es?"
-                    className="w-64 bg-black/40 border-white/20 text-white placeholder:text-white/50"
+                    className="w-full bg-black/40 border-white/20 text-white placeholder:text-white/50"
                     disabled={!canSubmit}
                   />
                 </div>

@@ -17,7 +17,8 @@ const titleStyle = {
 };
 const subtitleStyle = { textShadow: '0 0 10px rgba(255,255,255,0.5)' };
 
-const GameLayout = ({ children, roomCode, playersCount, showSelect, selectContent }) => {
+const GameLayout = ({ children, roomCode, playersCount, showSelect, selectContent, maxWidth }) => {
+    const mw = maxWidth || 'max-w-xl';
     return (
         <div className="min-h-screen bg-[#1a0133] flex flex-col relative overflow-hidden">
             {/* Fondo con cuadrícula */}
@@ -25,7 +26,7 @@ const GameLayout = ({ children, roomCode, playersCount, showSelect, selectConten
 
             {/* Header mejorado */}
             <div className="w-full bg-gradient-to-b from-black/60 to-transparent backdrop-blur-sm">
-                <div className="max-w-xl mx-auto px-4 py-4 space-y-2">
+                <div className={`${mw} mx-auto px-4 py-4 space-y-2`}>
                     {/* Título con mejor espaciado y diseño */}
                     <div className="text-center space-y-1">
                         <h1 className="text-4xl font-bold tracking-wider" style={titleStyle}>
@@ -65,7 +66,7 @@ const GameLayout = ({ children, roomCode, playersCount, showSelect, selectConten
 
             {/* Contenido principal */}
             <div className="flex-1 flex flex-col p-4 overflow-y-auto">
-                <div className="max-w-xl w-full mx-auto flex-1 flex flex-col justify-between">
+                <div className={`${mw} w-full mx-auto flex-1 flex flex-col justify-between`}>
                     {children}
                 </div>
             </div>
@@ -78,12 +79,14 @@ GameLayout.propTypes = {
     roomCode: PropTypes.string.isRequired,
     playersCount: PropTypes.number.isRequired,
     showSelect: PropTypes.bool,
-    selectContent: PropTypes.node
+    selectContent: PropTypes.node,
+    maxWidth: PropTypes.string
 };
 
 GameLayout.defaultProps = {
     showSelect: false,
-    selectContent: null
+    selectContent: null,
+    maxWidth: 'max-w-xl'
 };
 
 export default React.memo(GameLayout);
