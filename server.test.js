@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll, afterEach } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, afterEach, vi } from 'vitest';
 import { io as ioc } from 'socket.io-client';
 import { createGameServer } from './server.js';
 
@@ -98,6 +98,16 @@ describe('createRoom', () => {
     expect(server.gameRooms.get('BBBB2').hostId).toBe(host.id);
   });
 
+  it('es idempotente si el mismo host repite createRoom (doble efecto de React)', async () => {
+    const host = await connectClient();
+    const first = await emitAck(host, 'createRoom', { roomCode: 'PPPP6' });
+    const second = await emitAck(host, 'createRoom', { roomCode: 'PPPP6' });
+    expect(second.error).toBeFalsy();
+    expect(second.roomCode).toBe('PPPP6');
+    expect(second.hostToken).toBe(first.hostToken);
+    expect(server.gameRooms.get('PPPP6').players).toHaveLength(1);
+  });
+
   it('rechaza códigos de sala no válidos', async () => {
     const host = await connectClient();
     const res = await emitAck(host, 'createRoom', { roomCode: 'x' });
@@ -108,9 +118,9 @@ describe('createRoom', () => {
     const host = await connectClient();
     host.emit('createRoom', { roomCode: 'CCCC3' });
     await sleep(100);
-    // El servidor sigue vivo y la sala se creó
+    // El servidor sigue vivo y la sala se creó (reintento idempotente)
     const res = await emitAck(host, 'createRoom', { roomCode: 'CCCC3' });
-    expect(res.error).toBeTruthy();
+    expect(res.roomCode).toBe('CCCC3');
   });
 });
 
@@ -306,3 +316,120 @@ describe('dinámica de partida', () => {
     }
   });
 });
+
+describe('catálogo de previews (/api/tracks)', () => {
+  const realFetch = global.fetch;
+
+  const itunesSong = (overrides = {}) => ({
+    kind: 'song',
+    trackId: 111,
+    trackName: 'Bohemian Rhapsody',
+    artistName: 'Queen',
+    trackTimeMillis: 355000,
+    previewUrl: 'https://audio.itunes.example/preview.m4a',
+    artworkUrl100: 'https://img.example/100x100bb.jpg',
+    collectionName: 'A Night at the Opera',
+    releaseDate: '1975-10-31T08:00:00Z',
+    ...overrides,
+  });
+
+  // Mockea solo las llamadas a iTunes/Deezer; el resto (peticiones al
+  // propio servidor de test) usa el fetch real
+  const stubUpstream = ({ itunes, deezer } = {}) => {
+    const fetchMock = vi.fn((input, init) => {
+      const target = String(input);
+      if (target.includes('itunes.apple.com')) {
+        if (itunes instanceof Error) return Promise.reject(itunes);
+        return Promise.resolve({ ok: true, json: async () => ({ results: itunes || [] }) });
+      }
+      if (target.includes('api.deezer.com')) {
+        if (deezer instanceof Error) return Promise.reject(deezer);
+        return Promise.resolve({ ok: true, json: async () => ({ data: deezer || [] }) });
+      }
+      return realFetch(input, init);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    return fetchMock;
+  };
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('devuelve canciones de iTunes filtradas y normalizadas', async () => {
+    stubUpstream({
+      itunes: [
+        itunesSong(),
+        itunesSong({ trackId: 222, previewUrl: null }), // sin preview: fuera
+        itunesSong({ trackId: 333, trackTimeMillis: 20000 }), // demasiado corta: fuera
+        itunesSong({ trackId: 444, artistName: 'Queen Latifah Tribute Band' }), // contiene "queen": pasa
+        itunesSong({ trackId: 555, artistName: 'Otro Artista' }), // no coincide: fuera
+      ],
+    });
+
+    const res = await realFetch(`${url}/api/tracks?artist=Queen`);
+    expect(res.status).toBe(200);
+    const { tracks } = await res.json();
+    expect(tracks.map((t) => t.id)).toEqual(['itunes-111', 'itunes-444']);
+    expect(tracks[0]).toMatchObject({
+      title: 'Bohemian Rhapsody',
+      artist: 'Queen',
+      year: 1975,
+      previewUrl: 'https://audio.itunes.example/preview.m4a',
+      albumImage: 'https://img.example/300x300bb.jpg',
+      albumName: 'A Night at the Opera',
+    });
+  });
+
+  it('cae a Deezer cuando iTunes no devuelve resultados', async () => {
+    stubUpstream({
+      itunes: [],
+      deezer: [{
+        id: 999,
+        title: 'Radio Ga Ga',
+        duration: 344,
+        preview: 'https://audio.deezer.example/preview.mp3',
+        artist: { name: 'Queen Deezer' },
+        album: { title: 'The Works', cover_medium: 'https://img.deezer.example/m.jpg' },
+      }],
+    });
+
+    const res = await realFetch(`${url}/api/tracks?artist=Queen+Deezer`);
+    expect(res.status).toBe(200);
+    const { tracks } = await res.json();
+    expect(tracks).toHaveLength(1);
+    expect(tracks[0]).toMatchObject({
+      id: 'deezer-999',
+      title: 'Radio Ga Ga',
+      artist: 'Queen Deezer',
+      previewUrl: 'https://audio.deezer.example/preview.mp3',
+    });
+  });
+
+  it('cachea las respuestas por artista', async () => {
+    const fetchMock = stubUpstream({ itunes: [itunesSong({ trackId: 777, artistName: 'Queen Cache' })] });
+
+    const first = await realFetch(`${url}/api/tracks?artist=Queen+Cache`);
+    expect(first.status).toBe(200);
+    const upstreamCalls = fetchMock.mock.calls.filter(([u]) => String(u).includes('itunes')).length;
+
+    const second = await realFetch(`${url}/api/tracks?artist=queen cache`);
+    expect(second.status).toBe(200);
+    const upstreamCallsAfter = fetchMock.mock.calls.filter(([u]) => String(u).includes('itunes')).length;
+    expect(upstreamCallsAfter).toBe(upstreamCalls);
+
+    const { tracks } = await second.json();
+    expect(tracks[0].id).toBe('itunes-777');
+  });
+
+  it('responde 400 sin artista y 404 sin resultados en ninguna fuente', async () => {
+    stubUpstream({ itunes: new Error('caído'), deezer: [] });
+
+    const bad = await realFetch(`${url}/api/tracks`);
+    expect(bad.status).toBe(400);
+
+    const notFound = await realFetch(`${url}/api/tracks?artist=Artista+Inexistente`);
+    expect(notFound.status).toBe(404);
+  });
+});
+

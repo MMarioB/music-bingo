@@ -20,7 +20,7 @@ const SpotifyAuth = ({ onSuccess }) => {
       <Card className="p-8 bg-black/40 shadow-2xl backdrop-blur-sm border border-white/10">
         <div className="text-center space-y-2 mb-6">
           <h2 className="text-2xl font-bold text-white">Game Master</h2>
-          <p className="text-purple-300">Conéctate con Spotify para continuar</p>
+          <p className="text-purple-300">Elige cómo reproducir la música</p>
         </div>
 
         <Button
@@ -39,6 +39,24 @@ const SpotifyAuth = ({ onSuccess }) => {
             Conectar con Spotify
           </span>
         </Button>
+
+        <div className="flex items-center gap-3 my-4">
+          <div className="flex-1 h-px bg-white/10" />
+          <span className="text-white/40 text-xs uppercase tracking-wider">o</span>
+          <div className="flex-1 h-px bg-white/10" />
+        </div>
+
+        <Button
+          onClick={onSuccess}
+          variant="outline"
+          className="w-full h-12 border-white/20 text-white/90 hover:bg-white/10 transition-all duration-300"
+        >
+          <span className="text-base font-medium">Continuar sin Spotify</span>
+        </Button>
+        <p className="text-white/40 text-xs text-center mt-3">
+          Sin Spotify el juego usa previews de 30 segundos — no necesitas
+          cuenta ni Premium
+        </p>
       </Card>
 
       <style>{`
