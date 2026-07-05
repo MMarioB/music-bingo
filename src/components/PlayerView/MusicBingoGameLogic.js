@@ -3,6 +3,7 @@ import { gameSocket } from '../../services/socketService';
 import { useGameSounds } from '../../hooks/useGameSounds';
 import { useConfetti } from '../../hooks/useConfetti';
 import { BOARD_SIZE, MIN_DIFFERENT_CATEGORIES, CATEGORIES_A, CATEGORIES_B } from '../Wheel/constants';
+import { loadStoredBoard, storeBoard } from '../../lib/boardStorage';
 
 // Verifica que no haya más de UN PAR de casillas consecutivas de cada categoría
 const hasMaxOnePairPerCategory = (board, position, categoryName, categoryPairsCount) => {
@@ -187,14 +188,23 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
         return validateLine(diag1) || validateLine(diag2);
     }, [validateLine]);
 
-    // Generar tablero SOLO una vez al inicio
+    // Generar tablero SOLO una vez al inicio (o restaurar el guardado
+    // en esta pestaña, para no perder el cartón al refrescar la página)
     useEffect(() => {
         if (!boardGenerated.current) {
-            setBoard(generateValidBoard(difficulty));
+            const storedBoard = loadStoredBoard(roomCode, playerName, difficulty);
+            setBoard(storedBoard || generateValidBoard(difficulty));
             boardGenerated.current = true;
             lastBoardDifficulty.current = difficulty;
         }
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // Persistir el cartón (y sus marcas) en cada cambio
+    useEffect(() => {
+        if (boardGenerated.current && board.length === 25) {
+            storeBoard(roomCode, playerName, lastBoardDifficulty.current, board);
+        }
+    }, [board, roomCode, playerName]);
 
     // SOLO regenerar tablero si difficulty REALMENTE cambió
     useEffect(() => {

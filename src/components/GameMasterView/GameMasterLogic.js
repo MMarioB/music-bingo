@@ -3,6 +3,7 @@ import { useSpotify } from '../../hooks/useSpotify';
 import { gameSocket } from '../../services/socketService';
 import { ARTISTS } from './constants';
 import { BOARD_SIZE, MIN_DIFFERENT_CATEGORIES, CATEGORIES_A, CATEGORIES_B } from '../Wheel/constants';
+import { loadStoredBoard, storeBoard } from '../../lib/boardStorage';
 
 // === Board generation helpers (reutilizados de MusicBingoGameLogic) ===
 const hasMaxOnePairPerCategory = (board, position, categoryName, categoryPairsCount) => {
@@ -377,14 +378,23 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
     return validateLine(diag1) || validateLine(diag2);
   }, [validateLine]);
 
-  // Generar tablero del GM al inicio
+  // Generar tablero del GM al inicio (o restaurar el guardado en esta
+  // pestaña, para no perder el cartón al refrescar la página)
   useEffect(() => {
     if (!gmBoardGenerated.current) {
-      setGmBoard(generateValidBoard(difficulty));
+      const storedBoard = loadStoredBoard(roomCode, 'gm', difficulty);
+      setGmBoard(storedBoard || generateValidBoard(difficulty));
       gmBoardGenerated.current = true;
       lastGmBoardDifficulty.current = difficulty;
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Persistir el cartón del GM (y sus marcas) en cada cambio
+  useEffect(() => {
+    if (gmBoardGenerated.current && gmBoard.length === 25) {
+      storeBoard(roomCode, 'gm', lastGmBoardDifficulty.current, gmBoard);
+    }
+  }, [gmBoard, roomCode]);
 
   // Regenerar tablero del GM si cambia la dificultad
   useEffect(() => {

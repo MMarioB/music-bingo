@@ -230,19 +230,51 @@ class GameWebSocket {
     }
   }
 
+  // Token secreto del host: permite reclamar el rol de anfitrión al
+  // reconectar (incluso tras refrescar la página) sin que un tercero
+  // pueda secuestrar la sala
+  _storeHostToken(roomCode, token) {
+    try {
+      sessionStorage.setItem(`musicbingo-host-token-${roomCode}`, token);
+    } catch { /* storage no disponible */ }
+  }
+
+  _getHostToken(roomCode) {
+    try {
+      return sessionStorage.getItem(`musicbingo-host-token-${roomCode}`);
+    } catch {
+      return null;
+    }
+  }
+
   // --- MÉTODOS QUE ESPERAN RESPUESTA (callback) ---
-  createRoom(roomConfig) {
+  async createRoom(roomConfig) {
     this.lastRoomData = {
       roomCode: roomConfig.roomCode,
       name: 'Game Master',
       isHost: true
     };
-    return this._emit('createRoom', roomConfig, true);
+    const response = await this._emit('createRoom', roomConfig, true);
+    if (response && response.hostToken && response.roomCode) {
+      this._storeHostToken(response.roomCode, response.hostToken);
+      this.lastRoomData = {
+        roomCode: response.roomCode,
+        name: 'Game Master',
+        isHost: true,
+        hostToken: response.hostToken
+      };
+    }
+    return response;
   }
 
   joinRoom(roomCode, playerInfo) {
-    this.lastRoomData = { roomCode, ...playerInfo };
-    return this._emit('joinRoom', { roomCode, ...playerInfo }, true);
+    const data = { roomCode, ...playerInfo };
+    if (data.isHost && !data.hostToken) {
+      const token = this._getHostToken(roomCode);
+      if (token) data.hostToken = token;
+    }
+    this.lastRoomData = data;
+    return this._emit('joinRoom', data, true);
   }
 
   selectCategory(data) { return this._emit('selectCategory', data, true); }
