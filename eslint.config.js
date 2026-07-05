@@ -35,4 +35,11 @@ export default [
       ],
     },
   },
+  {
+    // El servidor y sus tests corren en Node, no en el navegador
+    files: ['server.js', 'server.test.js'],
+    languageOptions: {
+      globals: globals.node,
+    },
+  },
 ]
