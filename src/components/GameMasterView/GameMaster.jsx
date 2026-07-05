@@ -12,6 +12,7 @@ import SongHistory from '../SongHistory';
 import GameLayout from '../GameLayout';
 import SongTimer from './SongTimer';
 import AudioPlayer from '../AudioPlayer';
+import PreviewPlayer from './PreviewPlayer';
 import BingoBoard from '../PlayerView/BingoBoard';
 import PlayerPredictions from '../PlayerView/PlayerPredictions';
 import PropTypes from 'prop-types';
@@ -199,18 +200,18 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
             />
           )}
 
-          {/* Auto-play preview cuando el GM controla la ronda y hay previewUrl */}
-          {currentCard?.previewUrl && !currentCard?.revealed && !isControlled && (
-            <audio
+          {/* Preview de 30s: suena en el dispositivo del GM (que es el
+              altavoz de la sala) también cuando otro jugador controla la ronda */}
+          {currentCard?.previewUrl && !currentCard?.revealed && (
+            <PreviewPlayer
               key={currentCard.previewUrl}
-              src={currentCard.previewUrl}
-              autoPlay
-              className="hidden"
+              previewUrl={currentCard.previewUrl}
+              paused={timerPaused}
             />
           )}
 
-          {/* Spotify embed con overlay - solo cuando el GM controla la ronda */}
-          {currentCard && !currentCard.revealed && !isControlled && (
+          {/* Spotify embed con overlay - fallback cuando no hay preview MP3 */}
+          {currentCard && !currentCard.previewUrl && !currentCard.revealed && !isControlled && (
             <div className="relative rounded-lg overflow-hidden">
               <AudioPlayer
                 spotifyUrl={currentCard.spotifyUrl}

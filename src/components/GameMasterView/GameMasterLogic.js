@@ -4,6 +4,7 @@ import { gameSocket } from '../../services/socketService';
 import { ARTISTS } from './constants';
 import { BOARD_SIZE, MIN_DIFFERENT_CATEGORIES, CATEGORIES_A, CATEGORIES_B } from '../Wheel/constants';
 import { loadStoredBoard, storeBoard } from '../../lib/boardStorage';
+import { fetchArtistTracks } from '../../lib/previewCatalog';
 
 // === Board generation helpers (reutilizados de MusicBingoGameLogic) ===
 const hasMaxOnePairPerCategory = (board, position, categoryName, categoryPairsCount) => {
@@ -76,6 +77,147 @@ const generateValidBoard = (difficulty) => {
   const fb = [...pool];
   for (let i = fb.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [fb[i], fb[j]] = [fb[j], fb[i]]; }
   return fb;
+};
+
+// === Selección de canciones ===
+const UNWANTED_KEYWORDS = ['live', 'remix', 'version', 'remaster', 'remastered', 'demo', 'acoustic', 'instrumental'];
+const MIN_POPULARITY = 40;
+const MIN_DURATION = 60000;
+const MAX_DURATION = 480000;
+
+// Camino Spotify (requiere sesión válida y que el dueño de la app tenga Premium)
+const pickTrackFromSpotify = async (spotify, artistName) => {
+  let randomTrack = null;
+
+  try {
+    const artistSearchResponse = await spotify.searchArtists(artistName, { limit: 10 });
+
+    if (artistSearchResponse.artists.items.length > 0) {
+      const exactMatch = artistSearchResponse.artists.items.find(artist => {
+        const artistNameLower = artist.name.toLowerCase().trim();
+        const searchNameLower = artistName.toLowerCase().trim();
+        return artistNameLower === searchNameLower ||
+               artistNameLower.replace(/\s+/g, '') === searchNameLower.replace(/\s+/g, '');
+      });
+
+      let artistId;
+
+      if (exactMatch) {
+        artistId = exactMatch.id;
+      } else {
+        const partialMatch = artistSearchResponse.artists.items.find(artist => {
+          const artistNameLower = artist.name.toLowerCase();
+          const searchNameLower = artistName.toLowerCase();
+          return artistNameLower.includes(searchNameLower) && artist.popularity > 30;
+        });
+
+        if (!partialMatch) {
+          throw new Error('No se encontró un artista válido');
+        }
+        artistId = partialMatch.id;
+      }
+
+      if (!artistId) {
+        throw new Error('No se encontró un artista válido');
+      }
+
+      const topTracksResponse = await spotify.getArtistTopTracks(artistId, 'ES');
+      const tracks = topTracksResponse.tracks || [];
+
+      if (tracks.length > 0) {
+        let filteredTracks = tracks.filter(track => {
+          if (track.popularity < MIN_POPULARITY) return false;
+          if (track.duration_ms < MIN_DURATION || track.duration_ms > MAX_DURATION) return false;
+          const trackNameLower = track.name.toLowerCase();
+          return !UNWANTED_KEYWORDS.some(keyword => trackNameLower.includes(keyword));
+        });
+
+        if (filteredTracks.length === 0) {
+          filteredTracks = tracks.filter(track =>
+            track.popularity >= MIN_POPULARITY &&
+            track.duration_ms >= MIN_DURATION &&
+            track.duration_ms <= MAX_DURATION
+          );
+        }
+
+        if (filteredTracks.length === 0) {
+          filteredTracks = tracks;
+        }
+
+        randomTrack = filteredTracks[Math.floor(Math.random() * filteredTracks.length)];
+      }
+    }
+  } catch (error) {
+    // Un 401 debe propagarse para renovar la sesión; el resto cae a la búsqueda tradicional
+    if (error?.status === 401 || error?.body?.error?.status === 401) throw error;
+    console.warn('Error usando Top Tracks API, usando búsqueda tradicional:', error);
+  }
+
+  if (!randomTrack) {
+    const response = await spotify.searchTracks(`artist:"${artistName}"`, { limit: 50, market: 'ES' });
+
+    if (!response.tracks.items.length) {
+      throw new Error('No se encontraron canciones para este artista.');
+    }
+
+    let filteredTracks = response.tracks.items.filter(track =>
+      track.popularity >= MIN_POPULARITY &&
+      track.duration_ms >= MIN_DURATION &&
+      track.duration_ms <= MAX_DURATION
+    );
+
+    if (filteredTracks.length === 0) {
+      filteredTracks = response.tracks.items;
+    }
+
+    randomTrack = filteredTracks[Math.floor(Math.random() * filteredTracks.length)];
+  }
+
+  if (!randomTrack) return null;
+
+  const albumImage = randomTrack.album.images && randomTrack.album.images.length > 0
+    ? randomTrack.album.images[1]?.url || randomTrack.album.images[0]?.url
+    : null;
+
+  return {
+    uri: randomTrack.uri,
+    title: randomTrack.name,
+    artist: randomTrack.artists[0].name,
+    year: parseInt(randomTrack.album.release_date.split('-')[0]),
+    spotifyUrl: randomTrack.external_urls.spotify,
+    previewUrl: randomTrack.preview_url || null,
+    albumImage,
+    albumName: randomTrack.album.name
+  };
+};
+
+// Camino catálogo de previews (iTunes/Deezer vía nuestro servidor): no
+// necesita Spotify y siempre trae un MP3 de 30s reproducible
+const pickTrackFromCatalog = async (artistName) => {
+  const candidates = await fetchArtistTracks(artistName);
+
+  const clean = candidates.filter(t =>
+    !UNWANTED_KEYWORDS.some(keyword => t.title.toLowerCase().includes(keyword))
+  );
+  const pool = clean.length > 0 ? clean : candidates;
+
+  if (pool.length === 0) {
+    throw new Error(`No se encontraron canciones con preview para ${artistName}`);
+  }
+
+  const chosen = pool[Math.floor(Math.random() * pool.length)];
+  return {
+    uri: `preview:${chosen.id}`,
+    title: chosen.title,
+    artist: chosen.artist,
+    year: chosen.year,
+    // Sin API de Spotify no hay URL directa del track: enlazar a la búsqueda
+    // permite al GM abrir la canción completa en su app de Spotify
+    spotifyUrl: `https://open.spotify.com/search/${encodeURIComponent(`${chosen.artist} ${chosen.title}`)}`,
+    previewUrl: chosen.previewUrl,
+    albumImage: chosen.albumImage,
+    albumName: chosen.albumName
+  };
 };
 
 const getInitialGameState = () => ({
@@ -182,10 +324,9 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
   const hasInitialized = useRef(false);
 
   useEffect(() => {
-    if (!loggedIn || !isTokenValid || !roomCode) {
-      if (!token) setGameState(prev => ({ ...prev, gameStep: 'init' }));
-      return;
-    }
+    // La conexión a la sala no depende de Spotify: el GM puede dirigir la
+    // partida sin sesión usando el catálogo de previews
+    if (!roomCode) return;
 
     const initializeSocketConnection = async () => {
       try {
@@ -308,7 +449,7 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
       gameSocket.off('markingDisabled', handleMarkingDisabled);
       gameSocket.off('error', handleError);
     };
-  }, [loggedIn, isTokenValid, roomCode, initialDifficulty, token]);
+  }, [roomCode, initialDifficulty]);
 
   // Timer countdown
   useEffect(() => {
@@ -499,7 +640,7 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
 
   const generateNewCard = useCallback(async () => {
     const currentState = gameStateRef.current;
-    if (!currentState.currentCategory || !spotify) {
+    if (!currentState.currentCategory) {
       setConnectionError('Debe seleccionar una categoría primero');
       return;
     }
@@ -524,116 +665,29 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
 
       const randomArtist = artistsInCategory[Math.floor(Math.random() * artistsInCategory.length)];
 
-      let randomTrack = null;
+      let track = null;
 
-      try {
-        const artistSearchResponse = await spotify.searchArtists(randomArtist, { limit: 10 });
-
-        if (artistSearchResponse.artists.items.length > 0) {
-          const exactMatch = artistSearchResponse.artists.items.find(artist => {
-            const artistNameLower = artist.name.toLowerCase().trim();
-            const searchNameLower = randomArtist.toLowerCase().trim();
-            return artistNameLower === searchNameLower ||
-                   artistNameLower.replace(/\s+/g, '') === searchNameLower.replace(/\s+/g, '');
-          });
-
-          let artistId;
-
-          if (exactMatch) {
-            artistId = exactMatch.id;
-          } else {
-            const partialMatch = artistSearchResponse.artists.items.find(artist => {
-              const artistNameLower = artist.name.toLowerCase();
-              const searchNameLower = randomArtist.toLowerCase();
-              return artistNameLower.includes(searchNameLower) && artist.popularity > 30;
-            });
-
-            if (!partialMatch) {
-              throw new Error('No se encontró un artista válido');
-            }
-            artistId = partialMatch.id;
+      // Spotify solo con sesión válida; si falla (p. ej. el 403 de
+      // "Premium required for the owner of the app") se cae al catálogo
+      if (loggedIn && isTokenValid && spotify) {
+        try {
+          track = await pickTrackFromSpotify(spotify, randomArtist);
+        } catch (error) {
+          if (error?.status === 401 || error?.body?.error?.status === 401) {
+            setIsTokenValid(false);
+            logout();
           }
-
-          if (!artistId) {
-            throw new Error('No se encontró un artista válido');
-          }
-
-          const topTracksResponse = await spotify.getArtistTopTracks(artistId, 'ES');
-          let tracks = topTracksResponse.tracks || [];
-
-          if (tracks.length > 0) {
-            const MIN_POPULARITY = 40;
-            const MIN_DURATION = 60000;
-            const MAX_DURATION = 480000;
-            const unwantedKeywords = ['live', 'remix', 'version', 'remaster', 'remastered', 'demo', 'acoustic', 'instrumental'];
-
-            let filteredTracks = tracks.filter(track => {
-              if (track.popularity < MIN_POPULARITY) return false;
-              if (track.duration_ms < MIN_DURATION || track.duration_ms > MAX_DURATION) return false;
-              const trackNameLower = track.name.toLowerCase();
-              return !unwantedKeywords.some(keyword => trackNameLower.includes(keyword));
-            });
-
-            if (filteredTracks.length === 0) {
-              filteredTracks = tracks.filter(track =>
-                track.popularity >= MIN_POPULARITY &&
-                track.duration_ms >= MIN_DURATION &&
-                track.duration_ms <= MAX_DURATION
-              );
-            }
-
-            if (filteredTracks.length === 0) {
-              filteredTracks = tracks;
-            }
-
-            randomTrack = filteredTracks[Math.floor(Math.random() * filteredTracks.length)];
-          }
+          console.warn('Spotify no disponible, usando catálogo de previews:', error?.message || error);
         }
-      } catch (error) {
-        console.warn('Error usando Top Tracks API, usando búsqueda tradicional:', error);
       }
 
-      if (!randomTrack) {
-        const response = await spotify.searchTracks(`artist:"${randomArtist}"`, { limit: 50, market: 'ES' });
-
-        if (!response.tracks.items.length) {
-          throw new Error('No se encontraron canciones para este artista.');
-        }
-
-        let filteredTracks = response.tracks.items.filter(track =>
-          track.popularity >= 40 &&
-          track.duration_ms >= 60000 &&
-          track.duration_ms <= 480000
-        );
-
-        if (filteredTracks.length === 0) {
-          filteredTracks = response.tracks.items;
-        }
-
-        randomTrack = filteredTracks[Math.floor(Math.random() * filteredTracks.length)];
+      if (!track) {
+        track = await pickTrackFromCatalog(randomArtist);
       }
-
-      if (!randomTrack) {
-        throw new Error('No se encontraron canciones.');
-      }
-
-      const albumImage = randomTrack.album.images && randomTrack.album.images.length > 0
-        ? randomTrack.album.images[1]?.url || randomTrack.album.images[0]?.url
-        : null;
 
       const response2 = await gameSocket.startSong({
         roomCode,
-        track: {
-          uri: randomTrack.uri,
-          title: randomTrack.name,
-          artist: randomTrack.artists[0].name,
-          year: parseInt(randomTrack.album.release_date.split('-')[0]),
-          musicCategory: musicCategoryToUse,
-          spotifyUrl: randomTrack.external_urls.spotify,
-          previewUrl: randomTrack.preview_url || null,
-          albumImage: albumImage,
-          albumName: randomTrack.album.name
-        }
+        track: { ...track, musicCategory: musicCategoryToUse }
       });
 
       if (response2 && response2.success === false) {
@@ -645,16 +699,11 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
 
     } catch (error) {
       console.error("Error generando tarjeta:", error);
-      if (error?.status === 401 || error?.body?.error?.status === 401) {
-        setIsTokenValid(false);
-        logout();
-      } else {
-        setConnectionError(error.message || 'Error al generar la tarjeta');
-      }
+      setConnectionError(error.message || 'Error al generar la tarjeta');
     } finally {
       setIsLoading(false);
     }
-  }, [spotify, roomCode, logout, startTimer, selectedMusicTheme]);
+  }, [spotify, loggedIn, isTokenValid, roomCode, logout, startTimer, selectedMusicTheme]);
 
   const handleRevealSong = useCallback(async () => {
     try {
