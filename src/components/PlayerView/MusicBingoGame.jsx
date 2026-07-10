@@ -87,12 +87,12 @@ const MusicBingoGame = ({ playerName, roomCode, difficulty }) => {
           <span className="text-cyan-300 text-sm font-semibold">🎮 Controlas esta ronda</span>
         </div>
 
-        {/* Fase de ruleta */}
-        {logic.gameStep === 'wheel' && (
-          <Suspense fallback={<div className="text-center text-white/50 py-4">Cargando ruleta...</div>}>
+        {/* Fase de ruleta - siempre montada para preservar el ciclo de categorías */}
+        <Suspense fallback={<div className="text-center text-white/50 py-4">Cargando ruleta...</div>}>
+          <div className={logic.gameStep === 'wheel' ? '' : 'hidden'}>
             <CategoryWheel difficulty={difficulty} onCategorySelected={onControllerSelectCategory} />
-          </Suspense>
-        )}
+          </div>
+        </Suspense>
 
         {/* Fase de categoría seleccionada pero sin canción */}
         {logic.currentCategory && !logic.currentSong && logic.gameStep !== 'wheel' && (

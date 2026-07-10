@@ -95,17 +95,19 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
         </div>
       ) : null}
 
-      {gameStep === 'wheel' ? (
-        isControlled ? (
-          <div className="text-center py-12 text-white/50 animate-slideUp">
-            <p className="text-lg">Esperando a que {currentController.name} gire la ruleta...</p>
-          </div>
-        ) : (
-          <div className="flex items-center justify-center animate-scaleIn">
-            <CategoryWheel difficulty={difficulty} onCategorySelected={handleCategorySelected} />
-          </div>
-        )
-      ) : (
+      {/* Wheel phase: waiting message when another player controls */}
+      {gameStep === 'wheel' && isControlled && (
+        <div className="text-center py-12 text-white/50 animate-slideUp">
+          <p className="text-lg">Esperando a que {currentController.name} gire la ruleta...</p>
+        </div>
+      )}
+
+      {/* CategoryWheel always mounted to preserve rotation cycle across rounds */}
+      <div className={gameStep === 'wheel' && !isControlled ? 'flex items-center justify-center' : 'hidden'}>
+        <CategoryWheel difficulty={difficulty} onCategorySelected={handleCategorySelected} />
+      </div>
+
+      {gameStep !== 'wheel' && (
         <div className="space-y-4 animate-slideUp">
           {/* Alerta de ganadores */}
           {winners.length > 0 && !gameOver && (
@@ -241,9 +243,11 @@ const GameMaster = ({ roomCode, difficulty: initialDifficulty }) => {
                 {isLoading ? 'Generando...' : selectedCategory ? 'Generar Tarjeta' : 'Selecciona una categoría primero'}
               </Button>
             )
-          ) : isControlled && !currentCard.revealed ? (
+          ) : isControlled ? (
             <div className="text-center py-6 text-white/40 text-sm animate-slideUp">
-              Canción sonando... Espera a que {currentController?.name} la revele
+              {currentCard.revealed
+                ? `🎵 ${currentController?.name} reveló la canción — espera la nueva ronda`
+                : `Canción sonando... Espera a que ${currentController?.name} la revele`}
             </div>
           ) : (
             <Card className="bg-black/30 border border-white/20 overflow-hidden">

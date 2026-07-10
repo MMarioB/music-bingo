@@ -173,7 +173,7 @@ const CategoryWheel = ({ difficulty = 'principiante', onCategorySelected = () =>
     const isCycleComplete = excludedIds.length >= allCategories.length;
 
     return (
-        <div className="flex flex-col items-center justify-center gap-4 w-full overflow-x-hidden">
+        <div className="flex flex-col items-center gap-4 w-full overflow-x-hidden">
             {/* Indicador de progreso del ciclo */}
             <div className="flex items-center gap-3 bg-gradient-to-r from-purple-500/20 to-pink-500/20 backdrop-blur-sm border border-white/20 rounded-xl px-4 py-2 animate-fadeIn">
                 <div className="flex items-center gap-2">
