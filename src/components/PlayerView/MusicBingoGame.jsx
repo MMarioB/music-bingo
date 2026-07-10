@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useCallback, lazy, Suspense } from 'react';
-import { Trophy, Check, RefreshCwIcon, ExternalLinkIcon, Users } from 'lucide-react';
+import { Trophy, Check, RefreshCwIcon, ExternalLinkIcon, Users, MusicIcon, CalendarIcon } from 'lucide-react';
 import PropTypes from 'prop-types';
 import { useMusicBingoLogic } from './MusicBingoGameLogic';
 import GameLayout from '../GameLayout';
@@ -141,6 +141,47 @@ const MusicBingoGame = ({ playerName, roomCode, difficulty }) => {
         {/* Canción revelada - controles de marcado */}
         {logic.currentSong?.revealed && (
           <div className="space-y-2">
+            {/* Tarjeta de la canción revelada (carátula completa como la del GM) */}
+            <div className="bg-black/30 border border-white/20 rounded-lg overflow-hidden">
+              {logic.currentSong.albumImage ? (
+                <div className="relative">
+                  <img
+                    src={logic.currentSong.albumImage}
+                    alt={`${logic.currentSong.title} - ${logic.currentSong.artist}`}
+                    className="w-full aspect-square object-cover"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                  <div className="absolute bottom-0 left-0 right-0 p-4 animate-slideUp">
+                    <h2 className="text-xl font-bold text-white drop-shadow-lg mb-1">
+                      {logic.currentSong.title}
+                    </h2>
+                    <div className="flex items-center text-purple-200 drop-shadow-lg">
+                      <MusicIcon className="w-4 h-4 mr-2" />
+                      <span className="text-base">{logic.currentSong.artist}</span>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center pt-4 px-4">
+                  <h2 className="text-xl font-bold text-white">{logic.currentSong.title}</h2>
+                  <div className="flex justify-center items-center space-x-2 text-purple-300">
+                    <MusicIcon className="w-4 h-4" />
+                    <span className="text-base">{logic.currentSong.artist}</span>
+                  </div>
+                </div>
+              )}
+              <div className="p-3 grid grid-cols-2 gap-2">
+                <div className="bg-white/10 backdrop-blur-sm rounded-lg p-2 flex items-center justify-between">
+                  <CalendarIcon className="w-4 h-4 text-purple-400" />
+                  <span className="text-lg font-bold text-white">{logic.currentSong.year}</span>
+                </div>
+                <div className="bg-white/10 backdrop-blur-sm rounded-lg p-2 flex items-center justify-between">
+                  <MusicIcon className="w-4 h-4 text-purple-400" />
+                  <span className="text-sm text-purple-300 truncate">{logic.currentSong.musicCategory}</span>
+                </div>
+              </div>
+            </div>
+
             {/* Lista de jugadores para marcar correctos */}
             {!logic.isMarkingEnabled && (
               <div className="space-y-1">
