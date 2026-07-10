@@ -141,6 +141,23 @@ const MusicBingoGame = ({ playerName, roomCode, difficulty }) => {
         {/* Canción revelada - controles de marcado */}
         {logic.currentSong?.revealed && (
           <div className="space-y-2">
+            {/* Info de la canción revelada */}
+            <div className="bg-black/30 border border-white/20 rounded-lg p-3 flex items-center gap-3">
+              {logic.currentSong.albumImage && (
+                <img
+                  src={logic.currentSong.albumImage}
+                  alt={`${logic.currentSong.title} - ${logic.currentSong.artist}`}
+                  className="w-14 h-14 rounded object-cover flex-shrink-0"
+                />
+              )}
+              <div className="min-w-0 flex-1 text-left">
+                <p className="text-white font-bold text-sm truncate">🎵 {logic.currentSong.title}</p>
+                <p className="text-purple-300 text-xs truncate">
+                  {logic.currentSong.artist}{logic.currentSong.year ? ` · ${logic.currentSong.year}` : ''}
+                </p>
+              </div>
+            </div>
+
             {/* Lista de jugadores para marcar correctos */}
             {!logic.isMarkingEnabled && (
               <div className="space-y-1">
