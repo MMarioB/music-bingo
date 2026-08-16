@@ -317,6 +317,89 @@ describe('dinámica de partida', () => {
   });
 });
 
+describe('predicciones siguen al controlador de la ronda', () => {
+  const waitForEvent = (socket, event, timeout = 2000) =>
+    new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        socket.off(event, handler);
+        reject(new Error(`Timeout esperando ${event}`));
+      }, timeout);
+      const handler = (data) => {
+        clearTimeout(timer);
+        socket.off(event, handler);
+        resolve(data);
+      };
+      socket.on(event, handler);
+    });
+
+  const setupThreePlayers = async (roomCode) => {
+    const host = await connectClient();
+    const p1 = await connectClient();
+    const p2 = await connectClient();
+    await emitAck(host, 'createRoom', { roomCode });
+    await emitAck(p1, 'joinRoom', { roomCode, name: 'Ana' });
+    await emitAck(p2, 'joinRoom', { roomCode, name: 'Bea' });
+    p1.emit('playerReady', { roomCode });
+    p2.emit('playerReady', { roomCode });
+    await waitForState(host, (s) => s.connectedPlayers.every((p) => p.ready));
+    const wheel = waitForState(host, (s) => s.gameStep === 'wheel');
+    host.emit('startGame', { roomCode });
+    await wheel;
+    return { host, p1, p2 };
+  };
+
+  it('un jugador nombrado controlador recibe las predicciones ya enviadas', async () => {
+    const { host, p1, p2 } = await setupThreePlayers('PRED1');
+
+    // Ana envía una predicción (round inicial controlada por el host)
+    p1.emit('submitPrediction', { roomCode: 'PRED1', prediction: 'Bohemian Rhapsody' });
+    await sleep(100);
+
+    // El host pasa el control a Bea; Bea debe recibir el snapshot completo
+    const beaSync = waitForEvent(p2, 'predictionsSync');
+    await emitAck(host, 'setController', { roomCode: 'PRED1', controllerId: p2.id });
+    const payload = await beaSync;
+
+    expect(payload.predictions).toEqual({ Ana: 'Bohemian Rhapsody' });
+  });
+
+  it('al desconectarse el controlador, el control rota y el nuevo controlador recibe las predicciones', async () => {
+    const { host, p1, p2 } = await setupThreePlayers('PRED2');
+
+    // Hacer a Bea la controladora y que Ana prediga
+    await emitAck(host, 'setController', { roomCode: 'PRED2', controllerId: p2.id });
+    p1.emit('submitPrediction', { roomCode: 'PRED2', prediction: 'Imagine' });
+    await sleep(100);
+
+    // Bea (controladora) se cae: el control rota y el host, como destino
+    // permanente del snapshot, recibe las predicciones intactas
+    const hostSync = waitForEvent(host, 'predictionsSync');
+    p2.disconnect();
+    const payload = await hostSync;
+
+    expect(payload.predictions).toEqual({ Ana: 'Imagine' });
+    // Las predicciones sobreviven a la desconexión del controlador
+    expect(server.gameRooms.get('PRED2').predictions).toEqual({ Ana: 'Imagine' });
+  });
+
+  it('una nueva ronda limpia las predicciones del controlador', async () => {
+    const { host, p1, p2 } = await setupThreePlayers('PRED3');
+
+    await emitAck(host, 'setController', { roomCode: 'PRED3', controllerId: p2.id });
+    p1.emit('submitPrediction', { roomCode: 'PRED3', prediction: 'Yesterday' });
+    await sleep(100);
+    expect(server.gameRooms.get('PRED3').predictions).toEqual({ Ana: 'Yesterday' });
+
+    // Nueva ronda: el servidor descarta las predicciones y avisa al controlador
+    const sync = waitForEvent(host, 'predictionsSync');
+    await emitAck(host, 'restartGame', { roomCode: 'PRED3' });
+    const payload = await sync;
+
+    expect(payload.predictions).toEqual({});
+    expect(server.gameRooms.get('PRED3').predictions).toEqual({});
+  });
+});
+
 describe('catálogo de previews (/api/tracks)', () => {
   const realFetch = global.fetch;
 

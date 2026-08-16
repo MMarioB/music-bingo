@@ -412,6 +412,15 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
       }));
     };
 
+    // Snapshot autoritativo del servidor: reemplaza el conjunto completo
+    // (útil al reconectar el host o al reiniciar una ronda)
+    const handlePredictionsSync = ({ predictions }) => {
+      setGameState(prev => ({
+        ...prev,
+        playerPredictions: predictions || {}
+      }));
+    };
+
     const handleError = (error) => {
       setConnectionError(error.message || 'Error desconocido');
     };
@@ -436,6 +445,7 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
 
     gameSocket.on('gameStateUpdate', handleGameStateUpdate);
     gameSocket.on('playerPrediction', handlePlayerPrediction);
+    gameSocket.on('predictionsSync', handlePredictionsSync);
     gameSocket.on('playerMarkedCorrect', handlePlayerMarked);
     gameSocket.on('markingEnabled', handleMarkingEnabled);
     gameSocket.on('markingDisabled', handleMarkingDisabled);
@@ -444,6 +454,7 @@ export const useGameMasterLogic = ({ roomCode, initialDifficulty }) => {
     return () => {
       gameSocket.off('gameStateUpdate', handleGameStateUpdate);
       gameSocket.off('playerPrediction', handlePlayerPrediction);
+      gameSocket.off('predictionsSync', handlePredictionsSync);
       gameSocket.off('playerMarkedCorrect', handlePlayerMarked);
       gameSocket.off('markingEnabled', handleMarkingEnabled);
       gameSocket.off('markingDisabled', handleMarkingDisabled);
