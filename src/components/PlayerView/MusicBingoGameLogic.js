@@ -287,12 +287,20 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
             setPlayerPredictions(prev => ({ ...prev, [predPlayer]: prediction }));
         };
 
+        // Snapshot autoritativo del servidor: reemplaza el conjunto completo.
+        // Garantiza que quien controle la ronda (tras rotar o reconectar) vea
+        // todas las predicciones, no solo las que llegaron mientras escuchaba.
+        const handlePredictionsSync = ({ predictions }) => {
+            setPlayerPredictions(predictions || {});
+        };
+
         gameSocket.on('gameStateUpdate', handleGameStateUpdate);
         gameSocket.on('error', handleError);
         gameSocket.on('markingEnabled', handleMarkingEnabled);
         gameSocket.on('markingDisabled', handleMarkingDisabled);
         gameSocket.on('playerMarkedCorrect', handlePlayerMarked);
         gameSocket.on('playerPrediction', handlePlayerPrediction);
+        gameSocket.on('predictionsSync', handlePredictionsSync);
 
         return () => {
             gameSocket.off('gameStateUpdate', handleGameStateUpdate);
@@ -301,6 +309,7 @@ export const useMusicBingoLogic = ({ playerName, roomCode, difficulty }) => {
             gameSocket.off('markingDisabled', handleMarkingDisabled);
             gameSocket.off('playerMarkedCorrect', handlePlayerMarked);
             gameSocket.off('playerPrediction', handlePlayerPrediction);
+            gameSocket.off('predictionsSync', handlePredictionsSync);
         };
     }, [sounds, confetti]);
 

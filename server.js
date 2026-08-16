@@ -263,6 +263,19 @@ export function createGameServer({ snapshotPath = null } = {}) {
     io.to(roomCode).emit('gameStateUpdate', gameState);
   };
 
+  // Las predicciones son privadas: solo el host y el controlador de la ronda
+  // deben verlas. Se envían como snapshot dirigido (no en el gameState que se
+  // difunde a toda la sala) para que quien controle la ronda siempre tenga el
+  // conjunto completo, incluso tras rotar el turno o reconectar.
+  const syncPredictions = (room) => {
+    if (!room) return;
+    const predictions = room.predictions || {};
+    const targets = new Set();
+    if (room.hostId) targets.add(room.hostId);
+    if (room.currentControllerId) targets.add(room.currentControllerId);
+    targets.forEach((id) => io.to(id).emit('predictionsSync', { predictions }));
+  };
+
   // Elimina definitivamente a un jugador de la sala
   const removePlayer = (room, playerId) => {
     const playerIndex = room.players.findIndex(p => p.id === playerId);
@@ -358,6 +371,7 @@ export function createGameServer({ snapshotPath = null } = {}) {
           createdAt: new Date(),
           currentControllerId: null,
           currentControllerName: null,
+          predictions: {},
         });
         socket.join(roomCode);
         socketToRoom.set(socket.id, roomCode);
@@ -515,6 +529,11 @@ export function createGameServer({ snapshotPath = null } = {}) {
           gameStep: room.phase
         });
         emitGameState(roomCode);
+        // Si quien (re)entra es el host o el controlador, restaurarle las
+        // predicciones acumuladas de la ronda en curso
+        if (socket.id === room.hostId || socket.id === room.currentControllerId) {
+          syncPredictions(room);
+        }
 
       } catch (error) {
         console.error('Error joining room:', error);
@@ -553,7 +572,9 @@ export function createGameServer({ snapshotPath = null } = {}) {
         }
         // Asignar primer controlador al iniciar el juego
         rotateController(room);
+        room.predictions = {};
         emitGameState(roomCode);
+        syncPredictions(room);
       } catch (error) {
         console.error('Error starting game:', error);
       }
@@ -611,9 +632,12 @@ export function createGameServer({ snapshotPath = null } = {}) {
         room.currentCard = { ...track, revealed: false };
         room.isMarkingEnabled = false;
         room.players.forEach(p => p.isCorrect = false);
+        // Nueva canción: las predicciones anteriores dejan de ser válidas
+        room.predictions = {};
 
         cb({ success: true });
         emitGameState(roomCode);
+        syncPredictions(room);
       } catch (error) {
         console.error('Error starting song:', error);
         cb({ error: error.message });
@@ -633,6 +657,12 @@ export function createGameServer({ snapshotPath = null } = {}) {
         const prediction = data.prediction.trim().slice(0, 200);
 
         const predictionData = { playerName: player.name, prediction };
+
+        // Persistir la última predicción de cada jugador en la sala para que
+        // el controlador de la ronda (que puede rotar o reconectar) siempre
+        // pueda consultarlas, no solo quien estuviera escuchando en ese momento
+        if (!room.predictions) room.predictions = {};
+        room.predictions[player.name] = prediction;
 
         // Enviar al host siempre
         io.to(room.hostId).emit('playerPrediction', predictionData);
@@ -855,11 +885,15 @@ export function createGameServer({ snapshotPath = null } = {}) {
           p.isCorrect = false;
           p.ready = p.isHost;
         });
+        // Nueva ronda: descartar las predicciones de la ronda anterior
+        room.predictions = {};
         // Rotar controlador automáticamente en cada nueva ronda
         rotateController(room);
 
         cb({ success: true });
         emitGameState(roomCode);
+        // Vaciar el panel del nuevo controlador (y del host) para la ronda
+        syncPredictions(room);
       } catch (error) {
         console.error('Error restarting game:', error);
         cb({ error: error.message });
@@ -911,6 +945,8 @@ export function createGameServer({ snapshotPath = null } = {}) {
 
         cb({ success: true });
         emitGameState(roomCode);
+        // El nuevo controlador debe recibir las predicciones ya enviadas
+        syncPredictions(room);
       } catch (error) {
         console.error('Error setting controller:', error);
         cb({ error: error.message });
@@ -996,6 +1032,10 @@ export function createGameServer({ snapshotPath = null } = {}) {
 
       if (room.currentControllerId === socket.id) {
         rotateController(room);
+        emitGameState(roomCode);
+        // El control pasó a otro jugador: entrégale las predicciones actuales
+        syncPredictions(room);
+        return;
       }
       emitGameState(roomCode);
     });
@@ -1024,6 +1064,8 @@ export function createGameServer({ snapshotPath = null } = {}) {
           if (DEBUG) console.log(`[DEBUG] ${p.name} eliminado de ${roomCode} (gracia expirada)`);
         });
         emitGameState(roomCode);
+        // removePlayer pudo rotar el controlador: refrescar su panel
+        syncPredictions(room);
       }
     }
 
